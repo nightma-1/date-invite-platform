@@ -2,22 +2,22 @@
  * © 2026 Date Invite Platform. Все права защищены.
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBuilder } from '../builderStore.jsx';
 import QuestionScreen from '../../components/screens/QuestionScreen.jsx';
 import { getTemplateTokens } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
+import { listActiveGifs } from '../../lib/mediaLibrary.js';
 
-// Подборка встроенных GIF по теме "романтика / приглашение"
-const BUILT_IN_GIFS = [
-  { url: 'https://media.giphy.com/media/l0MYGb1LuZ3n7dRnO/giphy.gif', label: '💕 Романтик' },
-  { url: 'https://media.giphy.com/media/xT9IgDeNrJB2yUUEeQ/giphy.gif', label: '🌹 Цветы' },
-  { url: 'https://media.giphy.com/media/l41YtZOb9EUABnuqA/giphy.gif', label: '🥰 Сердечки' },
-  { url: 'https://media.giphy.com/media/3o6Zt8A3kNKnCnWp9m/giphy.gif', label: '🎉 Праздник' },
-  { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', label: '✨ Магия' },
-  { url: 'https://media.giphy.com/media/3oEjHB1EKuujDjYoRi/giphy.gif', label: '🌙 Ночь' },
-];
+const CATEGORY_LABELS = {
+  romantic: '❤️ Романтика',
+  flirty: '😏 Флирт',
+  funny: '😂 Смешные',
+  cute: '🥹 Милые',
+  bold: '🔥 Яркие',
+  custom: '✨ Другое',
+};
 
 export default function StepQuestion() {
   const { state, dispatch } = useBuilder();
@@ -26,6 +26,23 @@ export default function StepQuestion() {
   const fileInputRef = useRef(null);
   const [fileError, setFileError] = useState(null);
   const [gifMode, setGifMode] = useState(false);
+  const [gifs, setGifs] = useState([]);
+  const [gifsLoading, setGifsLoading] = useState(false);
+  const [gifsError, setGifsError] = useState(null);
+  const [activeCategory, setActiveCategory] = useState('all');
+
+  useEffect(() => {
+    if (!gifMode || gifs.length > 0 || gifsLoading) return;
+    setGifsLoading(true);
+    setGifsError(null);
+    listActiveGifs()
+      .then(setGifs)
+      .catch(() => setGifsError('Не получилось загрузить гифки. Попробуй ещё раз.'))
+      .finally(() => setGifsLoading(false));
+  }, [gifMode]);
+
+  const categories = ['all', ...new Set(gifs.map((g) => g.category))];
+  const visibleGifs = activeCategory === 'all' ? gifs : gifs.filter((g) => g.category === activeCategory);
 
   function update(payload) { dispatch({ type: 'UPDATE_STEP_CONFIG', stepType: 'question', payload }); }
 
@@ -133,13 +150,44 @@ export default function StepQuestion() {
 
             {/* GIF-галерея */}
             {gifMode && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 10 }}>
-                {BUILT_IN_GIFS.map((gif) => (
-                  <button key={gif.url} type="button" onClick={() => selectGif(gif.url)}
-                          style={{ padding: 0, border: `2px solid ${config.mediaUrl === gif.url ? tokens.berry : 'transparent'}`, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'none' }}>
-                    <img src={gif.url} alt={gif.label} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
-                  </button>
-                ))}
+              <div style={{ marginTop: 10 }}>
+                {gifsLoading && (
+                  <p style={{ fontSize: 12, color: tokens.inkMuted || tokens.ink, opacity: 0.6 }}>Загружаем гифки…</p>
+                )}
+                {gifsError && <p style={{ color: '#C0392B', fontSize: 12 }}>{gifsError}</p>}
+
+                {!gifsLoading && !gifsError && gifs.length === 0 && (
+                  <p style={{ fontSize: 12, color: tokens.inkMuted || tokens.ink, opacity: 0.6 }}>
+                    В библиотеке пока нет гифок.
+                  </p>
+                )}
+
+                {!gifsLoading && gifs.length > 0 && (
+                  <>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                      {categories.map((cat) => (
+                        <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
+                                style={{
+                                  padding: '4px 10px', borderRadius: 14, fontSize: 11,
+                                  border: `1.5px solid ${activeCategory === cat ? tokens.berry : tokens.ink + '20'}`,
+                                  background: activeCategory === cat ? tokens.berry : 'transparent',
+                                  color: activeCategory === cat ? '#fff' : tokens.ink,
+                                  cursor: 'pointer', fontFamily: tokens.fontUI,
+                                }}>
+                          {cat === 'all' ? 'Все' : CATEGORY_LABELS[cat] || cat}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                      {visibleGifs.map((gif) => (
+                        <button key={gif.id} type="button" onClick={() => selectGif(gif.url)}
+                                style={{ padding: 0, border: `2px solid ${config.mediaUrl === gif.url ? tokens.berry : 'transparent'}`, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'none' }}>
+                          <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
