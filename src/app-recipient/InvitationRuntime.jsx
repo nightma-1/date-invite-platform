@@ -184,6 +184,7 @@ export default function InvitationRuntime() {
         <ReactionScreen
           title={content?.reaction_text?.ru?.title}
           text={content?.reaction_text?.ru?.text}
+          mediaUrl={activeStep.configuration_json?.mediaUrl || content?.gif_url}
           tokens={tokens}
           onContinue={goNext}
         />

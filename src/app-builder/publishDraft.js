@@ -20,14 +20,28 @@ export async function publishDraft(state, userId) {
   const reactionConfig = state.steps.find((s) => s.step_type === 'reaction').configuration_json;
   const finalConfig = state.steps.find((s) => s.step_type === 'final').configuration_json;
 
-  // Загружаем картинку ДО создания записей: если Storage откажет, не останется
+  // Загружаем картинки ДО создания записей: если Storage откажет, не останется
   // приглашения-сироты без обещанного изображения.
   let mediaUrl = null;
-  const pendingFile = getPendingMedia();
-  if (pendingFile) {
-    mediaUrl = await uploadMedia(pendingFile, userId);
+  const pendingQuestionFile = getPendingMedia('question');
+  if (pendingQuestionFile) {
+    mediaUrl = await uploadMedia(pendingQuestionFile, userId);
   } else if (questionConfig.mediaUrl && !questionConfig.mediaUrl.startsWith('blob:')) {
     mediaUrl = questionConfig.mediaUrl;
+  }
+
+  // У экрана "Ого, ты сказал да?" своя (не обязательная) картинка — если своя
+  // не выбрана, используем картинку экрана вопроса (так же, как в превью
+  // конструктора). blob:-URL никогда не сохраняем в БД — только реальную
+  // ссылку после аплоада, иначе у получателя она просто не откроется.
+  let reactionMediaUrl = null;
+  const pendingReactionFile = getPendingMedia('reaction');
+  if (pendingReactionFile) {
+    reactionMediaUrl = await uploadMedia(pendingReactionFile, userId);
+  } else if (reactionConfig.mediaUrl && !reactionConfig.mediaUrl.startsWith('blob:')) {
+    reactionMediaUrl = reactionConfig.mediaUrl;
+  } else {
+    reactionMediaUrl = mediaUrl;
   }
 
   const { data: invitation, error: invError } = await supabase
@@ -55,12 +69,15 @@ export async function publishDraft(state, userId) {
   if (contentError) throw contentError;
 
   for (const step of state.steps) {
+    const configuration_json = step.step_type === 'reaction'
+      ? { ...step.configuration_json, mediaUrl: reactionMediaUrl }
+      : step.configuration_json;
     const { error: stepError } = await supabase.from('invitation_steps').insert({
       invitation_id: invitation.id,
       step_type: step.step_type,
       step_order: step.step_order,
       enabled: step.enabled,
-      configuration_json: step.configuration_json,
+      configuration_json,
     });
     if (stepError) throw stepError;
   }

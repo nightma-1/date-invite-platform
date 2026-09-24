@@ -10,18 +10,28 @@
  * теряется (черновик текста сохраняется, картинка — нет). Это осознанный
  * компромисс ради того, чтобы не заливать в Storage файлы черновиков,
  * которые никогда не оплатят.
+ *
+ * Ключ ('question' | 'reaction'): раньше был один общий слот на весь
+ * конструктор, и загрузка своей картинки для экрана "Ого, ты сказал да?"
+ * тихо затирала (или терялась под) картинку экрана вопроса — теперь у
+ * каждого шага свой слот.
  */
 
-let pendingFile = null;
+const pending = { question: null, reaction: null };
 
-export function setPendingMedia(file) {
-  pendingFile = file;
+export function setPendingMedia(key, file) {
+  pending[key] = file;
 }
 
-export function getPendingMedia() {
-  return pendingFile;
+export function getPendingMedia(key) {
+  return pending[key];
 }
 
-export function clearPendingMedia() {
-  pendingFile = null;
+export function clearPendingMedia(key) {
+  if (key) {
+    pending[key] = null;
+  } else {
+    pending.question = null;
+    pending.reaction = null;
+  }
 }

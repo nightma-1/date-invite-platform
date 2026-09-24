@@ -45,16 +45,16 @@ export default function StepReaction() {
     if (error) {
       setFileError(error);
       e.target.value = '';
-      clearPendingMedia();
+      clearPendingMedia('reaction');
       update({ mediaUrl: null });
       return;
     }
-    setPendingMedia(file);
+    setPendingMedia('reaction', file);
     update({ mediaUrl: URL.createObjectURL(file) });
   }
 
   function removeMedia() {
-    clearPendingMedia();
+    clearPendingMedia('reaction');
     update({ mediaUrl: null });
     setFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -70,7 +70,7 @@ export default function StepReaction() {
           gifs={gifs}
           gifsLoading={gifsLoading}
           gifsError={gifsError}
-          onSelect={(url) => update({ mediaUrl: url })}
+          onSelect={(url) => { clearPendingMedia('reaction'); update({ mediaUrl: url }); }}
           onRemove={removeMedia}
           onUploadClick={() => fileInputRef.current?.click()}
           fileInputRef={fileInputRef}

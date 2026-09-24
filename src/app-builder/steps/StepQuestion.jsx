@@ -44,21 +44,21 @@ export default function StepQuestion() {
     if (error) {
       setFileError(error);
       e.target.value = '';
-      clearPendingMedia();
+      clearPendingMedia('question');
       update({ mediaUrl: null });
       return;
     }
-    setPendingMedia(file);
+    setPendingMedia('question', file);
     update({ mediaUrl: URL.createObjectURL(file) });
   }
 
   function selectGif(url) {
-    clearPendingMedia();
+    clearPendingMedia('question');
     update({ mediaUrl: url });
   }
 
   function removeMedia() {
-    clearPendingMedia();
+    clearPendingMedia('question');
     update({ mediaUrl: null });
     setFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';

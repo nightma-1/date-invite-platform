@@ -16,11 +16,23 @@ export async function updateInvitationDraft(state, userId, invitationId) {
   const finalConfig = state.steps.find((s) => s.step_type === 'final').configuration_json;
 
   let mediaUrl = null;
-  const pendingFile = getPendingMedia();
-  if (pendingFile) {
-    mediaUrl = await uploadMedia(pendingFile, userId);
+  const pendingQuestionFile = getPendingMedia('question');
+  if (pendingQuestionFile) {
+    mediaUrl = await uploadMedia(pendingQuestionFile, userId);
   } else if (questionConfig.mediaUrl && !questionConfig.mediaUrl.startsWith('blob:')) {
     mediaUrl = questionConfig.mediaUrl;
+  }
+
+  // См. комментарий в publishDraft.js — у экрана "Ого, ты сказал да?" своя
+  // картинка, с тем же fallback на картинку экрана вопроса, если своей нет.
+  let reactionMediaUrl = null;
+  const pendingReactionFile = getPendingMedia('reaction');
+  if (pendingReactionFile) {
+    reactionMediaUrl = await uploadMedia(pendingReactionFile, userId);
+  } else if (reactionConfig.mediaUrl && !reactionConfig.mediaUrl.startsWith('blob:')) {
+    reactionMediaUrl = reactionConfig.mediaUrl;
+  } else {
+    reactionMediaUrl = mediaUrl;
   }
 
   const { error: invError } = await supabase
@@ -52,12 +64,15 @@ export async function updateInvitationDraft(state, userId, invitationId) {
   if (deleteError) throw deleteError;
 
   for (const step of state.steps) {
+    const configuration_json = step.step_type === 'reaction'
+      ? { ...step.configuration_json, mediaUrl: reactionMediaUrl }
+      : step.configuration_json;
     const { error: stepError } = await supabase.from('invitation_steps').insert({
       invitation_id: invitationId,
       step_type: step.step_type,
       step_order: step.step_order,
       enabled: step.enabled,
-      configuration_json: step.configuration_json,
+      configuration_json,
     });
     if (stepError) throw stepError;
   }
