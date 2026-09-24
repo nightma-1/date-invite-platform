@@ -83,18 +83,34 @@ export default function InvitationRuntime() {
   function goNextBy(n) {
     setActiveIndex((i) => Math.min(i + n, steps.length - 1));
   }
+  function goPrev() {
+    setActiveIndex((i) => {
+      let next = Math.max(i - 1, 0);
+      // choice_food никогда не показывается сам по себе (он объединён с
+      // choice_place на одном экране) — если шаг назад приземлился именно
+      // на него, прыгаем ещё на шаг назад
+      if (steps[next]?.step_type === 'choice_food' && steps[next - 1]?.step_type === 'choice_place') {
+        next = Math.max(next - 1, 0);
+      }
+      return next;
+    });
+  }
 
   async function handleFinalSubmit() {
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('responses').insert({
+      // upsert, а не insert: на invitation_id стоит unique-ограничение
+      // (один ответ на приглашение), так что повторная отправка — например,
+      // если получатель вернулся по той же ссылке и прошёл шаги заново —
+      // должна обновить существующий ответ, а не падать с ошибкой конфликта.
+      const { error } = await supabase.from('responses').upsert({
         invitation_id: invitation.id,
         answered_yes: true,
         selected_date: answers.selectedDate,
         selected_time: answers.selectedTime,
         selections: answers.selections,
-      });
-      if (error) throw error;
+      }, { onConflict: 'invitation_id' });
+      if (error) { console.error('response upsert failed', error); throw error; }
       setSubmitted(true);
     } finally {
       setSubmitting(false);
@@ -127,6 +143,26 @@ export default function InvitationRuntime() {
       {/* Тёплый декор — так же тепло, как на лендинге и в конструкторе */}
       <div style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: tokens.berry, opacity: 0.12, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: tokens.berry, opacity: 0.1, pointerEvents: 'none' }} />
+
+      {/* Кнопка "назад" — как в конструкторе, можно поправить предыдущий шаг */}
+      {activeIndex > 0 && !submitted && (
+        <button
+          type="button"
+          onClick={goPrev}
+          aria-label="Назад"
+          style={{
+            position: 'fixed', top: 18, left: 18, zIndex: 2,
+            width: 42, height: 42, borderRadius: '50%',
+            border: `1px solid ${tokens.ink}20`,
+            background: tokens.card, color: tokens.berry,
+            fontSize: 18, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: `0 6px 16px -6px ${tokens.ink}30`,
+          }}
+        >
+          ←
+        </button>
+      )}
 
       <div className="mx-auto max-w-[380px] px-4 py-10" style={{ position: 'relative', zIndex: 1 }}>
       {activeStep?.step_type === 'question' && (

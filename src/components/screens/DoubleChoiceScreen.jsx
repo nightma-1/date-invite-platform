@@ -7,11 +7,11 @@ import { motion } from 'framer-motion';
 
 function ChoiceSection({ title, options, allowMultiple, tokens, selected, onToggle }) {
   return (
-    <div style={{ background: tokens.card, borderRadius: 12, padding: 22, textAlign: 'left' }}>
-      <h2 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 17, fontWeight: 700, marginBottom: 14 }}>
+    <div style={{ background: tokens.card, borderRadius: 16, padding: 24, textAlign: 'left' }}>
+      <h2 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
         {title}
       </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {options.map((opt, i) => {
           const isSelected = selected.includes(opt.id);
           return (
@@ -25,24 +25,25 @@ function ChoiceSection({ title, options, allowMultiple, tokens, selected, onTogg
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
               style={{
-                padding: '12px 6px', borderRadius: 10,
-                border: `2px solid ${isSelected ? tokens.berry : tokens.ink + '18'}`,
+                padding: '16px 12px', borderRadius: 14,
+                border: `2px solid ${isSelected ? tokens.berry : tokens.ink + '15'}`,
                 background: isSelected
                   ? `linear-gradient(135deg, ${tokens.berry}, ${tokens.amber || tokens.berry})`
                   : (tokens.bg || '#fff'),
                 color: isSelected ? '#fff' : tokens.ink,
-                fontFamily: tokens.fontUI, fontSize: 12.5, fontWeight: isSelected ? 700 : 500,
+                fontFamily: tokens.fontUI, fontSize: 14, fontWeight: isSelected ? 700 : 500,
                 cursor: 'pointer', textAlign: 'center',
+                boxShadow: isSelected ? `0 10px 22px -8px ${tokens.berry}60` : 'none',
               }}
             >
-              <div style={{ fontSize: 22, marginBottom: 4 }}>{opt.icon || '✨'}</div>
+              <div style={{ fontSize: 30, marginBottom: 6 }}>{opt.icon || '✨'}</div>
               {opt.label}
             </motion.button>
           );
         })}
       </div>
       {allowMultiple && (
-        <p style={{ marginTop: 10, fontSize: 11.5, color: tokens.inkMuted || tokens.ink, opacity: 0.55, fontFamily: tokens.fontUI }}>
+        <p style={{ marginTop: 12, fontSize: 12, color: tokens.inkMuted || tokens.ink, opacity: 0.55, fontFamily: tokens.fontUI }}>
           Можно выбрать несколько вариантов
         </p>
       )}
