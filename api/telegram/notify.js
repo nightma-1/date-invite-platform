@@ -28,6 +28,26 @@ async function sendMessage(chatId, text) {
   }
 }
 
+// selections хранится как { [invitation_steps.id]: [optionId, ...] } —
+// разворачиваем в читаемые "иконка + название" по конфигу шага (то же самое,
+// что decodeSelections в app-dashboard/InvitationList.jsx).
+function decodeSelections(steps, selections) {
+  if (!selections || !steps?.length) return [];
+  return steps
+    .filter((s) => s.step_type === 'choice_place' || s.step_type === 'choice_food' || s.step_type === 'choice_block')
+    .map((step) => {
+      const ids = selections[step.id];
+      if (!ids || ids.length === 0) return null;
+      const options = step.configuration_json?.options || [];
+      const labels = ids.map((id) => {
+        const opt = options.find((o) => o.id === id);
+        return opt ? `${opt.icon || ''} ${opt.label}`.trim() : id;
+      });
+      return { title: step.configuration_json?.title || 'Выбор', labels };
+    })
+    .filter(Boolean);
+}
+
 function formatAnswered(invitation, extra) {
   const lines = [
     `❤️ <b>${escapeHtml(invitation.recipient_name)}</b> ответил(а) на приглашение!`,
@@ -36,6 +56,12 @@ function formatAnswered(invitation, extra) {
   ];
   if (extra?.selected_date) lines.push(`📅 Дата: ${extra.selected_date}`);
   if (extra?.selected_time) lines.push(`🕒 Время: ${extra.selected_time}`);
+
+  const choiceAnswers = decodeSelections(invitation.invitation_steps, extra?.selections);
+  for (const c of choiceAnswers) {
+    lines.push(`${escapeHtml(c.title)}: ${escapeHtml(c.labels.join(', '))}`);
+  }
+
   lines.push('', `Открыть: ${process.env.PUBLIC_APP_URL || ''}/dashboard`.trim());
   return lines.join('\n');
 }
@@ -68,7 +94,7 @@ export default async function handler(req, res) {
 
   const { data: invitation, error: invError } = await supabaseAdmin
     .from('invitations')
-    .select('recipient_name, user_id, profiles(telegram_chat_id)')
+    .select('recipient_name, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
     .eq('id', invitationId)
     .maybeSingle();
 
