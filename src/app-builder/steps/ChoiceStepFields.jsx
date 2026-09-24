@@ -75,67 +75,77 @@ export default function ChoiceStepFields({ stepType }) {
           Уже готовый набор — можно менять, удалять и добавлять свои
         </p>
 
-        {options.map((opt) => (
-          <div key={opt.id} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-            <input
-              type="text"
-              value={opt.icon}
-              onChange={(e) => updateOption(opt.id, { icon: e.target.value })}
-              maxLength={2}
+        {/* Сетка 2 колонки — как карточки, которые увидит получатель, а не
+            список строк, чтобы было сразу понятно, как это будет выглядеть */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {options.map((opt) => (
+            <div
+              key={opt.id}
               style={{
-                width: 44,
-                height: 44,
+                position: 'relative',
+                borderRadius: 14,
+                border: '1.5px solid #e0e0e0',
+                background: 'white',
+                padding: '14px 10px 10px',
                 textAlign: 'center',
-                borderRadius: 12,
-                border: '1px solid #e0e0e0',
-                background: 'white',
-                fontSize: 18,
-                fontFamily: T.font,
-                flexShrink: 0,
-                boxSizing: 'border-box',
-              }}
-            />
-            <input
-              type="text"
-              value={opt.label}
-              onChange={(e) => updateOption(opt.id, { label: e.target.value })}
-              placeholder="Название варианта"
-              style={{
-                flex: 1,
-                height: 44,
-                padding: '0 12px',
-                borderRadius: 12,
-                border: '1px solid #e0e0e0',
-                background: 'white',
-                fontFamily: T.font,
-                fontSize: 14,
-                color: T.dark,
-                boxSizing: 'border-box',
-                outline: 'none',
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => removeOption(opt.id)}
-              style={{
-                width: 36,
-                height: 44,
-                borderRadius: 12,
-                border: '1px solid #e0e0e0',
-                background: 'white',
-                color: T.muted,
-                cursor: 'pointer',
-                fontSize: 16,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
-              ✕
-            </button>
-          </div>
-        ))}
+              <button
+                type="button"
+                onClick={() => removeOption(opt.id)}
+                aria-label="Удалить вариант"
+                style={{
+                  position: 'absolute', top: 6, right: 6,
+                  width: 22, height: 22, borderRadius: '50%',
+                  border: 'none', background: '#f2f2f2', color: T.muted,
+                  cursor: 'pointer', fontSize: 12, lineHeight: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+              <input
+                type="text"
+                value={opt.icon}
+                onChange={(e) => updateOption(opt.id, { icon: e.target.value })}
+                maxLength={2}
+                style={{
+                  width: 40,
+                  height: 40,
+                  margin: '0 auto 8px',
+                  display: 'block',
+                  textAlign: 'center',
+                  borderRadius: 10,
+                  border: '1px solid #e0e0e0',
+                  background: '#fafafa',
+                  fontSize: 20,
+                  fontFamily: T.font,
+                  boxSizing: 'border-box',
+                }}
+              />
+              <input
+                type="text"
+                value={opt.label}
+                onChange={(e) => updateOption(opt.id, { label: e.target.value })}
+                placeholder="Название"
+                style={{
+                  width: '100%',
+                  height: 34,
+                  padding: '0 6px',
+                  borderRadius: 8,
+                  border: '1px solid #e0e0e0',
+                  background: 'white',
+                  fontFamily: T.font,
+                  fontSize: 13,
+                  color: T.dark,
+                  textAlign: 'center',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          ))}
+        </div>
 
         <button
           type="button"
@@ -150,7 +160,7 @@ export default function ChoiceStepFields({ stepType }) {
             cursor: 'pointer',
             fontSize: 14,
             fontFamily: T.font,
-            marginTop: 4,
+            marginTop: 10,
           }}
         >
           + Добавить вариант
