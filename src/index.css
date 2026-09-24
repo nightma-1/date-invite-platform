@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Единый тёплый оттенок рамок вместо дефолтного серого Tailwind —
+     мелочь, но именно такие мелочи создают ощущение продуманного, а не
+     сгенерированного интерфейса. */
+  *, ::before, ::after {
+    border-color: rgba(42, 31, 43, 0.14);
+  }
+}

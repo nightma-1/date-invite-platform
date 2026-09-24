@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+.env*.local
+*.log
+.cache/
+/tmp/
+supabase/.branches/
+supabase/.temp/
