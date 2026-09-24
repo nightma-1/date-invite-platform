@@ -1,5 +1,5 @@
 /**
- * © 2026 Date Invite Platform. Все права защищены.
+ * © 2026 Senti. Все права защищены.
  * Shared design tokens and reusable UI components for the builder.
  */
 

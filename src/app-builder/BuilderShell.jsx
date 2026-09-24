@@ -1,5 +1,5 @@
 /**
- * © 2026 Date Invite Platform. Все права защищены.
+ * © 2026 Senti. Все права защищены.
  */
 
 import { useState } from 'react';
@@ -108,7 +108,7 @@ export default function BuilderShell() {
             ❤️
           </div>
           <p style={{ fontFamily: T.font, fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.pink, marginBottom: 18 }}>
-            Date Invite
+            Senti
           </p>
 
           <h1 style={{
@@ -328,7 +328,7 @@ export default function BuilderShell() {
         boxShadow: `0 1px 0 ${T.pinkBorder}`,
       }}>
         <Link to="/" style={{ fontFamily: T.font, fontWeight: 700, fontSize: 17, color: T.darkPurple, textDecoration: 'none' }}>
-          Date Invite ❤️
+          Senti ❤️
         </Link>
       </div>
 

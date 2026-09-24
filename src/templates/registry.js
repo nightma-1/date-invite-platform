@@ -1,5 +1,5 @@
 /**
- * © 2026 Date Invite Platform. Все права защищены.
+ * © 2026 Senti. Все права защищены.
  */
 
 import { romanticTokens } from './romantic/tokens.js';

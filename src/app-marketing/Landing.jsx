@@ -229,7 +229,7 @@ export default function Landing() {
       {/* FOOTER */}
       <footer style={{ borderTop: `1px solid ${t.ink}12`, padding: '24px 20px' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <span style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700, fontSize: 16 }}>Date Invite</span>
+          <span style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700, fontSize: 16 }}>Senti</span>
           <div style={{ display: 'flex', gap: 20 }}>
             <Link to="/builder" style={{ color: t.inkMuted, textDecoration: 'none', fontSize: 14 }}>Создать</Link>
             <Link to="/dashboard" style={{ color: t.inkMuted, textDecoration: 'none', fontSize: 14 }}>Мои приглашения</Link>

@@ -1,5 +1,5 @@
 /**
- * © 2026 Date Invite Platform. Все права защищены (см. LICENSE в корне проекта).
+ * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  */
 
 import { supabase } from './supabaseClient.js';

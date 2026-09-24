@@ -1,5 +1,5 @@
 /**
- * © 2026 Date Invite Platform. Все права защищены.
+ * © 2026 Senti. Все права защищены.
  */
 
 export default function Button({ tokens, variant = 'primary', style = {}, className = '', ...props }) {
