@@ -214,7 +214,6 @@ export function GifImagePicker({
                     transform: selected ? 'scale(1.08)' : 'scale(1)',
                     boxShadow: selected ? `0 0 0 2px ${T.pink}60, 0 6px 18px ${T.pink}40` : 'none',
                     transition: 'transform 0.18s, box-shadow 0.18s, border-color 0.18s',
-                    borderRadius: 16,
                   }}
                 >
                   <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 13 }} />

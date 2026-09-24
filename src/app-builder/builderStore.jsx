@@ -9,11 +9,11 @@ const STORAGE_PREFIX = 'date-invite-draft:';
 
 export const DEFAULT_STEPS = [
   { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: 'Имя', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
-  { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: '', text: '' } },
-  { step_type: 'date', step_order: 2, enabled: false, configuration_json: { mode: 'recipient_picks' } },
-  { step_type: 'time', step_order: 3, enabled: false, configuration_json: {} },
-  { step_type: 'choice_block', step_order: 4, enabled: false, configuration_json: { categoryType: 'place', allowMultiple: false, options: [] } },
-  { step_type: 'final', step_order: 5, enabled: true, configuration_json: { title: '', description: '' } },
+  { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!' } },
+  { step_type: 'date', step_order: 2, enabled: true, configuration_json: { mode: 'recipient_picks', title: 'И так... Когда ты свободен?', buttonText: 'Выбери дату 💌' } },
+  { step_type: 'time', step_order: 3, enabled: true, configuration_json: { title: 'Во сколько? 🕒' } },
+  { step_type: 'choice_block', step_order: 4, enabled: true, configuration_json: { categoryType: 'place', allowMultiple: false, options: [] } },
+  { step_type: 'final', step_order: 5, enabled: true, configuration_json: { title: 'Ну всё, теперь пути назад нет 😄❤️', description: 'Наше свидание официально запланировано!' } },
 ];
 
 function initialDraft(draftId, initialTemplateId) {

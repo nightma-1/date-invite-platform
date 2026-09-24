@@ -361,27 +361,6 @@ export default function BuilderShell() {
           {STEP_TITLES[activeStep?.step_type] || ''}
         </h1>
 
-        {/* Optional step toggle */}
-        {(activeStep?.step_type === 'date' || activeStep?.step_type === 'time' || activeStep?.step_type === 'choice_block') && (
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginBottom: 16,
-            fontSize: 14,
-            color: T.dark,
-            fontFamily: T.font,
-            cursor: 'pointer',
-          }}>
-            <input
-              type="checkbox"
-              checked={activeStep.enabled}
-              onChange={(e) => dispatch({ type: 'TOGGLE_STEP', stepType: activeStep.step_type, enabled: e.target.checked })}
-            />
-            Включить этот шаг
-          </label>
-        )}
-
         {/* Step content with animation */}
         <AnimatePresence mode="wait">
           <motion.div
