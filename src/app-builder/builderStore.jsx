@@ -8,7 +8,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer } from 'react
 const STORAGE_PREFIX = 'date-invite-draft:';
 
 export const DEFAULT_STEPS = [
-  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: '', questionText: '', yesText: '', noText: '', mediaUrl: null } },
+  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: 'Имя', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
   { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: '', text: '' } },
   { step_type: 'date', step_order: 2, enabled: false, configuration_json: { mode: 'recipient_picks' } },
   { step_type: 'time', step_order: 3, enabled: false, configuration_json: {} },

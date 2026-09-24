@@ -95,7 +95,7 @@ export default function StepQuestion() {
           type="text"
           value={config.recipientName}
           onChange={(e) => update({ recipientName: e.target.value })}
-          placeholder="Муниса"
+          placeholder="Имя"
         />
 
         <FieldLabel style={{ marginTop: 12 }}>Твой вопрос</FieldLabel>
