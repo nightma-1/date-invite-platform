@@ -9,15 +9,7 @@ import { getTemplateTokens } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
-
-const CATEGORY_LABELS = {
-  romantic: '❤️ Романтика',
-  flirty: '😏 Флирт',
-  funny: '😂 Смешные',
-  cute: '🥹 Милые',
-  bold: '🔥 Яркие',
-  custom: '✨ Другое',
-};
+import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
 
 export default function StepQuestion() {
   const { state, dispatch } = useBuilder();
@@ -25,33 +17,37 @@ export default function StepQuestion() {
   const config = state.steps.find((s) => s.step_type === 'question').configuration_json;
   const fileInputRef = useRef(null);
   const [fileError, setFileError] = useState(null);
-  const [gifMode, setGifMode] = useState(false);
   const [gifs, setGifs] = useState([]);
   const [gifsLoading, setGifsLoading] = useState(false);
   const [gifsError, setGifsError] = useState(null);
-  const [activeCategory, setActiveCategory] = useState('all');
 
+  // Load gifs on mount
   useEffect(() => {
-    if (!gifMode || gifs.length > 0 || gifsLoading) return;
+    if (gifs.length > 0 || gifsLoading) return;
     setGifsLoading(true);
     setGifsError(null);
     listActiveGifs()
       .then(setGifs)
       .catch(() => setGifsError('Не получилось загрузить гифки. Попробуй ещё раз.'))
       .finally(() => setGifsLoading(false));
-  }, [gifMode]);
+  }, []);
 
-  const categories = ['all', ...new Set(gifs.map((g) => g.category))];
-  const visibleGifs = activeCategory === 'all' ? gifs : gifs.filter((g) => g.category === activeCategory);
-
-  function update(payload) { dispatch({ type: 'UPDATE_STEP_CONFIG', stepType: 'question', payload }); }
+  function update(payload) {
+    dispatch({ type: 'UPDATE_STEP_CONFIG', stepType: 'question', payload });
+  }
 
   function handleFileChange(e) {
     setFileError(null);
     const file = e.target.files?.[0];
     if (!file) return;
     const error = validateMediaFile(file);
-    if (error) { setFileError(error); e.target.value = ''; clearPendingMedia(); update({ mediaUrl: null }); return; }
+    if (error) {
+      setFileError(error);
+      e.target.value = '';
+      clearPendingMedia();
+      update({ mediaUrl: null });
+      return;
+    }
     setPendingMedia(file);
     update({ mediaUrl: URL.createObjectURL(file) });
   }
@@ -59,7 +55,6 @@ export default function StepQuestion() {
   function selectGif(url) {
     clearPendingMedia();
     update({ mediaUrl: url });
-    setGifMode(false);
   }
 
   function removeMedia() {
@@ -69,155 +64,85 @@ export default function StepQuestion() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  const inp = {
-    display: 'block', width: '100%',
-    padding: '11px 14px', borderRadius: 6,
-    border: `1.5px solid ${tokens.ink}20`,
-    fontFamily: tokens.fontUI, fontSize: 14, color: tokens.ink,
-    background: tokens.card, boxSizing: 'border-box',
-  };
-
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
-      <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)' }} className="md:grid-cols-2">
-        {/* Форма */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: tokens.ink }}>
-              Имя получателя
-            </label>
-            <input type="text" value={config.recipientName} onChange={(e) => update({ recipientName: e.target.value })}
-                   placeholder="Муниса" style={inp} />
-          </div>
+    <div>
+      <SectionCard number="1" title="Картинка на экране">
+        <GifImagePicker
+          currentUrl={config.mediaUrl}
+          gifs={gifs}
+          gifsLoading={gifsLoading}
+          gifsError={gifsError}
+          onSelect={selectGif}
+          onRemove={removeMedia}
+          onUploadClick={() => fileInputRef.current?.click()}
+          fileInputRef={fileInputRef}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
+        {fileError && (
+          <p style={{ color: '#C0392B', fontSize: 12, marginTop: 4, fontFamily: T.font }}>{fileError}</p>
+        )}
+      </SectionCard>
 
-          <div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: tokens.ink }}>
-              Твой вопрос
-            </label>
-            <textarea
-              value={config.questionText}
-              onChange={(e) => update({ questionText: e.target.value })}
-              placeholder="Пойдёшь со мной на свидание?"
-              rows={3}
-              style={{ ...inp, resize: 'vertical', lineHeight: 1.5 }}
-            />
-          </div>
+      <SectionCard number="2" title="Текст приглашения">
+        <FieldLabel>Имя получателя</FieldLabel>
+        <Inp
+          type="text"
+          value={config.recipientName}
+          onChange={(e) => update({ recipientName: e.target.value })}
+          placeholder="Муниса"
+        />
 
-          <div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: tokens.ink }}>
-              Текст кнопки «Да»
-            </label>
-            <input type="text" value={config.yesText} onChange={(e) => update({ yesText: e.target.value })}
-                   placeholder="Да, конечно ❤️" style={inp} />
-          </div>
+        <FieldLabel style={{ marginTop: 12 }}>Твой вопрос</FieldLabel>
+        <TxtArea
+          value={config.questionText}
+          onChange={(e) => update({ questionText: e.target.value })}
+          placeholder="Пойдёшь со мной на свидание?"
+          rows={3}
+          maxLength={300}
+        />
+        <CharCount value={config.questionText} max={300} />
 
-          <div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: tokens.ink }}>
-              Текст кнопки «Нет»
-            </label>
-            <input type="text" value={config.noText || ''} onChange={(e) => update({ noText: e.target.value })}
-                   placeholder="Нет" style={inp} />
-            <p style={{ fontSize: 12, color: tokens.inkMuted || tokens.ink, opacity: 0.6, marginTop: 4 }}>
-              Кнопка «Нет» всегда убегает от курсора — это фирменная механика, её не меняем.
-              Здесь можно задать только первую фразу на кнопке.
-            </p>
-          </div>
+        <FieldLabel style={{ marginTop: 12 }}>Кнопка «Да»</FieldLabel>
+        <Inp
+          type="text"
+          value={config.yesText}
+          onChange={(e) => update({ yesText: e.target.value })}
+          placeholder="Да, конечно ❤️"
+        />
 
-          {/* GIF/Фото */}
-          <div>
-            <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600, color: tokens.ink }}>
-              Фото или GIF
-            </label>
+        <FieldLabel style={{ marginTop: 12 }}>Кнопка «Нет»</FieldLabel>
+        <Inp
+          type="text"
+          value={config.noText || ''}
+          onChange={(e) => update({ noText: e.target.value })}
+          placeholder="Нет"
+        />
+        <p style={{ fontSize: 12, color: T.muted, marginTop: 4, lineHeight: 1.4, fontFamily: T.font }}>
+          Кнопка «Нет» всегда убегает — это фирменная механика.
+        </p>
+      </SectionCard>
 
-            {/* Текущее изображение */}
-            {config.mediaUrl && (
-              <div style={{ marginBottom: 10, position: 'relative', display: 'inline-block' }}>
-                <img src={config.mediaUrl} alt="превью"
-                     style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'cover' }} />
-                <button type="button" onClick={removeMedia}
-                        style={{ position: 'absolute', top: -6, right: -6, background: '#C0392B', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  ✕
-                </button>
-              </div>
-            )}
-
-            {/* Кнопки выбора */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => fileInputRef.current?.click()}
-                      style={{ padding: '8px 14px', borderRadius: 6, border: `1.5px solid ${tokens.ink}25`, background: 'transparent', cursor: 'pointer', fontSize: 13, color: tokens.ink, fontFamily: tokens.fontUI }}>
-                📁 Загрузить файл
-              </button>
-              <button type="button" onClick={() => setGifMode(!gifMode)}
-                      style={{ padding: '8px 14px', borderRadius: 6, border: `1.5px solid ${gifMode ? tokens.berry : tokens.ink + '25'}`, background: gifMode ? tokens.berry : 'transparent', cursor: 'pointer', fontSize: 13, color: gifMode ? '#fff' : tokens.ink, fontFamily: tokens.fontUI }}>
-                🎬 Готовые GIF
-              </button>
-            </div>
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif"
-                   onChange={handleFileChange} style={{ display: 'none' }} />
-
-            {fileError && <p style={{ color: '#C0392B', fontSize: 12, marginTop: 4 }}>{fileError}</p>}
-
-            {/* GIF-галерея */}
-            {gifMode && (
-              <div style={{ marginTop: 10 }}>
-                {gifsLoading && (
-                  <p style={{ fontSize: 12, color: tokens.inkMuted || tokens.ink, opacity: 0.6 }}>Загружаем гифки…</p>
-                )}
-                {gifsError && <p style={{ color: '#C0392B', fontSize: 12 }}>{gifsError}</p>}
-
-                {!gifsLoading && !gifsError && gifs.length === 0 && (
-                  <p style={{ fontSize: 12, color: tokens.inkMuted || tokens.ink, opacity: 0.6 }}>
-                    В библиотеке пока нет гифок.
-                  </p>
-                )}
-
-                {!gifsLoading && gifs.length > 0 && (
-                  <>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                      {categories.map((cat) => (
-                        <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
-                                style={{
-                                  padding: '4px 10px', borderRadius: 14, fontSize: 11,
-                                  border: `1.5px solid ${activeCategory === cat ? tokens.berry : tokens.ink + '20'}`,
-                                  background: activeCategory === cat ? tokens.berry : 'transparent',
-                                  color: activeCategory === cat ? '#fff' : tokens.ink,
-                                  cursor: 'pointer', fontFamily: tokens.fontUI,
-                                }}>
-                          {cat === 'all' ? 'Все' : CATEGORY_LABELS[cat] || cat}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                      {visibleGifs.map((gif) => (
-                        <button key={gif.id} type="button" onClick={() => selectGif(gif.url)}
-                                style={{ padding: 0, border: `2px solid ${config.mediaUrl === gif.url ? tokens.berry : 'transparent'}`, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'none' }}>
-                          <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Живое превью */}
-        <div>
-          <p style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: tokens.inkMuted || tokens.ink, opacity: 0.6, marginBottom: 10 }}>
-            Живое превью
-          </p>
-          <div style={{ maxWidth: 300, margin: '0 auto' }}>
-            <QuestionScreen
-              recipientName={config.recipientName || 'Муниса'}
-              questionText={config.questionText || 'Пойдёшь со мной на свидание?'}
-              mediaUrl={config.mediaUrl}
-              yesText={config.yesText || 'Да, конечно ❤️'}
-              noPhrases={config.noText ? [config.noText, ...DEFAULT_NO_PHRASES.slice(1)] : undefined}
-              tokens={tokens}
-              onYes={() => {}}
-            />
-          </div>
+      {/* Live preview */}
+      <div style={{ marginTop: 8, padding: '12px 0' }}>
+        <p style={{ fontSize: 12, color: T.muted, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font }}>
+          Превью
+        </p>
+        <div style={{ maxWidth: 280, margin: '0 auto' }}>
+          <QuestionScreen
+            recipientName={config.recipientName || 'Муниса'}
+            questionText={config.questionText || 'Пойдёшь со мной на свидание?'}
+            mediaUrl={config.mediaUrl}
+            yesText={config.yesText || 'Да, конечно ❤️'}
+            noPhrases={config.noText ? [config.noText, ...DEFAULT_NO_PHRASES.slice(1)] : undefined}
+            tokens={tokens}
+            onYes={() => {}}
+          />
         </div>
       </div>
     </div>

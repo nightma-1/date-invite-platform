@@ -1,20 +1,18 @@
 /**
- * © 2026 Date Invite Platform. Все права защищены (см. LICENSE в корне проекта).
- * Несанкционированное копирование или распространение запрещено.
+ * © 2026 Date Invite Platform. Все права защищены.
  */
 
 import { useBuilder } from '../builderStore.jsx';
-import ChoiceScreen from '../../components/screens/ChoiceScreen.jsx';
-import { getTemplateTokens } from '../../templates/registry.js';
+import { T, SectionCard, FieldLabel, Inp } from '../BuilderUI.jsx';
 
-const CATEGORY_LABELS = {
-  place: 'Место',
-  food: 'Еда',
-  movie: 'Кино',
-  activity: 'Активности',
-  drink: 'Напитки',
-  custom: 'Своя категория',
-};
+const CATEGORY_OPTIONS = [
+  { value: 'food', icon: '🍽️', label: 'Блюда' },
+  { value: 'movie', icon: '🎬', label: 'Кино' },
+  { value: 'activity', icon: '🎯', label: 'Активности' },
+  { value: 'drink', icon: '☕', label: 'Напитки' },
+  { value: 'place', icon: '📍', label: 'Места' },
+  { value: 'custom', icon: '✨', label: 'Своё' },
+];
 
 function makeOptionId() {
   return `opt_${Math.random().toString(36).slice(2, 9)}`;
@@ -22,7 +20,6 @@ function makeOptionId() {
 
 export default function StepChoiceBlock() {
   const { state, dispatch } = useBuilder();
-  const tokens = getTemplateTokens(state.templateId);
   const config = state.steps.find((s) => s.step_type === 'choice_block').configuration_json;
   const options = config.options || [];
 
@@ -43,88 +40,146 @@ export default function StepChoiceBlock() {
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-2">
-      <div className="space-y-5">
-        <div>
-          <label className="mb-1 block text-sm font-medium" style={{ color: tokens.ink }}>
-            Категория
-          </label>
-          <select
-            value={config.categoryType}
-            onChange={(e) => update({ categoryType: e.target.value })}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
-          >
-            {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+    <div>
+      <SectionCard number="1" title="Тип выбора">
+        <p style={{ fontSize: 13, color: T.muted, marginBottom: 12, fontFamily: T.font }}>
+          Выбери 1 вариант и настрой под себя
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {CATEGORY_OPTIONS.map((cat) => (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => update({ categoryType: cat.value })}
+              style={{
+                padding: '16px 8px',
+                borderRadius: 16,
+                border: `1.5px solid ${config.categoryType === cat.value ? T.pink : '#e0e0e0'}`,
+                background: config.categoryType === cat.value ? T.pinkLight : 'white',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 26 }}>{cat.icon}</span>
+              <span style={{
+                fontFamily: T.font,
+                fontSize: 13,
+                color: T.dark,
+                fontWeight: config.categoryType === cat.value ? 700 : 400,
+              }}>
+                {cat.label}
+              </span>
+            </button>
+          ))}
         </div>
+      </SectionCard>
 
-        <label className="flex items-center gap-2 text-sm">
+      <SectionCard number="2" title="Варианты">
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 12,
+          fontSize: 14,
+          color: T.dark,
+          fontFamily: T.font,
+          cursor: 'pointer',
+        }}>
           <input
             type="checkbox"
             checked={Boolean(config.allowMultiple)}
             onChange={(e) => update({ allowMultiple: e.target.checked })}
           />
-          Можно выбрать несколько вариантов
+          Можно выбрать несколько
         </label>
+        <p style={{ fontSize: 12, color: T.muted, marginBottom: 12, fontFamily: T.font }}>
+          Получатель отметит несколько вариантов и нажмёт кнопку, чтобы продолжить
+        </p>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium" style={{ color: tokens.ink }}>
-            Варианты
-          </label>
-          <div className="space-y-2">
-            {options.map((opt) => (
-              <div key={opt.id} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={opt.icon}
-                  onChange={(e) => updateOption(opt.id, { icon: e.target.value })}
-                  className="w-12 rounded-lg border px-2 py-1.5 text-center text-sm"
-                  maxLength={2}
-                />
-                <input
-                  type="text"
-                  value={opt.label}
-                  onChange={(e) => updateOption(opt.id, { label: e.target.value })}
-                  placeholder="Название варианта"
-                  className="flex-1 rounded-lg border px-3 py-1.5 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeOption(opt.id)}
-                  className="rounded-lg border px-2 py-1.5 text-xs opacity-60"
-                  aria-label="Удалить вариант"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+        {options.map((opt) => (
+          <div key={opt.id} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              value={opt.icon}
+              onChange={(e) => updateOption(opt.id, { icon: e.target.value })}
+              maxLength={2}
+              style={{
+                width: 44,
+                height: 44,
+                textAlign: 'center',
+                borderRadius: 12,
+                border: '1px solid #e0e0e0',
+                background: 'white',
+                fontSize: 18,
+                fontFamily: T.font,
+                flexShrink: 0,
+                boxSizing: 'border-box',
+              }}
+            />
+            <input
+              type="text"
+              value={opt.label}
+              onChange={(e) => updateOption(opt.id, { label: e.target.value })}
+              placeholder="Название варианта"
+              style={{
+                flex: 1,
+                height: 44,
+                padding: '0 12px',
+                borderRadius: 12,
+                border: '1px solid #e0e0e0',
+                background: 'white',
+                fontFamily: T.font,
+                fontSize: 14,
+                color: T.dark,
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => removeOption(opt.id)}
+              style={{
+                width: 36,
+                height: 44,
+                borderRadius: 12,
+                border: '1px solid #e0e0e0',
+                background: 'white',
+                color: T.muted,
+                cursor: 'pointer',
+                fontSize: 16,
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ✕
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={addOption}
-            className="mt-2 rounded-lg border border-dashed px-3 py-1.5 text-xs opacity-70"
-          >
-            + Добавить вариант
-          </button>
-        </div>
-      </div>
+        ))}
 
-      <div>
-        <p className="mb-2 text-xs uppercase tracking-wide opacity-60">Живое превью</p>
-        <div className="mx-auto max-w-[300px]">
-          <ChoiceScreen
-            title={`Выбираем: ${CATEGORY_LABELS[config.categoryType] || ''}`}
-            options={options.filter((o) => o.label)}
-            allowMultiple={config.allowMultiple}
-            tokens={tokens}
-            onContinue={() => {}}
-          />
-        </div>
-      </div>
+        <button
+          type="button"
+          onClick={addOption}
+          style={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: 12,
+            border: '1.5px dashed #e0e0e0',
+            background: 'transparent',
+            color: T.muted,
+            cursor: 'pointer',
+            fontSize: 14,
+            fontFamily: T.font,
+            marginTop: 4,
+          }}
+        >
+          + Добавить вариант
+        </button>
+      </SectionCard>
     </div>
   );
 }
