@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useBuilder } from '../builderStore.jsx';
-import QuestionScreen from '../../components/screens/QuestionScreen.jsx';
+import QuestionScreen, { DEFAULT_NO_PHRASES } from '../../components/screens/QuestionScreen.jsx';
 import { getTemplateTokens } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
@@ -109,8 +109,17 @@ export default function StepQuestion() {
             </label>
             <input type="text" value={config.yesText} onChange={(e) => update({ yesText: e.target.value })}
                    placeholder="Да, конечно ❤️" style={inp} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: tokens.ink }}>
+              Текст кнопки «Нет»
+            </label>
+            <input type="text" value={config.noText || ''} onChange={(e) => update({ noText: e.target.value })}
+                   placeholder="Нет" style={inp} />
             <p style={{ fontSize: 12, color: tokens.inkMuted || tokens.ink, opacity: 0.6, marginTop: 4 }}>
-              Кнопка «Нет» всегда убегает — это фирменная механика.
+              Кнопка «Нет» всегда убегает от курсора — это фирменная механика, её не меняем.
+              Здесь можно задать только первую фразу на кнопке.
             </p>
           </div>
 
@@ -204,6 +213,7 @@ export default function StepQuestion() {
               questionText={config.questionText || 'Пойдёшь со мной на свидание?'}
               mediaUrl={config.mediaUrl}
               yesText={config.yesText || 'Да, конечно ❤️'}
+              noPhrases={config.noText ? [config.noText, ...DEFAULT_NO_PHRASES.slice(1)] : undefined}
               tokens={tokens}
               onYes={() => {}}
             />

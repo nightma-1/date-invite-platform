@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBuilder } from './builderStore.jsx';
 import StepQuestion from './steps/StepQuestion.jsx';
+import StepReaction from './steps/StepReaction.jsx';
 import StepDate from './steps/StepDate.jsx';
 import StepTime from './steps/StepTime.jsx';
 import StepChoiceBlock from './steps/StepChoiceBlock.jsx';
@@ -16,7 +17,7 @@ import { publishDraft } from './publishDraft.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { TEMPLATE_LIST, getTemplateTokens } from '../templates/registry.js';
 
-const STEP_COMPONENTS = { question: StepQuestion, date: StepDate, time: StepTime, choice_block: StepChoiceBlock, final: StepFinal };
+const STEP_COMPONENTS = { question: StepQuestion, reaction: StepReaction, date: StepDate, time: StepTime, choice_block: StepChoiceBlock, final: StepFinal };
 const STEP_LABELS = { question: 'Вопрос', yes_no: 'Да/Нет', reaction: 'Реакция', date: 'Дата', time: 'Время', choice_block: 'Выбор', final: 'Финал' };
 const STEP_EMOJIS = { question: '💬', yes_no: '🤔', reaction: '❤️', date: '📅', time: '🕐', choice_block: '🎯', final: '🎉' };
 

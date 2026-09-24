@@ -46,7 +46,7 @@ export async function publishDraft(state, userId) {
 
   const { error: contentError } = await supabase.from('invitation_content').insert({
     invitation_id: invitation.id,
-    question_text: { ru: { question: questionConfig.questionText, yes: questionConfig.yesText } },
+    question_text: { ru: { question: questionConfig.questionText, yes: questionConfig.yesText, no: questionConfig.noText } },
     reaction_text: { ru: { title: reactionConfig.title, text: reactionConfig.text } },
     final_screen: { ru: { title: finalConfig.title, description: finalConfig.description } },
     gif_url: mediaUrl,

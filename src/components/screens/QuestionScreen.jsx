@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import RunawayButton from '../ui/RunawayButton.jsx';
 
-const DEFAULT_NO_PHRASES = [
+export const DEFAULT_NO_PHRASES = [
   'Нет', 'Ты уверена?', 'Правда?', 'А если подумать?',
   'Ну пожааалуйста', 'Ещё разок', 'Неееет 😭', 'Не поймаешь!',
 ];

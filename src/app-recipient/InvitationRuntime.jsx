@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
-import QuestionScreen from '../components/screens/QuestionScreen.jsx';
+import QuestionScreen, { DEFAULT_NO_PHRASES } from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateScreen from '../components/screens/DateScreen.jsx';
 import TimeScreen from '../components/screens/TimeScreen.jsx';
@@ -116,6 +116,11 @@ export default function InvitationRuntime() {
           recipientName={invitation.recipient_name}
           questionText={content?.question_text?.ru?.question}
           yesText={content?.question_text?.ru?.yes || undefined}
+          noPhrases={
+            content?.question_text?.ru?.no
+              ? [content.question_text.ru.no, ...DEFAULT_NO_PHRASES.slice(1)]
+              : undefined
+          }
           mediaUrl={content?.gif_url}
           tokens={tokens}
           onYes={goNext}
