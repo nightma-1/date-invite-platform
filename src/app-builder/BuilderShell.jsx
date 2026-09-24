@@ -9,8 +9,7 @@ import { useBuilder } from './builderStore.jsx';
 import StepQuestion from './steps/StepQuestion.jsx';
 import StepReaction from './steps/StepReaction.jsx';
 import StepDate from './steps/StepDate.jsx';
-import StepChoicePlace from './steps/StepChoicePlace.jsx';
-import StepChoiceFood from './steps/StepChoiceFood.jsx';
+import StepChoicePlaceAndFood from './steps/StepChoicePlaceAndFood.jsx';
 import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
 import { publishDraft } from './publishDraft.js';
@@ -23,8 +22,7 @@ const STEP_COMPONENTS = {
   question: StepQuestion,
   reaction: StepReaction,
   date: StepDate,
-  choice_place: StepChoicePlace,
-  choice_food: StepChoiceFood,
+  choice_place: StepChoicePlaceAndFood,
   final: StepFinal,
 };
 
@@ -32,8 +30,7 @@ const STEP_TITLES = {
   question: 'настрой экран\nприглашения',
   reaction: 'настрой экран\nподтверждения',
   date: 'настрой экран\nдаты и времени',
-  choice_place: 'настрой экран\nвыбора места',
-  choice_food: 'настрой экран\nвыбора еды',
+  choice_place: 'настрой экран\nвыбора места и еды',
   final: 'финальный\nэкран',
 };
 
@@ -46,9 +43,13 @@ export default function BuilderShell() {
   const { state, dispatch } = useBuilder();
   const tokens = getTemplateTokens(state.templateId);
   const orderedSteps = [...state.steps].sort((a, b) => a.step_order - b.step_order);
-  const activeStep = orderedSteps[state.activeStepIndex];
+  // choice_food больше не отдельная страница конструктора — она редактируется
+  // вместе с choice_place на одной странице (StepChoicePlaceAndFood), как и
+  // видит получатель на одном экране (DoubleChoiceScreen).
+  const orderedStepsForWizard = orderedSteps.filter((s) => s.step_type !== 'choice_food');
+  const activeStep = orderedStepsForWizard[state.activeStepIndex];
   const StepComponent = STEP_COMPONENTS[activeStep?.step_type];
-  const isLastStep = state.activeStepIndex === orderedSteps.length - 1;
+  const isLastStep = state.activeStepIndex === orderedStepsForWizard.length - 1;
 
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -57,7 +58,7 @@ export default function BuilderShell() {
   const [linkCopied, setLinkCopied] = useState(false);
 
   const canGoBack = state.activeStepIndex > 0;
-  const canGoNext = state.activeStepIndex < orderedSteps.length - 1;
+  const canGoNext = state.activeStepIndex < orderedStepsForWizard.length - 1;
 
   function goTo(index) {
     dispatch({ type: 'SET_ACTIVE_STEP', index });
@@ -340,7 +341,7 @@ export default function BuilderShell() {
     );
   }
 
-  const progress = ((state.activeStepIndex + 1) / orderedSteps.length) * 100;
+  const progress = ((state.activeStepIndex + 1) / orderedStepsForWizard.length) * 100;
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', flexDirection: 'column' }}>
