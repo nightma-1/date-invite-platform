@@ -53,6 +53,7 @@ export default function BuilderShell() {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState(null);
   const [publishResult, setPublishResult] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const canGoBack = state.activeStepIndex > 0;
   const canGoNext = state.activeStepIndex < orderedSteps.length - 1;
@@ -154,17 +155,13 @@ export default function BuilderShell() {
   async function runPublish(userId) {
     setPublishing(true);
     try {
+      // ВРЕМЕННО: пока не подключён мерчант-аккаунт Click, публикуем сразу
+      // бесплатно (publishDraft уже проставляет status:'published') и не
+      // уходим на оплату. Когда Click будет готов — верни здесь редирект на
+      // /api/click/create, а publishDraft.js — обратно на insert со
+      // status:'draft'.
       const { invitationId, slug } = await publishDraft(state, userId);
       setPublishResult({ invitationId, slug });
-      try {
-        const { data: sd } = await supabase.auth.getSession();
-        const res = await fetch('/api/click/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sd.session.access_token}` },
-          body: JSON.stringify({ invitationId }),
-        });
-        if (res.ok) { const { paymentUrl } = await res.json(); window.location.href = paymentUrl; }
-      } catch {}
     } catch (err) {
       setPublishError(err.message || 'Не получилось сохранить приглашение');
     } finally {
@@ -188,6 +185,7 @@ export default function BuilderShell() {
   }
 
   if (publishResult) {
+    const shareUrl = `${window.location.origin}/i/${publishResult.slug}`;
     return (
       <div style={{
         minHeight: '100vh',
@@ -200,28 +198,84 @@ export default function BuilderShell() {
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          style={{ textAlign: 'center', maxWidth: 400 }}
+          style={{ textAlign: 'center', maxWidth: 400, width: '100%' }}
         >
           <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
           <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 24, color: T.darkPurple, marginBottom: 8 }}>
-            Черновик сохранён!
+            Готово! Приглашение опубликовано
           </h1>
-          <p style={{ color: T.muted, fontFamily: T.font, fontSize: 14, marginBottom: 4 }}>
-            ID: {publishResult.invitationId}
+          <p style={{ color: T.muted, fontFamily: T.font, fontSize: 13, marginBottom: 20, opacity: 0.8 }}>
+            Скопируй ссылку и отправь тому, кого приглашаешь
           </p>
-          <p style={{ color: T.muted, fontFamily: T.font, fontSize: 13, marginBottom: 24, opacity: 0.7 }}>
-            Ссылка заработает после оплаты: /i/{publishResult.slug}
-          </p>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'white',
+            border: `1.5px solid ${T.pinkBorder}`,
+            borderRadius: 16,
+            padding: '10px 10px 10px 16px',
+            marginBottom: 16,
+          }}>
+            <span style={{
+              flex: 1,
+              fontFamily: T.font,
+              fontSize: 13,
+              color: T.dark,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'left',
+            }}>
+              {shareUrl}
+            </span>
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard?.writeText(shareUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
+              style={{
+                background: T.pink,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 100,
+                padding: '8px 16px',
+                fontFamily: T.font,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              {linkCopied ? 'Скопировано ✓' : 'Копировать'}
+            </button>
+          </div>
+
+          <a
+            href={`/i/${publishResult.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: 'block',
+              marginBottom: 20,
+              fontFamily: T.font,
+              fontSize: 13,
+              color: T.pink,
+              textDecoration: 'underline',
+            }}
+          >
+            Открыть и посмотреть, как видит получатель →
+          </a>
+
           <Link to="/dashboard">
             <button style={{
-              background: T.pink,
-              color: '#fff',
+              background: 'white',
+              color: T.dark,
               padding: '12px 28px',
               borderRadius: 100,
               fontFamily: T.font,
               fontWeight: 700,
               fontSize: 15,
-              border: 'none',
+              border: `1.5px solid ${T.pinkBorder}`,
               cursor: 'pointer',
             }}>
               Перейти в «Мои приглашения» →
