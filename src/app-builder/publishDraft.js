@@ -30,18 +30,16 @@ export async function publishDraft(state, userId) {
     mediaUrl = questionConfig.mediaUrl;
   }
 
-  // У экрана "Ого, ты сказал да?" своя (не обязательная) картинка — если своя
-  // не выбрана, используем картинку экрана вопроса (так же, как в превью
-  // конструктора). blob:-URL никогда не сохраняем в БД — только реальную
-  // ссылку после аплоада, иначе у получателя она просто не откроется.
+  // У экрана "Ого, ты сказал да?" своя (не обязательная) картинка, независимая
+  // от картинки вопроса — если не выбрана, экран просто покажет сердечко по
+  // умолчанию (ReactionScreen.jsx). blob:-URL никогда не сохраняем в БД —
+  // только реальную ссылку после аплоада, иначе у получателя она не откроется.
   let reactionMediaUrl = null;
   const pendingReactionFile = getPendingMedia('reaction');
   if (pendingReactionFile) {
     reactionMediaUrl = await uploadMedia(pendingReactionFile, userId);
   } else if (reactionConfig.mediaUrl && !reactionConfig.mediaUrl.startsWith('blob:')) {
     reactionMediaUrl = reactionConfig.mediaUrl;
-  } else {
-    reactionMediaUrl = mediaUrl;
   }
 
   const { data: invitation, error: invError } = await supabase

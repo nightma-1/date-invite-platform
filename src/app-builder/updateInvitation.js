@@ -24,15 +24,13 @@ export async function updateInvitationDraft(state, userId, invitationId) {
   }
 
   // См. комментарий в publishDraft.js — у экрана "Ого, ты сказал да?" своя
-  // картинка, с тем же fallback на картинку экрана вопроса, если своей нет.
+  // картинка, независимая от картинки экрана вопроса.
   let reactionMediaUrl = null;
   const pendingReactionFile = getPendingMedia('reaction');
   if (pendingReactionFile) {
     reactionMediaUrl = await uploadMedia(pendingReactionFile, userId);
   } else if (reactionConfig.mediaUrl && !reactionConfig.mediaUrl.startsWith('blob:')) {
     reactionMediaUrl = reactionConfig.mediaUrl;
-  } else {
-    reactionMediaUrl = mediaUrl;
   }
 
   const { error: invError } = await supabase

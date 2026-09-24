@@ -15,7 +15,6 @@ export default function StepReaction() {
   const { state, dispatch } = useBuilder();
   const tokens = getTemplateTokens(state.templateId);
   const config = state.steps.find((s) => s.step_type === 'reaction').configuration_json;
-  const questionConfig = state.steps.find((s) => s.step_type === 'question').configuration_json;
   const fileInputRef = useRef(null);
   const [fileError, setFileError] = useState(null);
   const [gifs, setGifs] = useState([]);
@@ -60,7 +59,12 @@ export default function StepReaction() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  const currentMediaUrl = config.mediaUrl || questionConfig.mediaUrl;
+  // Раньше тут был фолбэк на картинку экрана вопроса, если своя не выбрана —
+  // из-за этого при выборе гифки на первом экране она тут же "выбиралась"
+  // и на этом экране тоже, хотя пользователь её не трогал. Экраны
+  // независимы: нет своей картинки — просто нет картинки (ReactionScreen
+  // покажет сердечко по умолчанию).
+  const currentMediaUrl = config.mediaUrl;
 
   return (
     <div>
