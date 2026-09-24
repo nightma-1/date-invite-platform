@@ -199,6 +199,7 @@ export default function InvitationRuntime() {
           title={content?.reaction_text?.ru?.title}
           text={content?.reaction_text?.ru?.text}
           mediaUrl={activeStep.configuration_json?.mediaUrl}
+          recipientGender={invitation.recipient_gender}
           tokens={tokens}
           onContinue={goNext}
         />

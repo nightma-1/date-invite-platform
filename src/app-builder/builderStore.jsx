@@ -101,24 +101,36 @@ async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplate
 // BuilderShell) подправляем род в ещё не тронутых пользователем полях, чтобы
 // черновик сразу открывался с правильной грамматикой. Кастомный текст,
 // который уже не совпадает с исходным дефолтом, не трогаем.
+//
+// direction: 'recipient' — фраза обращена К получателю ("ты свободен?") —
+// род берём напрямую из пола получателя.
+// direction: 'sender' — фраза написана ОТ ЛИЦА отправителя ("я была готова…")
+// — предполагаем гетеросексуальную пару, так что род отправителя обратный
+// полу получателя (пригласили девушку → пишет парень, и наоборот).
 const GENDERED_STEP_DEFAULTS = [
-  { step_type: 'date', field: 'title', masculine: 'И так... Когда ты свободен?', feminine: 'И так... Когда ты свободна?' },
-  { step_type: 'reaction', field: 'title', masculine: 'Подожди, ты действительно сказал да?', feminine: 'Подожди, ты действительно сказала да?' },
+  { step_type: 'date', field: 'title', direction: 'recipient', masculine: 'И так... Когда ты свободен?', feminine: 'И так... Когда ты свободна?' },
+  { step_type: 'reaction', field: 'title', direction: 'recipient', masculine: 'Подожди, ты действительно сказал да?', feminine: 'Подожди, ты действительно сказала да?' },
+  { step_type: 'reaction', field: 'text', direction: 'sender', masculine: 'Я был готов что скажешь «нет» ахах', feminine: 'Я была готова что скажешь «нет» ахах' },
 ];
 
-function genderizeSteps(steps, gender) {
-  if (gender !== 'male' && gender !== 'female') return steps;
+function genderizeSteps(steps, recipientGender) {
+  if (recipientGender !== 'male' && recipientGender !== 'female') return steps;
   return steps.map((s) => {
-    const rule = GENDERED_STEP_DEFAULTS.find((g) => g.step_type === s.step_type);
-    if (!rule) return s;
-    const current = s.configuration_json?.[rule.field];
-    if (gender === 'female' && current === rule.masculine) {
-      return { ...s, configuration_json: { ...s.configuration_json, [rule.field]: rule.feminine } };
+    const rules = GENDERED_STEP_DEFAULTS.filter((g) => g.step_type === s.step_type);
+    if (rules.length === 0) return s;
+    let configuration_json = s.configuration_json;
+    for (const rule of rules) {
+      const effectiveGender = rule.direction === 'sender'
+        ? (recipientGender === 'female' ? 'male' : 'female')
+        : recipientGender;
+      const current = configuration_json?.[rule.field];
+      if (effectiveGender === 'female' && current === rule.masculine) {
+        configuration_json = { ...configuration_json, [rule.field]: rule.feminine };
+      } else if (effectiveGender === 'male' && current === rule.feminine) {
+        configuration_json = { ...configuration_json, [rule.field]: rule.masculine };
+      }
     }
-    if (gender === 'male' && current === rule.feminine) {
-      return { ...s, configuration_json: { ...s.configuration_json, [rule.field]: rule.masculine } };
-    }
-    return s;
+    return configuration_json === s.configuration_json ? s : { ...s, configuration_json };
   });
 }
 

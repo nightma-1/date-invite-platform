@@ -4,7 +4,14 @@
 
 import { motion } from 'framer-motion';
 
-export default function ReactionScreen({ title, text, mediaUrl, tokens, onContinue }) {
+export default function ReactionScreen({ title, text, mediaUrl, recipientGender, tokens, onContinue }) {
+  // Заголовок обращён к получателю ("ты сказала") — род от пола получателя.
+  // Текст написан от лица отправителя ("я была готова") — предполагаем
+  // гетеросексуальную пару, поэтому род отправителя обратный полу получателя.
+  const defaultTitle = recipientGender === 'male' ? 'Ого… ты сказал ДА?! 😱' : 'Ого… ты сказала ДА?! 😱';
+  const defaultText = recipientGender === 'male'
+    ? 'Я безумно рада! Теперь у меня есть повод подготовиться к нашему свиданию ❤️'
+    : 'Я безумно рад! Теперь у меня есть повод подготовиться к нашему свиданию ❤️';
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -31,10 +38,10 @@ export default function ReactionScreen({ title, text, mediaUrl, tokens, onContin
       )}
 
       <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-        {title || 'Ого… ты сказала ДА?! 😱'}
+        {title || defaultTitle}
       </h1>
       <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, lineHeight: 1.6, marginBottom: 24, opacity: 0.85 }}>
-        {text || 'Я безумно рад! Теперь у меня есть повод подготовиться к нашему свиданию ❤️'}
+        {text || defaultText}
       </p>
 
       <motion.button
