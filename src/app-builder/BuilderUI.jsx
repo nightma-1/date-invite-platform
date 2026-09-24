@@ -199,19 +199,37 @@ export function GifImagePicker({
         <>
           {/* Collapsed: 3 thumbnails + "Ещё" button */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            {previewGifs.map((gif) => (
-              <button
-                key={gif.id}
-                type="button"
-                onClick={() => onSelect(gif.url)}
-                style={{
-                  width: 80, height: 80, padding: 0, border: `2px solid ${currentUrl === gif.url ? T.pink : 'transparent'}`,
-                  borderRadius: 16, overflow: 'hidden', cursor: 'pointer', background: '#f0f0f0', flexShrink: 0,
-                }}
-              >
-                <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              </button>
-            ))}
+            {previewGifs.map((gif) => {
+              const selected = currentUrl === gif.url;
+              return (
+                <button
+                  key={gif.id}
+                  type="button"
+                  onClick={() => onSelect(gif.url)}
+                  style={{
+                    width: 80, height: 80, padding: 0,
+                    border: selected ? `3px solid ${T.pink}` : '2px solid transparent',
+                    borderRadius: 16, overflow: 'visible', cursor: 'pointer',
+                    background: '#f0f0f0', flexShrink: 0, position: 'relative',
+                    transform: selected ? 'scale(1.08)' : 'scale(1)',
+                    boxShadow: selected ? `0 0 0 2px ${T.pink}60, 0 6px 18px ${T.pink}40` : 'none',
+                    transition: 'transform 0.18s, box-shadow 0.18s, border-color 0.18s',
+                    borderRadius: 16,
+                  }}
+                >
+                  <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 13 }} />
+                  {selected && (
+                    <div style={{
+                      position: 'absolute', top: -6, right: -6,
+                      background: T.pink, color: '#fff', borderRadius: '50%',
+                      width: 20, height: 20, fontSize: 11,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                    }}>✓</div>
+                  )}
+                </button>
+              );
+            })}
             {gifsLoading && previewGifs.length === 0 && (
               <div style={{ width: 80, height: 80, borderRadius: 16, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: T.muted, flexShrink: 0 }}>
                 …
@@ -293,19 +311,36 @@ export function GifImagePicker({
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
-            {visibleGifs.map((gif) => (
-              <button
-                key={gif.id}
-                type="button"
-                onClick={() => { onSelect(gif.url); setExpanded(false); }}
-                style={{
-                  padding: 0, border: `2px solid ${currentUrl === gif.url ? T.pink : 'transparent'}`,
-                  borderRadius: 12, overflow: 'hidden', cursor: 'pointer', background: 'none', aspectRatio: '1',
-                }}
-              >
-                <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              </button>
-            ))}
+            {visibleGifs.map((gif) => {
+              const selected = currentUrl === gif.url;
+              return (
+                <button
+                  key={gif.id}
+                  type="button"
+                  onClick={() => { onSelect(gif.url); setExpanded(false); }}
+                  style={{
+                    padding: 0,
+                    border: selected ? `3px solid ${T.pink}` : '2px solid transparent',
+                    borderRadius: 12, overflow: 'visible', cursor: 'pointer',
+                    background: 'none', aspectRatio: '1', position: 'relative',
+                    transform: selected ? 'scale(1.06)' : 'scale(1)',
+                    boxShadow: selected ? `0 0 0 2px ${T.pink}55, 0 4px 14px ${T.pink}35` : 'none',
+                    transition: 'transform 0.18s, box-shadow 0.18s',
+                  }}
+                >
+                  <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 9 }} />
+                  {selected && (
+                    <div style={{
+                      position: 'absolute', top: -6, right: -6,
+                      background: T.pink, color: '#fff', borderRadius: '50%',
+                      width: 18, height: 18, fontSize: 10,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, boxShadow: '0 2px 5px rgba(0,0,0,0.25)',
+                    }}>✓</div>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Upload card in expanded view */}

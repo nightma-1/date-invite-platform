@@ -2,26 +2,18 @@
  * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOODS, templatesForMood, getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
+import { listActiveGifs } from '../lib/mediaLibrary.js';
 
 const STEPS = [
   { n: '01', t: 'Создай', d: 'Выбери картинку, напиши вопрос, добавь GIF — 3 минуты.' },
   { n: '02', t: 'Отправь', d: 'Одна ссылка в любой мессенджер.' },
   { n: '03', t: 'Узнай ответ', d: 'Она пройдёт сценарий и ответит.' },
-];
-
-const GIFS = [
-  'https://media.giphy.com/media/l0MYGb1LuZ3n7dRnO/giphy.gif',
-  'https://media.giphy.com/media/xT9IgDeNrJB2yUUEeQ/giphy.gif',
-  'https://media.giphy.com/media/l41YtZOb9EUABnuqA/giphy.gif',
-  'https://media.giphy.com/media/3o6Zt8A3kNKnCnWp9m/giphy.gif',
-  'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif',
-  'https://media.giphy.com/media/3oEjHB1EKuujDjYoRi/giphy.gif',
 ];
 
 const FAQ = [
@@ -37,7 +29,12 @@ export default function Landing() {
   const previewTokens = getTemplateTokens('romantic');
   const [mood, setMood] = useState('romantic');
   const [openFaq, setOpenFaq] = useState(null);
+  const [landingGifs, setLandingGifs] = useState([]);
   const templates = templatesForMood(mood);
+
+  useEffect(() => {
+    listActiveGifs().then((all) => setLandingGifs(all.slice(0, 6))).catch(() => {});
+  }, []);
 
   const primaryBtn = {
     background: T.pink, color: '#fff', padding: '15px 28px',
@@ -140,11 +137,16 @@ export default function Landing() {
             Библиотека живых гифок + загрузи своё фото или анимацию до 5 МБ
           </p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
-            {GIFS.map((gif, i) => (
-              <div key={i} style={{ borderRadius: 14, overflow: 'hidden', aspectRatio: '1', boxShadow: `0 6px 16px ${T.pink}18` }}>
-                <img src={gif} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-              </div>
-            ))}
+            {landingGifs.length > 0
+              ? landingGifs.map((gif) => (
+                  <div key={gif.id} style={{ borderRadius: 14, overflow: 'hidden', aspectRatio: '1', boxShadow: `0 6px 16px ${T.pink}18` }}>
+                    <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                  </div>
+                ))
+              : Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} style={{ borderRadius: 14, aspectRatio: '1', background: T.pinkMid, opacity: 0.5 }} />
+                ))
+            }
           </div>
         </div>
       </section>
