@@ -77,7 +77,10 @@ export default function InvitationList() {
               <TicketCard key={inv.id} tokens={t}>
                 <div className="p-4">
                   <div className="mb-1 flex items-center justify-between">
-                    <span style={{ color: t.ink, fontFamily: t.fontUI, fontWeight: 600 }}>{inv.recipient_name}</span>
+                    <span style={{ color: t.ink, fontFamily: t.fontUI, fontWeight: 600 }}>
+                      {inv.recipient_gender === 'male' ? '👨 ' : inv.recipient_gender === 'female' ? '👩 ' : ''}
+                      {inv.recipient_name}
+                    </span>
                     <span className="text-xs" style={{ color: t.ink, opacity: 0.5, fontFamily: t.fontUI }}>
                       {STATUS_LABELS[inv.status] || inv.status}
                     </span>

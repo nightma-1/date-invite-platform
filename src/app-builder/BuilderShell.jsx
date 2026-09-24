@@ -18,8 +18,13 @@ import { supabase } from '../lib/supabaseClient.js';
 import { TEMPLATE_LIST, getTemplateTokens } from '../templates/registry.js';
 
 const STEP_COMPONENTS = { question: StepQuestion, reaction: StepReaction, date: StepDate, time: StepTime, choice_block: StepChoiceBlock, final: StepFinal };
-const STEP_LABELS = { question: 'Вопрос', yes_no: 'Да/Нет', reaction: 'Реакция', date: 'Дата', time: 'Время', choice_block: 'Выбор', final: 'Финал' };
-const STEP_EMOJIS = { question: '💬', yes_no: '🤔', reaction: '❤️', date: '📅', time: '🕐', choice_block: '🎯', final: '🎉' };
+const STEP_LABELS = { question: 'Вопрос', reaction: 'Реакция', date: 'Дата', time: 'Время', choice_block: 'Выбор', final: 'Финал' };
+const STEP_EMOJIS = { question: '💬', reaction: '❤️', date: '📅', time: '🕐', choice_block: '🎯', final: '🎉' };
+
+const GENDER_OPTIONS = [
+  { value: 'female', emoji: '👩', label: 'Женщину' },
+  { value: 'male', emoji: '👨', label: 'Мужчину' },
+];
 
 export default function BuilderShell() {
   const { state, dispatch } = useBuilder();
@@ -38,6 +43,38 @@ export default function BuilderShell() {
   const canGoNext = state.activeStepIndex < orderedSteps.length - 1;
 
   function goTo(index) { dispatch({ type: 'SET_ACTIVE_STEP', index }); }
+
+  // Кого приглашаем — спрашиваем один раз при входе, до самого мастера.
+  // Это метаданные автора (для статистики/подбора формулировок в будущем),
+  // не отдельный экран мастера и не то, что видит получатель.
+  if (!state.recipientGender) {
+    return (
+      <div style={{ minHeight: '100vh', background: tokens.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div style={{ maxWidth: 360, width: '100%', textAlign: 'center' }}>
+          <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 24 }}>
+            Кого хочешь пригласить на свидание?
+          </h1>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {GENDER_OPTIONS.map((g) => (
+              <button
+                key={g.value}
+                type="button"
+                onClick={() => dispatch({ type: 'SET_GENDER', gender: g.value })}
+                style={{
+                  flex: 1, padding: '24px 12px', borderRadius: 12,
+                  border: `1.5px solid ${tokens.ink}20`, background: tokens.card,
+                  cursor: 'pointer', fontFamily: tokens.fontUI,
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 8 }}>{g.emoji}</div>
+                <div style={{ color: tokens.ink, fontSize: 14, fontWeight: 600 }}>{g.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   async function handlePublish() {
     setPublishError(null);

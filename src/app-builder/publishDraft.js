@@ -38,6 +38,7 @@ export async function publishDraft(state, userId) {
       mood: state.mood,
       template_key: state.templateId,
       recipient_name: questionConfig.recipientName || 'Тебя',
+      recipient_gender: state.recipientGender || null,
       status: 'draft',
     })
     .select()

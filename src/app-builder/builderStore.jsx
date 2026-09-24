@@ -9,17 +9,22 @@ const STORAGE_PREFIX = 'date-invite-draft:';
 
 export const DEFAULT_STEPS = [
   { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: '', questionText: '', yesText: '', noText: '', mediaUrl: null } },
-  { step_type: 'yes_no', step_order: 1, enabled: true, configuration_json: {} },
-  { step_type: 'reaction', step_order: 2, enabled: true, configuration_json: { title: '', text: '' } },
-  { step_type: 'date', step_order: 3, enabled: false, configuration_json: { mode: 'recipient_picks' } },
-  { step_type: 'time', step_order: 4, enabled: false, configuration_json: {} },
-  { step_type: 'choice_block', step_order: 5, enabled: false, configuration_json: { categoryType: 'place', allowMultiple: false, options: [] } },
-  { step_type: 'final', step_order: 6, enabled: true, configuration_json: { title: '', description: '' } },
+  { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: '', text: '' } },
+  { step_type: 'date', step_order: 2, enabled: false, configuration_json: { mode: 'recipient_picks' } },
+  { step_type: 'time', step_order: 3, enabled: false, configuration_json: {} },
+  { step_type: 'choice_block', step_order: 4, enabled: false, configuration_json: { categoryType: 'place', allowMultiple: false, options: [] } },
+  { step_type: 'final', step_order: 5, enabled: true, configuration_json: { title: '', description: '' } },
 ];
 
 function initialDraft(draftId, initialTemplateId) {
   const templateId = initialTemplateId || 'romantic';
-  return { draftId, templateId, mood: templateId, activeStepIndex: 0, steps: DEFAULT_STEPS };
+  return {
+    draftId, templateId, mood: templateId, activeStepIndex: 0, steps: DEFAULT_STEPS,
+    // Кому адресовано приглашение — спрашиваем один раз при входе в конструктор
+    // (см. AudienceGate в BuilderShell), это не отдельный шаг мастера и не
+    // экран для получателя, а метаданные автора.
+    recipientGender: null,
+  };
 }
 
 function draftReducer(state, action) {
@@ -28,6 +33,8 @@ function draftReducer(state, action) {
       return action.payload;
     case 'SET_TEMPLATE':
       return { ...state, templateId: action.templateId };
+    case 'SET_GENDER':
+      return { ...state, recipientGender: action.gender };
     case 'SET_ACTIVE_STEP':
       return { ...state, activeStepIndex: action.index };
     case 'TOGGLE_STEP':
