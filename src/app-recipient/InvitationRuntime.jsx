@@ -99,18 +99,31 @@ export default function InvitationRuntime() {
   async function handleFinalSubmit() {
     setSubmitting(true);
     try {
-      // upsert, а не insert: на invitation_id стоит unique-ограничение
-      // (один ответ на приглашение), так что повторная отправка — например,
-      // если получатель вернулся по той же ссылке и прошёл шаги заново —
-      // должна обновить существующий ответ, а не падать с ошибкой конфликта.
-      const { error } = await supabase.from('responses').upsert({
+      // На invitation_id стоит unique-ограничение (один ответ на
+      // приглашение), так что повторная отправка — например, если
+      // получатель вернулся по той же ссылке и прошёл шаги заново —
+      // должна обновить существующий ответ, а не упасть с ошибкой конфликта.
+      //
+      // ВАЖНО: не supabase upsert()/ON CONFLICT — Postgres требует, чтобы
+      // у роли было SELECT-разрешение (через RLS) на уже существующую
+      // строку, иначе конфликт использовался бы как канал для проверки
+      // "есть ли уже такая строка" в обход приватности. У анонимного
+      // получателя такого доступа нет (и не должно быть — это чужой ответ),
+      // поэтому upsert падал с "new row violates row-level security policy",
+      // даже с корректными insert/update-политиками. Явные insert → (при
+      // конфликте) update этого не требуют.
+      const payload = {
         invitation_id: invitation.id,
         answered_yes: true,
         selected_date: answers.selectedDate,
         selected_time: answers.selectedTime,
         selections: answers.selections,
-      }, { onConflict: 'invitation_id' });
-      if (error) { console.error('response upsert failed', error); throw error; }
+      };
+      let { error } = await supabase.from('responses').insert(payload);
+      if (error?.code === '23505') {
+        ({ error } = await supabase.from('responses').update(payload).eq('invitation_id', invitation.id));
+      }
+      if (error) { console.error('response submit failed', error); throw error; }
       setSubmitted(true);
     } finally {
       setSubmitting(false);
