@@ -67,7 +67,7 @@ export default function BuilderShell() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: T.bg,
+        background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -77,70 +77,98 @@ export default function BuilderShell() {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Decorative pink blobs */}
-        <div style={{
-          position: 'absolute',
-          top: -30,
-          left: -30,
-          width: 180,
-          height: 180,
-          borderRadius: '50%',
-          background: T.pinkMid,
-          opacity: 0.6,
-          pointerEvents: 'none',
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: -20,
-          right: -20,
-          width: 140,
-          height: 140,
-          borderRadius: '50%',
-          background: T.pinkMid,
-          opacity: 0.6,
-          pointerEvents: 'none',
-        }} />
+        {/* Decorative blobs — several sizes/positions for depth, not just two circles */}
+        <div style={{ position: 'absolute', top: -60, left: -60, width: 220, height: 220, borderRadius: '50%', background: T.pinkMid, opacity: 0.55, filter: 'blur(2px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -50, right: -50, width: 200, height: 200, borderRadius: '50%', background: T.pinkMid, opacity: 0.5, filter: 'blur(2px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '18%', right: '8%', width: 46, height: 46, borderRadius: '50%', background: T.pinkBorder, opacity: 0.7, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '22%', left: '10%', width: 30, height: 30, borderRadius: '50%', background: T.pink, opacity: 0.18, pointerEvents: 'none' }} />
+        <motion.span
+          initial={{ y: 0 }} animate={{ y: [0, -10, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ position: 'absolute', top: '12%', left: '14%', fontSize: 22, opacity: 0.5, pointerEvents: 'none' }}
+        >💗</motion.span>
+        <motion.span
+          initial={{ y: 0 }} animate={{ y: [0, 12, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+          style={{ position: 'absolute', bottom: '16%', right: '12%', fontSize: 20, opacity: 0.45, pointerEvents: 'none' }}
+        >✨</motion.span>
 
-        <div style={{ maxWidth: 360, width: '100%', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          style={{ maxWidth: 380, width: '100%', textAlign: 'center', position: 'relative', zIndex: 1 }}
+        >
+          {/* Logo badge */}
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%',
+            background: `linear-gradient(135deg, ${T.pink}, #ff8bab)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 14px', fontSize: 26,
+            boxShadow: `0 8px 20px ${T.pink}40`,
+          }}>
+            ❤️
+          </div>
+          <p style={{ fontFamily: T.font, fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.pink, marginBottom: 18 }}>
+            Date Invite
+          </p>
+
           <h1 style={{
             fontFamily: T.font,
             fontWeight: 700,
-            fontSize: 28,
+            fontSize: 30,
             color: T.darkPurple,
             textAlign: 'center',
             lineHeight: 1.3,
-            marginBottom: 32,
+            marginBottom: 10,
           }}>
             кого хочешь пригласить на свидание?
           </h1>
-          <div style={{ display: 'flex', gap: 12 }}>
+          <p style={{
+            fontFamily: T.font,
+            fontSize: 14,
+            color: T.muted,
+            marginBottom: 32,
+            lineHeight: 1.5,
+          }}>
+            Создадим тёплое приглашение за пару минут — свою картинку, вопрос и дату выберешь на следующих шагах
+          </p>
+
+          <div style={{ display: 'flex', gap: 14 }}>
             {GENDER_OPTIONS.map((g) => (
-              <button
+              <motion.button
                 key={g.value}
                 type="button"
+                whileHover={{ y: -3, borderColor: T.pink }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => dispatch({ type: 'SET_GENDER', gender: g.value })}
                 style={{
                   flex: 1,
                   background: 'white',
-                  borderRadius: 20,
-                  padding: '28px 20px',
+                  borderRadius: 24,
+                  padding: '30px 18px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: 10,
+                  gap: 12,
                   cursor: 'pointer',
-                  border: '1.5px solid #e0e0e0',
-                  transition: 'border-color 0.15s',
+                  border: '1.5px solid #f0dbe2',
+                  boxShadow: '0 10px 30px rgba(248, 85, 137, 0.10)',
                 }}
               >
-                <span style={{ fontSize: 44 }}>{g.emoji}</span>
+                <div style={{
+                  width: 68, height: 68, borderRadius: '50%',
+                  background: T.pinkLight,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 36,
+                }}>
+                  {g.emoji}
+                </div>
                 <span style={{ fontFamily: T.font, fontWeight: 600, fontSize: 16, color: T.dark }}>
                   {g.label}
                 </span>
-              </button>
+              </motion.button>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
     );
   }
