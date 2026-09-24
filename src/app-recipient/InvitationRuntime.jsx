@@ -96,13 +96,13 @@ export default function InvitationRuntime() {
   }
 
   if (state.status === 'loading') {
-    return <CenteredMessage text="Открываем приглашение…" />;
+    return <CenteredMessage text="Открываем приглашение…" tokens={tokens} />;
   }
   if (state.status === 'not_found') {
-    return <CenteredMessage text="Кажется, ссылка больше не работает." />;
+    return <CenteredMessage text="Кажется, ссылка больше не работает." tokens={tokens} />;
   }
   if (state.status === 'expired') {
-    return <CenteredMessage text="💌 Это приглашение больше недоступно." />;
+    return <CenteredMessage text="💌 Это приглашение больше недоступно." tokens={tokens} />;
   }
 
   const activeStep = steps[activeIndex];
@@ -112,7 +112,17 @@ export default function InvitationRuntime() {
   ].filter(Boolean);
 
   return (
-    <div className="mx-auto max-w-[380px] px-4 py-10">
+    <div style={{
+      minHeight: '100vh',
+      background: `linear-gradient(165deg, ${tokens.bg} 0%, ${tokens.bg} 55%, ${tokens.card === '#FFFFFF' ? '#ffeef5' : tokens.bgDark} 100%)`,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Тёплый декор — так же тепло, как на лендинге и в конструкторе */}
+      <div style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: tokens.berry, opacity: 0.12, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: tokens.berry, opacity: 0.1, pointerEvents: 'none' }} />
+
+      <div className="mx-auto max-w-[380px] px-4 py-10" style={{ position: 'relative', zIndex: 1 }}>
       {activeStep?.step_type === 'question' && (
         <QuestionScreen
           recipientName={invitation.recipient_name}
@@ -176,12 +186,15 @@ export default function InvitationRuntime() {
           onSubmit={handleFinalSubmit}
         />
       )}
+      </div>
     </div>
   );
 }
 
-function CenteredMessage({ text }) {
+function CenteredMessage({ text, tokens }) {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center px-6 text-center text-sm opacity-70">{text}</div>
+    <div style={{ minHeight: '100vh', background: tokens?.bg || '#FDF0F3' }} className="flex items-center justify-center px-6 text-center">
+      <p style={{ color: tokens?.inkMuted || '#6B4D5A', fontFamily: tokens?.fontUI, fontSize: 14, opacity: 0.8 }}>{text}</p>
+    </div>
   );
 }
