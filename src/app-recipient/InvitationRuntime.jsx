@@ -11,6 +11,7 @@ import QuestionScreen, { DEFAULT_NO_PHRASES } from '../components/screens/Questi
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
 import ChoiceScreen from '../components/screens/ChoiceScreen.jsx';
+import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
 
 // 'time' больше не отдельный шаг (дата и время теперь на одном экране —
@@ -78,6 +79,9 @@ export default function InvitationRuntime() {
 
   function goNext() {
     setActiveIndex((i) => Math.min(i + 1, steps.length - 1));
+  }
+  function goNextBy(n) {
+    setActiveIndex((i) => Math.min(i + n, steps.length - 1));
   }
 
   async function handleFinalSubmit() {
@@ -162,10 +166,36 @@ export default function InvitationRuntime() {
           }}
         />
       )}
+      {activeStep?.step_type === 'choice_place'
+        && steps[activeIndex + 1]?.step_type === 'choice_food' && (
+        <DoubleChoiceScreen
+          key={activeStep.id}
+          placeTitle={activeStep.configuration_json?.title}
+          placeOptions={activeStep.configuration_json?.options || []}
+          placeAllowMultiple={activeStep.configuration_json?.allowMultiple}
+          foodTitle={steps[activeIndex + 1].configuration_json?.title}
+          foodOptions={steps[activeIndex + 1].configuration_json?.options || []}
+          foodAllowMultiple={steps[activeIndex + 1].configuration_json?.allowMultiple}
+          tokens={tokens}
+          onContinue={({ placeIds, foodIds }) => {
+            const foodStepId = steps[activeIndex + 1].id;
+            setAnswers((a) => ({
+              ...a,
+              selections: {
+                ...a.selections,
+                [activeStep.id]: placeIds,
+                [foodStepId]: foodIds,
+              },
+            }));
+            goNextBy(2);
+          }}
+        />
+      )}
       {(activeStep?.step_type === 'choice_block'
-        || activeStep?.step_type === 'choice_place'
-        || activeStep?.step_type === 'choice_food') && (
+        || ((activeStep?.step_type === 'choice_place' || activeStep?.step_type === 'choice_food')
+          && !(activeStep.step_type === 'choice_place' && steps[activeIndex + 1]?.step_type === 'choice_food'))) && (
         <ChoiceScreen
+          key={activeStep.id}
           title={activeStep.configuration_json?.title}
           options={activeStep.configuration_json?.options || []}
           allowMultiple={activeStep.configuration_json?.allowMultiple}

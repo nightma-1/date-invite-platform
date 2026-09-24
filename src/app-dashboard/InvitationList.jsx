@@ -12,12 +12,32 @@ import { getTemplateTokens } from '../templates/registry.js';
 const STATUS_LABELS = { draft: 'Черновик', published: 'Активно', expired: 'Истекло', archived: 'Архив' };
 const t = getTemplateTokens('romantic');
 
+// selections в responses хранится как { [invitation_steps.id]: [optionId, ...] } —
+// разворачиваем в читаемые "иконка + название" по конфигу соответствующего шага.
+function decodeSelections(inv, response) {
+  if (!response?.selections || !inv.invitation_steps?.length) return [];
+  return inv.invitation_steps
+    .filter((s) => s.step_type === 'choice_place' || s.step_type === 'choice_food' || s.step_type === 'choice_block')
+    .map((step) => {
+      const ids = response.selections[step.id];
+      if (!ids || ids.length === 0) return null;
+      const options = step.configuration_json?.options || [];
+      const labels = ids.map((id) => {
+        const opt = options.find((o) => o.id === id);
+        return opt ? `${opt.icon || ''} ${opt.label}`.trim() : id;
+      });
+      return { title: step.configuration_json?.title || 'Выбор', labels };
+    })
+    .filter(Boolean);
+}
+
 export default function InvitationList() {
   const [session, setSession] = useState(undefined);
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedSlug, setCopiedSlug] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [telegramLinked, setTelegramLinked] = useState(null); // null = ещё не знаем
 
   function copyLink(slug) {
     const url = `${window.location.origin}/i/${slug}`;
@@ -52,7 +72,7 @@ export default function InvitationList() {
       setLoading(true);
       const { data, error } = await supabase
         .from('invitations')
-        .select('*, responses(answered_yes, selected_date, selected_time, created_at)')
+        .select('*, responses(answered_yes, selected_date, selected_time, selections, created_at), invitation_steps(id, step_type, configuration_json)')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
       if (!cancelled) {
@@ -61,7 +81,17 @@ export default function InvitationList() {
       }
     }
 
+    async function loadProfile() {
+      const { data } = await supabase
+        .from('profiles')
+        .select('telegram_chat_id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (!cancelled) setTelegramLinked(!!data?.telegram_chat_id);
+    }
+
     load();
+    loadProfile();
     return () => { cancelled = true; };
   }, [session]);
 
@@ -78,9 +108,31 @@ export default function InvitationList() {
   return (
     <div style={{ background: t.bg, minHeight: '100vh' }}>
       <div className="mx-auto max-w-2xl px-5 py-14">
-        <h1 className="mb-8 text-2xl" style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700 }}>
+        <h1 className="mb-4 text-2xl" style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700 }}>
           Мои приглашения
         </h1>
+
+        {telegramLinked === false && (
+          <a
+            href={`/api/telegram/connect?uid=${session.user.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-8 flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 no-underline"
+            style={{ background: '#EAF6FF', border: '1.5px solid #B3E0FF' }}
+          >
+            <span style={{ color: '#1E6FA8', fontFamily: t.fontUI, fontSize: 13.5, fontWeight: 600 }}>
+              🔔 Подключи Telegram, чтобы получать уведомления об ответах
+            </span>
+            <span style={{ color: '#1E6FA8', fontFamily: t.fontUI, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+              Подключить →
+            </span>
+          </a>
+        )}
+        {telegramLinked === true && (
+          <p className="mb-8 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>
+            🔔 Уведомления в Telegram подключены
+          </p>
+        )}
 
         {loading && <p className="text-sm opacity-60">Загрузка…</p>}
 
@@ -94,6 +146,7 @@ export default function InvitationList() {
         <div className="space-y-3">
           {invitations.map((inv) => {
             const response = inv.responses?.[0];
+            const choiceAnswers = decodeSelections(inv, response);
             return (
               <TicketCard key={inv.id} tokens={t}>
                 <div className="p-4">
@@ -115,6 +168,15 @@ export default function InvitationList() {
                     </p>
                   ) : (
                     <p className="text-sm" style={{ color: t.ink, opacity: 0.4, fontFamily: t.fontUI }}>Пока без ответа</p>
+                  )}
+                  {choiceAnswers.length > 0 && (
+                    <div className="mt-1.5 space-y-0.5">
+                      {choiceAnswers.map((c, i) => (
+                        <p key={i} className="text-xs" style={{ color: t.ink, opacity: 0.65, fontFamily: t.fontUI }}>
+                          {c.title}: <span style={{ fontWeight: 600 }}>{c.labels.join(', ')}</span>
+                        </p>
+                      ))}
+                    </div>
                   )}
                   {inv.status === 'published' && (
                     <Link to={`/i/${inv.slug}`} className="mt-2 mb-3 inline-block text-xs underline" style={{ color: t.ink, opacity: 0.6 }}>

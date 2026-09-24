@@ -23,7 +23,12 @@ export default function QuestionScreen({
   return (
     <div
       className="relative overflow-hidden text-center"
-      style={{ background: tokens.card, borderRadius: 12, padding: 28 }}
+      style={{
+        background: tokens.card,
+        borderRadius: 24,
+        padding: '36px 28px 32px',
+        boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
+      }}
     >
       {/* Перфорированный билетный край */}
       <div
@@ -47,34 +52,46 @@ export default function QuestionScreen({
             style={{ paddingTop: 8 }}
           >
             {mediaUrl && (
-              <motion.img
-                src={mediaUrl} alt=""
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 }}
-                style={{ width: 112, height: 112, borderRadius: 12, objectFit: 'cover', margin: '0 auto 16px' }}
-              />
+              <div style={{ position: 'relative', width: 136, height: 136, margin: '0 auto 20px' }}>
+                <div style={{
+                  position: 'absolute', inset: -10, borderRadius: '50%',
+                  background: tokens.berry, opacity: 0.12,
+                }} />
+                <motion.img
+                  src={mediaUrl} alt=""
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 }}
+                  style={{
+                    position: 'relative',
+                    width: 136, height: 136, borderRadius: 22, objectFit: 'cover',
+                    boxShadow: `0 12px 28px -8px ${tokens.berry}55`,
+                  }}
+                />
+              </div>
             )}
 
-            <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
+            <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 27, fontWeight: 700, marginBottom: 8, letterSpacing: '-0.01em' }}>
               {recipientName || 'Привет'}
             </h1>
-            <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 15, lineHeight: 1.5, marginBottom: 28, opacity: 0.85 }}>
+            <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 16, lineHeight: 1.55, marginBottom: 32, opacity: 0.9, maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
               {questionText || 'Пойдёшь со мной на свидание?'}
             </p>
 
-            <div ref={stageRef} style={{ position: 'relative', height: 120 }}>
+            <div ref={stageRef} style={{ position: 'relative', minHeight: 130, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
               {/* Кнопка ДА */}
               <motion.button
-                whileHover={{ scale: 1.04 }}
+                whileHover={{ scale: 1.04, y: -2 }}
                 whileTap={{ scale: 0.96 }}
                 type="button"
                 onClick={() => setAnswered(true)}
                 style={{
-                  background: tokens.berry, color: '#fff',
-                  padding: '12px 28px', borderRadius: 6,
-                  fontFamily: tokens.fontUI, fontWeight: 700, fontSize: 15,
+                  background: `linear-gradient(135deg, ${tokens.berry}, ${tokens.amber || tokens.berry})`,
+                  color: '#fff',
+                  padding: '16px 40px', borderRadius: 100,
+                  fontFamily: tokens.fontUI, fontWeight: 700, fontSize: 16,
                   border: 'none', cursor: 'pointer',
+                  boxShadow: `0 14px 30px -8px ${tokens.berry}60`,
                 }}
               >
                 {yesText}
@@ -85,12 +102,13 @@ export default function QuestionScreen({
                 phrases={noPhrases}
                 containerRef={stageRef}
                 style={{
-                  border: `1px solid ${tokens.ink}30`,
+                  border: `1.5px solid ${tokens.ink}25`,
                   color: tokens.inkMuted || tokens.ink,
-                  padding: '10px 20px', borderRadius: 6,
-                  fontFamily: tokens.fontUI, fontSize: 14,
-                  background: 'transparent', cursor: 'pointer',
-                  opacity: 0.7,
+                  padding: '11px 26px', borderRadius: 100,
+                  fontFamily: tokens.fontUI, fontSize: 14, fontWeight: 600,
+                  background: tokens.bg || '#fff', cursor: 'pointer',
+                  opacity: 1,
+                  boxShadow: `0 4px 12px ${tokens.ink}0D`,
                 }}
               />
             </div>
@@ -110,7 +128,7 @@ export default function QuestionScreen({
             >
               🥰
             </motion.div>
-            <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+            <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
               Она сказала ДА!
             </h1>
             <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, opacity: 0.8 }}>
