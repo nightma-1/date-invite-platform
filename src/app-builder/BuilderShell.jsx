@@ -13,6 +13,7 @@ import StepChoiceBlock from './steps/StepChoiceBlock.jsx';
 import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
 import { publishDraft } from './publishDraft.js';
+import { updateInvitationDraft } from './updateInvitation.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import { T } from './BuilderUI.jsx';
@@ -57,6 +58,24 @@ export default function BuilderShell() {
 
   function goTo(index) {
     dispatch({ type: 'SET_ACTIVE_STEP', index });
+  }
+
+  // Режим редактирования: приглашение ещё грузится из Supabase
+  if (state.loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: T.bg,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: T.font,
+        color: T.muted,
+        fontSize: 14,
+      }}>
+        Загружаем приглашение…
+      </div>
+    );
   }
 
   // Gender selection screen
@@ -180,6 +199,11 @@ export default function BuilderShell() {
   async function runPublish(userId) {
     setPublishing(true);
     try {
+      if (state.editInvitationId) {
+        const { invitationId, slug } = await updateInvitationDraft(state, userId, state.editInvitationId);
+        setPublishResult({ invitationId, slug, edited: true });
+        return;
+      }
       // ВРЕМЕННО: пока не подключён мерчант-аккаунт Click, публикуем сразу
       // бесплатно (publishDraft уже проставляет status:'published') и не
       // уходим на оплату. Когда Click будет готов — верни здесь редирект на
@@ -225,12 +249,14 @@ export default function BuilderShell() {
           animate={{ scale: 1, opacity: 1 }}
           style={{ textAlign: 'center', maxWidth: 400, width: '100%' }}
         >
-          <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>{publishResult.edited ? '✅' : '🎉'}</div>
           <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 24, color: T.darkPurple, marginBottom: 8 }}>
-            Готово! Приглашение опубликовано
+            {publishResult.edited ? 'Изменения сохранены' : 'Готово! Приглашение опубликовано'}
           </h1>
           <p style={{ color: T.muted, fontFamily: T.font, fontSize: 13, marginBottom: 20, opacity: 0.8 }}>
-            Скопируй ссылку и отправь тому, кого приглашаешь
+            {publishResult.edited
+              ? 'Ссылка та же — пересылать заново не нужно'
+              : 'Скопируй ссылку и отправь тому, кого приглашаешь'}
           </p>
 
           <div style={{
@@ -449,7 +475,9 @@ export default function BuilderShell() {
             opacity: publishing ? 0.7 : 1,
           }}
         >
-          {isLastStep ? (publishing ? 'Сохраняем…' : 'Опубликовать 💌') : 'Продолжить'}
+          {isLastStep
+            ? (publishing ? 'Сохраняем…' : (state.editInvitationId ? 'Сохранить изменения 💾' : 'Опубликовать 💌'))
+            : 'Продолжить'}
         </motion.button>
       </div>
     </div>

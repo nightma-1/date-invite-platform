@@ -4,6 +4,7 @@
  */
 
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
+import { supabase } from '../lib/supabaseClient.js';
 
 const STORAGE_PREFIX = 'date-invite-draft:';
 
@@ -24,6 +25,47 @@ function initialDraft(draftId, initialTemplateId) {
     // (см. AudienceGate в BuilderShell), это не отдельный шаг мастера и не
     // экран для получателя, а метаданные автора.
     recipientGender: null,
+    // Заполняются только в режиме редактирования уже опубликованного приглашения
+    editInvitationId: null,
+    slug: null,
+    loading: false,
+  };
+}
+
+/** Загрузить уже опубликованное приглашение для редактирования — источник
+ *  истины тот же invitation_steps, что и при публикации, так что просто
+ *  разворачиваем его обратно в форму state.steps конструктора. */
+async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplateId) {
+  const { data: inv, error } = await supabase
+    .from('invitations')
+    .select('*, invitation_steps(*)')
+    .eq('id', invitationId)
+    .single();
+  if (error) throw error;
+
+  const savedSteps = (inv.invitation_steps || []).filter((s) => s.step_type !== 'time');
+  const steps = DEFAULT_STEPS.map((def) => {
+    const saved = savedSteps.find((s) => s.step_type === def.step_type);
+    return saved
+      ? {
+          step_type: def.step_type,
+          step_order: saved.step_order,
+          enabled: saved.enabled,
+          configuration_json: { ...def.configuration_json, ...(saved.configuration_json || {}) },
+        }
+      : def;
+  });
+
+  return {
+    draftId: editDraftId,
+    templateId: inv.template_key || initialTemplateId || 'romantic',
+    mood: inv.mood || inv.template_key || 'romantic',
+    activeStepIndex: 0,
+    steps,
+    recipientGender: inv.recipient_gender || null,
+    editInvitationId: invitationId,
+    slug: inv.slug,
+    loading: false,
   };
 }
 
@@ -58,8 +100,11 @@ function draftReducer(state, action) {
 
 const BuilderContext = createContext(null);
 
-export function BuilderProvider({ draftId, initialTemplateId, children }) {
+export function BuilderProvider({ draftId, initialTemplateId, editInvitationId, children }) {
   const [state, dispatch] = useReducer(draftReducer, null, () => {
+    if (editInvitationId) {
+      return { ...initialDraft(draftId, initialTemplateId), editInvitationId, loading: true };
+    }
     if (typeof window === 'undefined') return initialDraft(draftId, initialTemplateId);
     try {
       const saved = window.localStorage.getItem(STORAGE_PREFIX + draftId);
@@ -72,7 +117,27 @@ export function BuilderProvider({ draftId, initialTemplateId, children }) {
     }
   });
 
+  // Режим редактирования: подгружаем уже опубликованное приглашение из Supabase
   useEffect(() => {
+    if (!editInvitationId) return;
+    let cancelled = false;
+    fetchInvitationForEdit(editInvitationId, draftId, initialTemplateId)
+      .then((loaded) => { if (!cancelled) dispatch({ type: 'HYDRATE', payload: loaded }); })
+      .catch((err) => {
+        console.error('Не удалось загрузить приглашение для редактирования', err);
+        if (!cancelled) {
+          dispatch({
+            type: 'HYDRATE',
+            payload: { ...initialDraft(draftId, initialTemplateId), editInvitationId, loading: false, loadError: true },
+          });
+        }
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editInvitationId]);
+
+  useEffect(() => {
+    if (state.loading) return; // не затираем черновик, пока идёт загрузка для редактирования
     try {
       window.localStorage.setItem(STORAGE_PREFIX + draftId, JSON.stringify(state));
     } catch {

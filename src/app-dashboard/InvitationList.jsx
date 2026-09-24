@@ -16,6 +16,14 @@ export default function InvitationList() {
   const [session, setSession] = useState(undefined);
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [copiedSlug, setCopiedSlug] = useState(null);
+
+  function copyLink(slug) {
+    const url = `${window.location.origin}/i/${slug}`;
+    navigator.clipboard?.writeText(url);
+    setCopiedSlug(slug);
+    setTimeout(() => setCopiedSlug((s) => (s === slug ? null : s)), 2000);
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -96,10 +104,34 @@ export default function InvitationList() {
                     <p className="text-sm" style={{ color: t.ink, opacity: 0.4, fontFamily: t.fontUI }}>Пока без ответа</p>
                   )}
                   {inv.status === 'published' && (
-                    <Link to={`/i/${inv.slug}`} className="mt-2 inline-block text-xs underline" style={{ color: t.ink, opacity: 0.6 }}>
+                    <Link to={`/i/${inv.slug}`} className="mt-2 mb-3 inline-block text-xs underline" style={{ color: t.ink, opacity: 0.6 }}>
                       Открыть ссылку получателя →
                     </Link>
                   )}
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Link
+                      to={`/builder/edit/${inv.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline"
+                      style={{ background: 'white', color: t.ink, border: `1.5px solid ${t.ink}25`, fontFamily: t.fontUI }}
+                    >
+                      ✏️ Изменить
+                    </Link>
+                    {inv.status === 'published' && (
+                      <button
+                        type="button"
+                        onClick={() => copyLink(inv.slug)}
+                        className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
+                        style={{
+                          background: copiedSlug === inv.slug ? t.berry : t.berry + '15',
+                          color: copiedSlug === inv.slug ? '#fff' : t.berry,
+                          border: 'none', fontFamily: t.fontUI, cursor: 'pointer',
+                        }}
+                      >
+                        {copiedSlug === inv.slug ? 'Скопировано ✓' : '🔗 Скопировать ссылку'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </TicketCard>
             );

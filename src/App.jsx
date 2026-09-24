@@ -31,6 +31,15 @@ function BuilderRoute() {
   );
 }
 
+function EditBuilderRoute() {
+  const { invitationId } = useParams();
+  return (
+    <BuilderProvider draftId={`edit-${invitationId}`} editInvitationId={invitationId}>
+      <BuilderShell />
+    </BuilderProvider>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -39,6 +48,7 @@ export default function App() {
         {/* Каждый новый черновик получает свой id — иначе второе приглашение
             перезаписало бы localStorage первого */}
         <Route path="/builder" element={<NewDraftRedirect />} />
+        <Route path="/builder/edit/:invitationId" element={<EditBuilderRoute />} />
         <Route path="/builder/:draftId" element={<BuilderRoute />} />
         <Route path="/i/:slug" element={<InvitationRuntime />} />
         <Route path="/dashboard" element={<InvitationList />} />
