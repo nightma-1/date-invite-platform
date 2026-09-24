@@ -17,12 +17,25 @@ export default function InvitationList() {
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedSlug, setCopiedSlug] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   function copyLink(slug) {
     const url = `${window.location.origin}/i/${slug}`;
     navigator.clipboard?.writeText(url);
     setCopiedSlug(slug);
     setTimeout(() => setCopiedSlug((s) => (s === slug ? null : s)), 2000);
+  }
+
+  async function deleteInvitation(inv) {
+    if (!confirm(`Удалить приглашение «${inv.recipient_name}»? Это нельзя отменить, ссылка перестанет работать.`)) return;
+    setDeletingId(inv.id);
+    const { error } = await supabase.from('invitations').delete().eq('id', inv.id);
+    setDeletingId(null);
+    if (error) {
+      alert('Не получилось удалить: ' + (error.message || 'попробуй ещё раз'));
+      return;
+    }
+    setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
   }
 
   useEffect(() => {
@@ -131,6 +144,19 @@ export default function InvitationList() {
                         {copiedSlug === inv.slug ? 'Скопировано ✓' : '🔗 Скопировать ссылку'}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => deleteInvitation(inv)}
+                      disabled={deletingId === inv.id}
+                      className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
+                      style={{
+                        background: 'white', color: '#C0392B', border: '1.5px solid #C0392B30',
+                        fontFamily: t.fontUI, cursor: deletingId === inv.id ? 'not-allowed' : 'pointer',
+                        opacity: deletingId === inv.id ? 0.5 : 1,
+                      }}
+                    >
+                      {deletingId === inv.id ? 'Удаляем…' : '🗑️ Удалить'}
+                    </button>
                   </div>
                 </div>
               </TicketCard>
