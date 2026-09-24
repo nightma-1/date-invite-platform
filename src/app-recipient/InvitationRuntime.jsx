@@ -189,6 +189,7 @@ export default function InvitationRuntime() {
               : undefined
           }
           mediaUrl={content?.gif_url}
+          recipientGender={invitation.recipient_gender}
           tokens={tokens}
           onYes={goNext}
         />

@@ -15,10 +15,18 @@ export default function QuestionScreen({
   recipientName, questionText, mediaUrl,
   yesText = 'Да, конечно ❤️',
   noPhrases = DEFAULT_NO_PHRASES,
+  recipientGender,
   tokens, onYes,
 }) {
   const stageRef = useRef(null);
   const [answered, setAnswered] = useState(false);
+
+  // Дефолтные (и любые унаследованные от них) фразы написаны в женском роде —
+  // если получатель мужского пола, поправляем род на лету, не трогая остальной
+  // текст (который мог быть кастомным и его менять не нужно).
+  const effectiveNoPhrases = recipientGender === 'male'
+    ? noPhrases.map((p) => (p === 'Ты уверена?' ? 'Ты уверен?' : p))
+    : noPhrases;
 
   return (
     <div
@@ -99,7 +107,7 @@ export default function QuestionScreen({
 
               {/* Убегающая кнопка НЕТ */}
               <RunawayButton
-                phrases={noPhrases}
+                phrases={effectiveNoPhrases}
                 containerRef={stageRef}
                 style={{
                   border: `1.5px solid ${tokens.ink}25`,
@@ -129,7 +137,7 @@ export default function QuestionScreen({
               🥰
             </motion.div>
             <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
-              Она сказала ДА!
+              {recipientGender === 'male' ? 'Он сказал ДА!' : 'Она сказала ДА!'}
             </h1>
             <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, opacity: 0.8 }}>
               Продолжаем…

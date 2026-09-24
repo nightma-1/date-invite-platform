@@ -108,6 +108,13 @@ export default function InvitationList() {
   return (
     <div style={{ background: t.bg, minHeight: '100vh' }}>
       <div className="mx-auto max-w-2xl px-5 py-14">
+        <Link
+          to="/"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs no-underline"
+          style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}
+        >
+          ← На главную
+        </Link>
         <h1 className="mb-4 text-2xl" style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700 }}>
           Мои приглашения
         </h1>
