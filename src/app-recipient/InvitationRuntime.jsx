@@ -9,12 +9,14 @@ import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen, { DEFAULT_NO_PHRASES } from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
-import DateScreen from '../components/screens/DateScreen.jsx';
-import TimeScreen from '../components/screens/TimeScreen.jsx';
+import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
 import ChoiceScreen from '../components/screens/ChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
 
-const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'time', 'choice_block', 'final']);
+// 'time' больше не отдельный шаг (дата и время теперь на одном экране —
+// см. DateTimeScreen.jsx), но старые опубликованные приглашения могут
+// ещё хранить его отдельной строкой в invitation_steps — просто пропускаем.
+const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'choice_block', 'final']);
 
 export default function InvitationRuntime() {
   const { slug } = useParams();
@@ -135,25 +137,15 @@ export default function InvitationRuntime() {
         />
       )}
       {activeStep?.step_type === 'date' && (
-        <DateScreen
+        <DateTimeScreen
           title={activeStep.configuration_json?.title}
+          buttonText={activeStep.configuration_json?.buttonText}
           mode={activeStep.configuration_json?.mode}
           fixedDate={activeStep.configuration_json?.fixedDate}
-          tokens={tokens}
-          onContinue={(selectedDate) => {
-            setAnswers((a) => ({ ...a, selectedDate }));
-            goNext();
-          }}
-        />
-      )}
-      {activeStep?.step_type === 'time' && (
-        <TimeScreen
-          title={activeStep.configuration_json?.title}
-          mode={activeStep.configuration_json?.mode}
           fixedTime={activeStep.configuration_json?.fixedTime}
           tokens={tokens}
-          onContinue={(selectedTime) => {
-            setAnswers((a) => ({ ...a, selectedTime }));
+          onContinue={({ date, time }) => {
+            setAnswers((a) => ({ ...a, selectedDate: date, selectedTime: time }));
             goNext();
           }}
         />

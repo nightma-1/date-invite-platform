@@ -9,7 +9,6 @@ import { useBuilder } from './builderStore.jsx';
 import StepQuestion from './steps/StepQuestion.jsx';
 import StepReaction from './steps/StepReaction.jsx';
 import StepDate from './steps/StepDate.jsx';
-import StepTime from './steps/StepTime.jsx';
 import StepChoiceBlock from './steps/StepChoiceBlock.jsx';
 import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
@@ -22,7 +21,6 @@ const STEP_COMPONENTS = {
   question: StepQuestion,
   reaction: StepReaction,
   date: StepDate,
-  time: StepTime,
   choice_block: StepChoiceBlock,
   final: StepFinal,
 };
@@ -31,7 +29,6 @@ const STEP_TITLES = {
   question: 'настрой экран\nприглашения',
   reaction: 'настрой экран\nподтверждения',
   date: 'настрой экран\nдаты и времени',
-  time: 'настрой экран\nвремени',
   choice_block: 'настрой экран\nвыбора',
   final: 'финальный\nэкран',
 };

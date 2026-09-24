@@ -1,5 +1,8 @@
 /**
  * © 2026 Senti. Все права защищены.
+ *
+ * Дата и время настраиваются на одной странице — получатель тоже видит
+ * их на одном экране (см. DateTimeScreen.jsx + InvitationRuntime.jsx).
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -80,7 +83,7 @@ export default function StepDate() {
         )}
       </SectionCard>
 
-      <SectionCard number="2" title="Заголовок и кнопка">
+      <SectionCard number="2" title="Дата и время">
         <FieldLabel>Кто выбирает дату и время</FieldLabel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {[
@@ -109,15 +112,24 @@ export default function StepDate() {
         </div>
 
         {config.mode === 'creator_sets' && (
-          <>
-            <FieldLabel>Дата</FieldLabel>
-            <Inp
-              type="date"
-              value={config.fixedDate || ''}
-              onChange={(e) => update({ fixedDate: e.target.value })}
-              style={{ marginBottom: 12 }}
-            />
-          </>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <FieldLabel>Дата</FieldLabel>
+              <Inp
+                type="date"
+                value={config.fixedDate || ''}
+                onChange={(e) => update({ fixedDate: e.target.value })}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <FieldLabel>Время</FieldLabel>
+              <Inp
+                type="time"
+                value={config.fixedTime || ''}
+                onChange={(e) => update({ fixedTime: e.target.value })}
+              />
+            </div>
+          </div>
         )}
 
         <FieldLabel>Заголовок</FieldLabel>
@@ -134,7 +146,7 @@ export default function StepDate() {
         <Inp
           value={config.buttonText || ''}
           onChange={(e) => update({ buttonText: e.target.value })}
-          placeholder="Выбери дату 💌"
+          placeholder="Выбери дату и время 💌"
         />
         <p style={{ fontSize: 12, color: T.muted, marginTop: 4, fontFamily: T.font }}>
           У получателя кнопка активна только после выбора даты и времени
