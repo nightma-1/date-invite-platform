@@ -9,7 +9,8 @@ import { useBuilder } from './builderStore.jsx';
 import StepQuestion from './steps/StepQuestion.jsx';
 import StepReaction from './steps/StepReaction.jsx';
 import StepDate from './steps/StepDate.jsx';
-import StepChoiceBlock from './steps/StepChoiceBlock.jsx';
+import StepChoicePlace from './steps/StepChoicePlace.jsx';
+import StepChoiceFood from './steps/StepChoiceFood.jsx';
 import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
 import { publishDraft } from './publishDraft.js';
@@ -22,7 +23,8 @@ const STEP_COMPONENTS = {
   question: StepQuestion,
   reaction: StepReaction,
   date: StepDate,
-  choice_block: StepChoiceBlock,
+  choice_place: StepChoicePlace,
+  choice_food: StepChoiceFood,
   final: StepFinal,
 };
 
@@ -30,7 +32,8 @@ const STEP_TITLES = {
   question: 'настрой экран\nприглашения',
   reaction: 'настрой экран\nподтверждения',
   date: 'настрой экран\nдаты и времени',
-  choice_block: 'настрой экран\nвыбора',
+  choice_place: 'настрой экран\nвыбора места',
+  choice_food: 'настрой экран\nвыбора еды',
   final: 'финальный\nэкран',
 };
 

@@ -13,8 +13,35 @@ export const DEFAULT_STEPS = [
   { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!' } },
   // Дата и время — один шаг с двумя полями, получатель тоже видит их на одном экране
   { step_type: 'date', step_order: 2, enabled: true, configuration_json: { mode: 'recipient_picks', title: 'И так... Когда ты свободен?', buttonText: 'Выбери дату и время 💌' } },
-  { step_type: 'choice_block', step_order: 3, enabled: true, configuration_json: { categoryType: 'place', allowMultiple: false, options: [] } },
-  { step_type: 'final', step_order: 4, enabled: true, configuration_json: { title: 'Ну всё, теперь пути назад нет 😄❤️', description: 'Наше свидание официально запланировано!' } },
+  // Раньше был один шаг с переключателем категории и пустым списком —
+  // теперь два отдельных экрана с уже готовым набором вариантов
+  {
+    step_type: 'choice_place', step_order: 3, enabled: true, configuration_json: {
+      title: 'Куда пойдём?', allowMultiple: false,
+      options: [
+        { id: 'opt_place_1', icon: '🎬', label: 'Кино' },
+        { id: 'opt_place_2', icon: '🍽️', label: 'Ресторан' },
+        { id: 'opt_place_3', icon: '🚶', label: 'Прогулка' },
+        { id: 'opt_place_4', icon: '🎳', label: 'Боулинг' },
+        { id: 'opt_place_5', icon: '☕', label: 'Кафе' },
+        { id: 'opt_place_6', icon: '✨', label: 'Своё' },
+      ],
+    },
+  },
+  {
+    step_type: 'choice_food', step_order: 4, enabled: true, configuration_json: {
+      title: 'Что будем есть?', allowMultiple: false,
+      options: [
+        { id: 'opt_food_1', icon: '🍕', label: 'Пицца' },
+        { id: 'opt_food_2', icon: '🍣', label: 'Суши' },
+        { id: 'opt_food_3', icon: '🍔', label: 'Бургеры' },
+        { id: 'opt_food_4', icon: '🍝', label: 'Паста' },
+        { id: 'opt_food_5', icon: '🥗', label: 'Салаты' },
+        { id: 'opt_food_6', icon: '🍦', label: 'Десерт' },
+      ],
+    },
+  },
+  { step_type: 'final', step_order: 5, enabled: true, configuration_json: { title: 'Ну всё, теперь пути назад нет 😄❤️', description: 'Наше свидание официально запланировано!' } },
 ];
 
 function initialDraft(draftId, initialTemplateId) {

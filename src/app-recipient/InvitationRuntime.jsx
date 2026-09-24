@@ -16,7 +16,9 @@ import FinalScreen from '../components/screens/FinalScreen.jsx';
 // 'time' больше не отдельный шаг (дата и время теперь на одном экране —
 // см. DateTimeScreen.jsx), но старые опубликованные приглашения могут
 // ещё хранить его отдельной строкой в invitation_steps — просто пропускаем.
-const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'choice_block', 'final']);
+// 'choice_block' — тоже легаси: раньше был один шаг выбора с переключателем
+// категории, теперь два отдельных ('choice_place' + 'choice_food').
+const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'choice_block', 'choice_place', 'choice_food', 'final']);
 
 export default function InvitationRuntime() {
   const { slug } = useParams();
@@ -160,7 +162,9 @@ export default function InvitationRuntime() {
           }}
         />
       )}
-      {activeStep?.step_type === 'choice_block' && (
+      {(activeStep?.step_type === 'choice_block'
+        || activeStep?.step_type === 'choice_place'
+        || activeStep?.step_type === 'choice_food') && (
         <ChoiceScreen
           title={activeStep.configuration_json?.title}
           options={activeStep.configuration_json?.options || []}
