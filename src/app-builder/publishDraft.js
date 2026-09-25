@@ -49,6 +49,7 @@ export async function publishDraft(state, userId) {
       slug,
       mood: state.mood,
       template_key: state.templateId,
+      card_shape: state.cardShape || 'classic',
       recipient_name: questionConfig.recipientName || 'Тебя',
       recipient_gender: state.recipientGender || null,
       status: 'draft',

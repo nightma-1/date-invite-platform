@@ -131,6 +131,7 @@ export default function StepReaction() {
             text={config.text}
             mediaUrl={currentMediaUrl}
             tokens={tokens}
+            cardShape={state.cardShape}
             onContinue={() => {}}
           />
         </div>

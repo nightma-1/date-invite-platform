@@ -40,6 +40,7 @@ export async function updateInvitationDraft(state, userId, invitationId) {
       recipient_gender: state.recipientGender || null,
       mood: state.mood,
       template_key: state.templateId,
+      card_shape: state.cardShape || 'classic',
     })
     .eq('id', invitationId)
     .eq('user_id', userId);

@@ -24,13 +24,9 @@ const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'choice_b
 export default function InvitationRuntime() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
-  // Временный переключатель формы карточки вопроса для живого сравнения
-  // на проде: ?card=arch|envelope|polaroid|blob. По умолчанию — текущий
-  // ("билетный") дизайн, поведение для получателей не меняется.
-  const cardShapeParam = searchParams.get('card');
-  const cardShape = ['arch', 'envelope', 'polaroid', 'blob'].includes(cardShapeParam)
-    ? cardShapeParam
-    : 'classic';
+  // Форма карточки выбирается в конструкторе и хранится в invitations.card_shape.
+  // ?card=arch|envelope|polaroid|blob по-прежнему можно добавить в ссылку, чтобы
+  // локально посмотреть другую форму, не трогая сохранённый выбор автора.
 
   // Лёгкий параллакс тёплого декора (круги на фоне) при движении мыши —
   // на тач-устройствах просто нет mousemove, декор остаётся статичным.
@@ -111,6 +107,10 @@ export default function InvitationRuntime() {
   }, [slug]);
 
   const tokens = useMemo(() => getTemplateTokens(invitation?.template_key), [invitation]);
+  const cardShapeParam = searchParams.get('card');
+  const cardShape = ['arch', 'envelope', 'polaroid', 'blob'].includes(cardShapeParam)
+    ? cardShapeParam
+    : (invitation?.card_shape || 'classic');
 
   function goNext() {
     setActiveIndex((i) => Math.min(i + 1, steps.length - 1));

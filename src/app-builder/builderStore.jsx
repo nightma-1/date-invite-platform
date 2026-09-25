@@ -47,7 +47,7 @@ export const DEFAULT_STEPS = [
 function initialDraft(draftId, initialTemplateId) {
   const templateId = initialTemplateId || 'romantic';
   return {
-    draftId, templateId, mood: templateId, activeStepIndex: 0, steps: DEFAULT_STEPS,
+    draftId, templateId, mood: templateId, cardShape: 'classic', activeStepIndex: 0, steps: DEFAULT_STEPS,
     // Кому адресовано приглашение — спрашиваем один раз при входе в конструктор
     // (см. AudienceGate в BuilderShell), это не отдельный шаг мастера и не
     // экран для получателя, а метаданные автора.
@@ -87,6 +87,7 @@ async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplate
     draftId: editDraftId,
     templateId: inv.template_key || initialTemplateId || 'romantic',
     mood: inv.mood || inv.template_key || 'romantic',
+    cardShape: inv.card_shape || 'classic',
     activeStepIndex: 0,
     steps,
     recipientGender: inv.recipient_gender || null,
@@ -140,6 +141,8 @@ function draftReducer(state, action) {
       return action.payload;
     case 'SET_TEMPLATE':
       return { ...state, templateId: action.templateId };
+    case 'SET_CARD_SHAPE':
+      return { ...state, cardShape: action.cardShape };
     case 'SET_GENDER':
       return { ...state, recipientGender: action.gender, steps: genderizeSteps(state.steps, action.gender) };
     case 'SET_ACTIVE_STEP':

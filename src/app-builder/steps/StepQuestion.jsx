@@ -9,7 +9,7 @@ import { getTemplateTokens } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
-import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
+import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker, CardShapePicker } from '../BuilderUI.jsx';
 
 export default function StepQuestion() {
   const { state, dispatch } = useBuilder();
@@ -89,7 +89,17 @@ export default function StepQuestion() {
         )}
       </SectionCard>
 
-      <SectionCard number="2" title="Текст приглашения">
+      <SectionCard number="2" title="Форма карточки">
+        <CardShapePicker
+          value={state.cardShape}
+          onChange={(cardShape) => dispatch({ type: 'SET_CARD_SHAPE', cardShape })}
+        />
+        <p style={{ fontSize: 12, color: T.muted, marginTop: 10, lineHeight: 1.4, fontFamily: T.font }}>
+          Форма применится ко всем экранам приглашения — не только к этому.
+        </p>
+      </SectionCard>
+
+      <SectionCard number="3" title="Текст приглашения">
         <FieldLabel>Имя получателя</FieldLabel>
         <Inp
           type="text"
@@ -141,6 +151,7 @@ export default function StepQuestion() {
             yesText={config.yesText || 'Да, конечно ❤️'}
             noPhrases={config.noText ? [config.noText, ...DEFAULT_NO_PHRASES.slice(1)] : undefined}
             tokens={tokens}
+            cardShape={state.cardShape}
             onYes={() => {}}
           />
         </div>

@@ -141,6 +141,80 @@ export function CharCount({ value, max }) {
   );
 }
 
+// CardShapePicker: pick the outer "frame" shape used for every screen of the invitation
+export const CARD_SHAPE_OPTIONS = [
+  { value: 'classic', label: 'Классика' },
+  { value: 'arch', label: 'Арка' },
+  { value: 'envelope', label: 'Конверт' },
+  { value: 'polaroid', label: 'Полароид' },
+  { value: 'blob', label: 'Органика' },
+];
+
+function ShapeSwatch({ shape }) {
+  const base = {
+    width: '100%', height: '100%', background: '#fff',
+    boxShadow: '0 3px 8px rgba(45,25,38,0.12)', boxSizing: 'border-box',
+  };
+  switch (shape) {
+    case 'arch':
+      return <div style={{ ...base, borderRadius: '46% 46% 8px 8px' }} />;
+    case 'envelope':
+      return (
+        <div style={{ ...base, position: 'relative', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '46%', background: `linear-gradient(135deg, ${T.pink}, #ffb27a)`, clipPath: 'polygon(0 0, 100% 0, 50% 100%)' }} />
+        </div>
+      );
+    case 'polaroid':
+      return (
+        <div style={{ ...base, borderRadius: 3, padding: '10%', boxSizing: 'border-box', transform: 'rotate(-3deg)' }}>
+          <div style={{ width: '100%', height: '68%', background: T.pinkLight, borderRadius: 2 }} />
+        </div>
+      );
+    case 'blob':
+      return <div style={{ ...base, borderRadius: '42% 58% 62% 38% / 48% 42% 58% 52%' }} />;
+    default:
+      return <div style={{ ...base, borderRadius: 10 }} />;
+  }
+}
+
+export function CardShapePicker({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
+      {CARD_SHAPE_OPTIONS.map((opt) => {
+        const selected = (value || 'classic') === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            style={{
+              flexShrink: 0, width: 68, border: 'none', background: 'none', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0,
+            }}
+          >
+            <div style={{
+              width: 56, height: 56, padding: 6, boxSizing: 'border-box',
+              border: selected ? `3px solid ${T.pink}` : '2px solid transparent',
+              borderRadius: 14, background: T.sectionBg,
+              transform: selected ? 'scale(1.06)' : 'scale(1)',
+              boxShadow: selected ? `0 0 0 2px ${T.pink}55, 0 6px 16px ${T.pink}35` : 'none',
+              transition: 'transform 0.18s, box-shadow 0.18s, border-color 0.18s',
+            }}>
+              <ShapeSwatch shape={opt.value} />
+            </div>
+            <span style={{
+              fontFamily: T.font, fontSize: 11, textAlign: 'center', lineHeight: 1.2,
+              color: selected ? T.pink : T.muted, fontWeight: selected ? 700 : 500,
+            }}>
+              {opt.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // GifImagePicker: image picker with gif grid and file upload
 export function GifImagePicker({
   currentUrl,
