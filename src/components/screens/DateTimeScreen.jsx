@@ -8,8 +8,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { QuestionCardFrame } from './questionCardShapes.jsx';
 
-export default function DateTimeScreen({ title, buttonText, mode = 'recipient_picks', fixedDate, fixedTime, tokens, onContinue }) {
+export default function DateTimeScreen({ title, buttonText, mode = 'recipient_picks', fixedDate, fixedTime, tokens, onContinue, cardShape = 'classic' }) {
   const [selectedDate, setSelectedDate] = useState(fixedDate || '');
   const [selectedTime, setSelectedTime] = useState(fixedTime || '');
   const canContinue = mode === 'creator_sets' ? true : Boolean(selectedDate) && Boolean(selectedTime);
@@ -19,12 +20,8 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{
-        background: tokens.card, borderRadius: 24, padding: '32px 26px',
-        boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
-        textAlign: 'center', boxSizing: 'border-box',
-      }}
     >
+    <QuestionCardFrame shape={cardShape} tokens={tokens}>
       <div style={{ fontSize: 40, marginBottom: 12 }}>🗓️</div>
       <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
         {title || 'Когда встретимся?'}
@@ -83,6 +80,7 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
       >
         {buttonText || 'Отлично →'}
       </motion.button>
+    </QuestionCardFrame>
     </motion.div>
   );
 }

@@ -251,6 +251,7 @@ export default function InvitationRuntime() {
           recipientGender={invitation.recipient_gender}
           tokens={tokens}
           onContinue={goNext}
+          cardShape={cardShape}
         />
       )}
       {activeStep?.step_type === 'date' && (
@@ -265,6 +266,7 @@ export default function InvitationRuntime() {
             setAnswers((a) => ({ ...a, selectedDate: date, selectedTime: time }));
             goNext();
           }}
+          cardShape={cardShape}
         />
       )}
       {activeStep?.step_type === 'choice_place'
@@ -301,6 +303,7 @@ export default function InvitationRuntime() {
           options={activeStep.configuration_json?.options || []}
           allowMultiple={activeStep.configuration_json?.allowMultiple}
           tokens={tokens}
+          cardShape={cardShape}
           onContinue={(selectedIds) => {
             setAnswers((a) => ({
               ...a,
@@ -319,6 +322,7 @@ export default function InvitationRuntime() {
           submitting={submitting}
           submitted={submitted}
           onSubmit={handleFinalSubmit}
+          cardShape={cardShape}
         />
       )}
       </div>

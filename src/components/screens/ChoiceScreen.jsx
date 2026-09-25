@@ -4,8 +4,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { QuestionCardFrame } from './questionCardShapes.jsx';
 
-export default function ChoiceScreen({ title, subtitle, options = [], allowMultiple, tokens, onContinue }) {
+export default function ChoiceScreen({ title, subtitle, options = [], allowMultiple, tokens, onContinue, cardShape = 'classic' }) {
   const [selected, setSelected] = useState([]);
 
   function toggle(optionId) {
@@ -21,12 +22,8 @@ export default function ChoiceScreen({ title, subtitle, options = [], allowMulti
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{
-        background: tokens.card, borderRadius: 24, padding: '32px 26px',
-        boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
-        textAlign: 'center', boxSizing: 'border-box',
-      }}
     >
+    <QuestionCardFrame shape={cardShape} tokens={tokens}>
       <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
         {title || 'Что выберешь?'}
       </h1>
@@ -86,6 +83,7 @@ export default function ChoiceScreen({ title, subtitle, options = [], allowMulti
       >
         Договорились →
       </motion.button>
+    </QuestionCardFrame>
     </motion.div>
   );
 }

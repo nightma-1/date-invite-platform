@@ -4,8 +4,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { QuestionCardFrame } from './questionCardShapes.jsx';
 
-export default function FinalScreen({ title, description, summary, tokens, onSubmit, submitting, submitted }) {
+export default function FinalScreen({ title, description, summary, tokens, onSubmit, submitting, submitted, cardShape = 'classic' }) {
   const [localError, setLocalError] = useState(null);
 
   async function handleSubmit() {
@@ -18,12 +19,8 @@ export default function FinalScreen({ title, description, summary, tokens, onSub
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{
-        background: tokens.card, borderRadius: 24, padding: '32px 26px',
-        boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
-        textAlign: 'center', boxSizing: 'border-box',
-      }}
     >
+    <QuestionCardFrame shape={cardShape} tokens={tokens}>
       {submitted ? (
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
@@ -86,6 +83,7 @@ export default function FinalScreen({ title, description, summary, tokens, onSub
           )}
         </>
       )}
+    </QuestionCardFrame>
     </motion.div>
   );
 }

@@ -3,8 +3,9 @@
  */
 
 import { motion } from 'framer-motion';
+import { QuestionCardFrame } from './questionCardShapes.jsx';
 
-export default function ReactionScreen({ title, text, mediaUrl, recipientGender, tokens, onContinue }) {
+export default function ReactionScreen({ title, text, mediaUrl, recipientGender, tokens, onContinue, cardShape = 'classic' }) {
   // Заголовок обращён к получателю ("ты сказала") — род от пола получателя.
   // Текст написан от лица отправителя ("я была готова") — предполагаем
   // гетеросексуальную пару, поэтому род отправителя обратный полу получателя.
@@ -17,13 +18,10 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{
-        background: tokens.card, borderRadius: 24, padding: '32px 26px',
-        boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
-        textAlign: 'center', boxSizing: 'border-box',
-      }}
     >
-      {mediaUrl ? (
+    <QuestionCardFrame shape={cardShape} tokens={tokens} mediaUrl={cardShape === 'polaroid' ? mediaUrl : undefined}>
+      {/* В "полароиде" фото уже показывает сама рамка карточки — не дублируем */}
+      {cardShape !== 'polaroid' && (mediaUrl ? (
         <motion.img
           src={mediaUrl} alt=""
           initial={{ scale: 0.8, opacity: 0 }}
@@ -39,7 +37,7 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
         >
           ❤️
         </motion.div>
-      )}
+      ))}
 
       <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
         {title || defaultTitle}
@@ -63,6 +61,7 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
       >
         Тогда продолжаем →
       </motion.button>
+    </QuestionCardFrame>
     </motion.div>
   );
 }
