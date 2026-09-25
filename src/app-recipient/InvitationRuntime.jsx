@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen, { DEFAULT_NO_PHRASES } from '../components/screens/QuestionScreen.jsx';
@@ -23,6 +23,14 @@ const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'choice_b
 
 export default function InvitationRuntime() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
+  // Временный переключатель формы карточки вопроса для живого сравнения
+  // на проде: ?card=arch|envelope|polaroid|blob. По умолчанию — текущий
+  // ("билетный") дизайн, поведение для получателей не меняется.
+  const cardShapeParam = searchParams.get('card');
+  const cardShape = ['arch', 'envelope', 'polaroid', 'blob'].includes(cardShapeParam)
+    ? cardShapeParam
+    : 'classic';
   const [state, setState] = useState({ status: 'loading' }); // loading | not_found | expired | ready
   const [invitation, setInvitation] = useState(null);
   const [content, setContent] = useState(null);
@@ -192,6 +200,7 @@ export default function InvitationRuntime() {
           recipientGender={invitation.recipient_gender}
           tokens={tokens}
           onYes={goNext}
+          cardShape={cardShape}
         />
       )}
       {activeStep?.step_type === 'reaction' && (
