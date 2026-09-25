@@ -71,7 +71,7 @@ export function EnvelopeFrame({ tokens, children }) {
       <div
         style={{
           position: 'relative', zIndex: 2, marginTop: 34,
-          background: tokens.card, borderRadius: 22, padding: '62px 26px 34px',
+          background: tokens.card, borderRadius: 22, padding: '86px 26px 34px',
           boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
           textAlign: 'center', boxSizing: 'border-box',
         }}
