@@ -48,6 +48,26 @@ export default function Landing() {
     border: `1.5px solid ${T.pinkBorder}`, boxShadow: 'none',
   };
 
+  // Бегущий блик на главной CTA-кнопке — привлекает взгляд, не мешая читаемости
+  function ShimmerButton({ children, style, ...rest }) {
+    return (
+      <motion.button {...rest} style={{ ...style, position: 'relative', overflow: 'hidden' }}>
+        <span style={{ position: 'relative', zIndex: 1 }}>{children}</span>
+        <motion.span
+          aria-hidden="true"
+          initial={{ x: '-130%' }}
+          animate={{ x: '230%' }}
+          transition={{ duration: 1.1, repeat: Infinity, repeatDelay: 2.2, ease: 'easeInOut' }}
+          style={{
+            position: 'absolute', top: 0, bottom: 0, left: 0, width: '35%',
+            background: 'linear-gradient(115deg, transparent 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 65%, transparent 100%)',
+            pointerEvents: 'none',
+          }}
+        />
+      </motion.button>
+    );
+  }
+
   return (
     <div style={{ background: T.bg, minHeight: '100vh', fontFamily: T.font, overflowX: 'hidden' }}>
 
@@ -85,9 +105,9 @@ export default function Landing() {
               </p>
               <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
                 <Link to="/builder">
-                  <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>
+                  <ShimmerButton whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>
                     Создать приглашение
-                  </motion.button>
+                  </ShimmerButton>
                 </Link>
                 <Link to="/dashboard">
                   <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} style={ghostBtn}>
