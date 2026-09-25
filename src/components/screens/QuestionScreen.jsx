@@ -33,6 +33,10 @@ export default function QuestionScreen({
   // ?card=arch|envelope|polaroid|blob (см. InvitationRuntime.jsx). Уберём,
   // когда определимся с финальным вариантом.
   cardShape = 'classic',
+  // Точки прогресса по всему сценарию приглашения (необязательные —
+  // без них просто не рендерим ряд точек).
+  stepIndex,
+  stepCount,
 }) {
   const stageRef = useRef(null);
   const [answered, setAnswered] = useState(false);
@@ -74,6 +78,21 @@ export default function QuestionScreen({
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.3 }}
         >
+          {Number.isInteger(stepIndex) && stepCount > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginBottom: 18 }}>
+              {Array.from({ length: stepCount }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={i === stepIndex ? { boxShadow: ['0 0 0 0 ' + tokens.berry + '73', '0 0 0 4px ' + tokens.berry + '00', '0 0 0 0 ' + tokens.berry + '73'] } : {}}
+                  transition={i === stepIndex ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : {}}
+                  style={{
+                    width: 7, height: 7, borderRadius: '50%',
+                    background: i === stepIndex ? tokens.berry : `${tokens.ink}25`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
           <QuestionCardFrame shape={cardShape} tokens={tokens} mediaUrl={mediaUrl}>
             <motion.div variants={contentVariants} initial="hidden" animate="show">
               {showAvatar && (

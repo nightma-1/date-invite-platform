@@ -3,7 +3,7 @@
  * Несанкционированное копирование или распространение запрещено.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
@@ -31,6 +31,33 @@ export default function InvitationRuntime() {
   const cardShape = ['arch', 'envelope', 'polaroid', 'blob'].includes(cardShapeParam)
     ? cardShapeParam
     : 'classic';
+
+  // Лёгкий параллакс тёплого декора (круги на фоне) при движении мыши —
+  // на тач-устройствах просто нет mousemove, декор остаётся статичным.
+  const sceneRef = useRef(null);
+  const blob1Ref = useRef(null);
+  const blob2Ref = useRef(null);
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    function handleMove(e) {
+      const r = scene.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      if (blob1Ref.current) blob1Ref.current.style.transform = `translate(${px * 16}px, ${py * 16}px)`;
+      if (blob2Ref.current) blob2Ref.current.style.transform = `translate(${px * -16}px, ${py * -16}px)`;
+    }
+    function handleLeave() {
+      if (blob1Ref.current) blob1Ref.current.style.transform = '';
+      if (blob2Ref.current) blob2Ref.current.style.transform = '';
+    }
+    scene.addEventListener('mousemove', handleMove);
+    scene.addEventListener('mouseleave', handleLeave);
+    return () => {
+      scene.removeEventListener('mousemove', handleMove);
+      scene.removeEventListener('mouseleave', handleLeave);
+    };
+  }, []);
   const [state, setState] = useState({ status: 'loading' }); // loading | not_found | expired | ready
   const [invitation, setInvitation] = useState(null);
   const [content, setContent] = useState(null);
@@ -155,15 +182,26 @@ export default function InvitationRuntime() {
   ].filter(Boolean);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: `linear-gradient(165deg, ${tokens.bg} 0%, ${tokens.bg} 55%, ${tokens.card === '#FFFFFF' ? '#ffeef5' : tokens.bgDark} 100%)`,
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {/* Тёплый декор — так же тепло, как на лендинге и в конструкторе */}
-      <div style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: tokens.berry, opacity: 0.12, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: tokens.berry, opacity: 0.1, pointerEvents: 'none' }} />
+    <div
+      ref={sceneRef}
+      className="invite-scene-breathe"
+      style={{
+        minHeight: '100vh',
+        background: `linear-gradient(165deg, ${tokens.bg} 0%, ${tokens.bg} 55%, ${tokens.card === '#FFFFFF' ? '#ffeef5' : tokens.bgDark} 100%)`,
+        backgroundSize: '140% 140%',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Очень медленное, почти незаметное "дыхание" фонового градиента */}
+      <style>{`
+        @keyframes inviteBgBreathe { 0%, 100% { background-position: 0% 0%; } 50% { background-position: 20% 10%; } }
+        .invite-scene-breathe { animation: inviteBgBreathe 14s ease-in-out infinite; }
+      `}</style>
+
+      {/* Тёплый декор — так же тепло, как на лендинге и в конструкторе; лёгкий параллакс при движении мыши */}
+      <div ref={blob1Ref} style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: tokens.berry, opacity: 0.12, pointerEvents: 'none', transition: 'transform .35s ease-out' }} />
+      <div ref={blob2Ref} style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: tokens.berry, opacity: 0.1, pointerEvents: 'none', transition: 'transform .35s ease-out' }} />
 
       {/* Кнопка "назад" — как в конструкторе, можно поправить предыдущий шаг */}
       {activeIndex > 0 && !submitted && (
@@ -201,6 +239,8 @@ export default function InvitationRuntime() {
           tokens={tokens}
           onYes={goNext}
           cardShape={cardShape}
+          stepIndex={activeIndex}
+          stepCount={steps.length}
         />
       )}
       {activeStep?.step_type === 'reaction' && (
