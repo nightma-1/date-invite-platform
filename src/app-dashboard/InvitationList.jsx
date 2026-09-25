@@ -218,11 +218,18 @@ export default function InvitationList() {
                       ))}
                     </div>
                   )}
-                  {inv.status === 'published' && (
-                    <Link to={`/i/${inv.slug}`} className="mt-2 mb-3 inline-block text-xs underline" style={{ color: t.ink, opacity: 0.6 }}>
-                      Открыть ссылку получателя →
-                    </Link>
-                  )}
+                  <div className="mt-2 mb-3 flex flex-wrap gap-x-4 gap-y-1">
+                    {response && (
+                      <Link to={`/dashboard/response/${inv.id}`} className="inline-block text-xs underline" style={{ color: t.berry, fontWeight: 600 }}>
+                        💌 Посмотреть ответ →
+                      </Link>
+                    )}
+                    {inv.status === 'published' && (
+                      <Link to={`/i/${inv.slug}`} className="inline-block text-xs underline" style={{ color: t.ink, opacity: 0.6 }}>
+                        Открыть ссылку получателя →
+                      </Link>
+                    )}
+                  </div>
 
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Link

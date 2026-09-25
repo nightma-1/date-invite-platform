@@ -7,6 +7,7 @@ import { BuilderProvider } from './app-builder/builderStore.jsx';
 import BuilderShell from './app-builder/BuilderShell.jsx';
 import InvitationRuntime from './app-recipient/InvitationRuntime.jsx';
 import InvitationList from './app-dashboard/InvitationList.jsx';
+import ResponseView from './app-dashboard/ResponseView.jsx';
 import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/builder/:draftId" element={<BuilderRoute />} />
         <Route path="/i/:slug" element={<InvitationRuntime />} />
         <Route path="/dashboard" element={<InvitationList />} />
+        <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />
         <Route path="/admin" element={<AdminPanel />} />
       </Routes>
     </BrowserRouter>
