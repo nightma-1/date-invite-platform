@@ -45,7 +45,7 @@ export default function QuestionScreen({
     ? noPhrases.map((p) => (p === 'Ты уверена?' ? 'Ты уверен?' : p))
     : noPhrases;
 
-  const showAvatar = Boolean(mediaUrl) && cardShape !== 'polaroid';
+  const showAvatar = Boolean(mediaUrl) && !['polaroid', 'envelope'].includes(cardShape);
 
   function handleYes() {
     const items = Array.from({ length: 10 }).map((_, i) => {
