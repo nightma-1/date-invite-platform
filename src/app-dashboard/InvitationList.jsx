@@ -70,13 +70,46 @@ export default function InvitationList() {
 
     async function load() {
       setLoading(true);
-      const { data, error } = await supabase
+      // Раньше responses тянулись вложенным select'ом (invitations.select('*,
+      // responses(...)')) — на проде это почему-то стабильно возвращало
+      // пустой responses[], хотя ответ есть в базе и RLS его разрешает (это
+      // проверено напрямую в базе с ролью authenticated и тем же uid — всё
+      // отдаётся). Похоже на особенность PostgREST именно с этим вложенным
+      // джойном на бою. Обходим: тянем ответы отдельным запросом (как и
+      // profiles ниже, который всегда работал) и склеиваем на клиенте.
+      const { data: invData, error: invErr } = await supabase
         .from('invitations')
-        .select('*, responses(answered_yes, selected_date, selected_time, selections, created_at), invitation_steps(id, step_type, configuration_json)')
+        .select('*, invitation_steps(id, step_type, configuration_json)')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
+
+      if (invErr) {
+        console.error('invitations load failed', invErr);
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
+      const ids = (invData || []).map((inv) => inv.id);
+      let responsesByInvitation = {};
+      if (ids.length > 0) {
+        const { data: respData, error: respErr } = await supabase
+          .from('responses')
+          .select('invitation_id, answered_yes, selected_date, selected_time, selections, created_at')
+          .in('invitation_id', ids);
+        if (respErr) {
+          console.error('responses load failed', respErr);
+        } else {
+          responsesByInvitation = Object.fromEntries((respData || []).map((r) => [r.invitation_id, r]));
+        }
+      }
+
+      const merged = (invData || []).map((inv) => ({
+        ...inv,
+        responses: responsesByInvitation[inv.id] ? [responsesByInvitation[inv.id]] : [],
+      }));
+
       if (!cancelled) {
-        if (!error) setInvitations(data);
+        setInvitations(merged);
         setLoading(false);
       }
     }
