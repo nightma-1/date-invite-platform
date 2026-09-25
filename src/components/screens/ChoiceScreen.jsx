@@ -21,7 +21,11 @@ export default function ChoiceScreen({ title, subtitle, options = [], allowMulti
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{ background: tokens.card, borderRadius: 12, padding: 28, textAlign: 'center' }}
+      style={{
+        background: tokens.card, borderRadius: 24, padding: '32px 26px',
+        boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
+        textAlign: 'center', boxSizing: 'border-box',
+      }}
     >
       <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
         {title || 'Что выберешь?'}
@@ -72,11 +76,12 @@ export default function ChoiceScreen({ title, subtitle, options = [], allowMulti
         disabled={selected.length === 0}
         onClick={() => onContinue(selected)}
         style={{
-          background: tokens.berry, color: '#fff',
-          padding: '12px 28px', borderRadius: 6,
+          background: `linear-gradient(135deg, ${tokens.berry}, ${tokens.amber || tokens.berry})`, color: '#fff',
+          padding: '15px 30px', borderRadius: 100,
           fontFamily: tokens.fontUI, fontWeight: 700, fontSize: 15,
           border: 'none', cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
           opacity: selected.length > 0 ? 1 : 0.4,
+          boxShadow: selected.length > 0 ? `0 14px 30px -8px ${tokens.berry}60` : 'none',
         }}
       >
         Договорились →

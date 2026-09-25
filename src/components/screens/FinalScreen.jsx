@@ -18,7 +18,11 @@ export default function FinalScreen({ title, description, summary, tokens, onSub
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{ background: tokens.card, borderRadius: 12, padding: 28, textAlign: 'center' }}
+      style={{
+        background: tokens.card, borderRadius: 24, padding: '32px 26px',
+        boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
+        textAlign: 'center', boxSizing: 'border-box',
+      }}
     >
       {submitted ? (
         <motion.div
@@ -64,11 +68,12 @@ export default function FinalScreen({ title, description, summary, tokens, onSub
             onClick={handleSubmit}
             disabled={submitting}
             style={{
-              background: tokens.berry, color: '#fff',
-              padding: '13px 28px', borderRadius: 6,
+              background: `linear-gradient(135deg, ${tokens.berry}, ${tokens.amber || tokens.berry})`, color: '#fff',
+              padding: '15px 30px', borderRadius: 100,
               fontFamily: tokens.fontUI, fontWeight: 700, fontSize: 15,
               border: 'none', cursor: submitting ? 'not-allowed' : 'pointer',
               opacity: submitting ? 0.6 : 1,
+              boxShadow: submitting ? 'none' : `0 14px 30px -8px ${tokens.berry}60`,
             }}
           >
             {submitting ? 'Отправляем…' : 'Отправить подтверждение 💌'}
