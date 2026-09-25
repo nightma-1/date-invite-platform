@@ -55,9 +55,9 @@ export default function Landing() {
         <span style={{ position: 'relative', zIndex: 1 }}>{children}</span>
         <motion.span
           aria-hidden="true"
-          initial={{ x: '-130%' }}
-          animate={{ x: '230%' }}
-          transition={{ duration: 1.1, repeat: Infinity, repeatDelay: 2.2, ease: 'easeInOut' }}
+          initial={{ x: '-160%' }}
+          animate={{ x: '400%' }}
+          transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
           style={{
             position: 'absolute', top: 0, bottom: 0, left: 0, width: '35%',
             background: 'linear-gradient(115deg, transparent 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 65%, transparent 100%)',
