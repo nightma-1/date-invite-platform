@@ -3,7 +3,7 @@
  */
 
 import { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import RunawayButton from '../ui/RunawayButton.jsx';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
 
@@ -41,6 +41,9 @@ export default function QuestionScreen({
   const stageRef = useRef(null);
   const [answered, setAnswered] = useState(false);
   const [bursts, setBursts] = useState([]);
+  const [rings, setRings] = useState([]);
+  const [showStamp, setShowStamp] = useState(false);
+  const cardPulse = useAnimationControls();
 
   // Дефолтные (и любые унаследованные от них) фразы написаны в женском роде —
   // если получатель мужского пола, поправляем род на лету, не трогая остальной
@@ -52,17 +55,19 @@ export default function QuestionScreen({
   const showAvatar = Boolean(mediaUrl) && !['polaroid', 'envelope'].includes(cardShape);
 
   function handleYes() {
-    // Взрыв — короткий и резкий "вау"-момент: сердечки должны долетать
-    // и гаснуть плотно друг за другом, а переход на следующий экран —
-    // случаться СРАЗУ по завершении, без паузы между ними (иначе кажется,
-    // будто интерфейс подвисает). Поэтому таймер перехода жёстко привязан
-    // к самой долгой анимации сердечка — с небольшим нахлёстом, чтобы
-    // смена экрана началась чуть раньше, чем угаснет последнее сердечко,
-    // и они слились в одно движение.
-    const BURST_DURATION = 0.65;
-    const items = Array.from({ length: 15 }).map((_, i) => {
-      const angle = (Math.PI * 2 * i) / 15 + Math.random() * 0.3;
-      const dist = 60 + Math.random() * 40;
+    // "Вау"-момент собран из трёх слоёв, которые бьют одновременно —
+    // ударная волна колец от кнопки, взрыв сердечек и импульс всей
+    // карточки с крупным "штампом"-сердцем по центру. Переход на
+    // следующий экран по-прежнему жёстко привязан к длительности эффекта
+    // и случается СРАЗУ по его завершении, без паузы (иначе кажется,
+    // будто интерфейс подвисает) — только сам эффект теперь чуть дольше
+    // и заметно весомее, чем раньше.
+    const BURST_DURATION = 0.85;
+
+    // 1) Взрыв сердечек
+    const items = Array.from({ length: 16 }).map((_, i) => {
+      const angle = (Math.PI * 2 * i) / 16 + Math.random() * 0.3;
+      const dist = 65 + Math.random() * 50;
       return {
         id: `${Date.now()}-${i}`,
         icon: BURST_ICONS[i % BURST_ICONS.length],
@@ -73,6 +78,27 @@ export default function QuestionScreen({
       };
     });
     setBursts(items);
+
+    // 2) Ударная волна — два кольца, расходящихся от кнопки
+    setRings([
+      { id: `${Date.now()}-r1`, delay: 0 },
+      { id: `${Date.now()}-r2`, delay: 0.09 },
+    ]);
+
+    // 3) Крупный "штамп"-акцент по центру карточки
+    setShowStamp(true);
+
+    // 4) Импульс всей карточки — придаёт эффекту вес
+    cardPulse.start({
+      scale: [1, 1.035, 0.985, 1],
+      transition: { duration: BURST_DURATION * 0.85, ease: [0.34, 1.56, 0.64, 1] },
+    });
+
+    setTimeout(() => {
+      setRings([]);
+      setShowStamp(false);
+    }, BURST_DURATION * 1000 + 150);
+
     setTimeout(() => setAnswered(true), BURST_DURATION * 1000);
   }
 
@@ -101,6 +127,7 @@ export default function QuestionScreen({
               ))}
             </div>
           )}
+          <motion.div style={{ position: 'relative' }} animate={cardPulse}>
           <QuestionCardFrame shape={cardShape} tokens={tokens} mediaUrl={mediaUrl}>
             <motion.div variants={contentVariants} initial="hidden" animate="show">
               {showAvatar && (
@@ -175,6 +202,27 @@ export default function QuestionScreen({
                     {yesText}
                   </motion.button>
 
+                  {/* Ударная волна — расширяющиеся кольца от кнопки */}
+                  <div style={{ position: 'absolute', left: '50%', top: '50%', pointerEvents: 'none' }}>
+                    <AnimatePresence>
+                      {rings.map((r) => (
+                        <motion.span
+                          key={r.id}
+                          initial={{ opacity: 0.85, scale: 0.6, x: '-50%', y: '-50%' }}
+                          animate={{ opacity: 0, scale: 1.7 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.65, delay: r.delay, ease: 'easeOut' }}
+                          style={{
+                            position: 'absolute',
+                            width: 140, height: 60,
+                            borderRadius: 100,
+                            border: `2px solid ${tokens.berry}`,
+                          }}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+
                   {/* Взрыв сердечек при "Да" */}
                   <div style={{ position: 'absolute', left: '50%', top: '50%', pointerEvents: 'none' }}>
                     <AnimatePresence>
@@ -234,6 +282,39 @@ export default function QuestionScreen({
               </motion.div>
             </motion.div>
           </QuestionCardFrame>
+
+          {/* Крупный "штамп"-акцент по центру карточки */}
+          <AnimatePresence>
+            {showStamp && (
+              <motion.div
+                key="stamp"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                style={{
+                  position: 'absolute',
+                  left: '50%', top: '50%',
+                  pointerEvents: 'none',
+                  zIndex: 5,
+                }}
+              >
+                <motion.span
+                  initial={{ scale: 0, rotate: -18, x: '-50%', y: '-50%' }}
+                  animate={{ scale: [0, 1.3, 1, 0.9], rotate: [-18, 6, 0, 0] }}
+                  transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 64,
+                    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.18))',
+                  }}
+                >
+                  ❤️
+                </motion.span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          </motion.div>
         </motion.div>
       ) : (
         <motion.div
