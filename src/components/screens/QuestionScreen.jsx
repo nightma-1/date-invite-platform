@@ -52,26 +52,28 @@ export default function QuestionScreen({
   const showAvatar = Boolean(mediaUrl) && !['polaroid', 'envelope'].includes(cardShape);
 
   function handleYes() {
+    // Взрыв — короткий и резкий "вау"-момент: сердечки должны долетать
+    // и гаснуть плотно друг за другом, а переход на следующий экран —
+    // случаться СРАЗУ по завершении, без паузы между ними (иначе кажется,
+    // будто интерфейс подвисает). Поэтому таймер перехода жёстко привязан
+    // к самой долгой анимации сердечка — с небольшим нахлёстом, чтобы
+    // смена экрана началась чуть раньше, чем угаснет последнее сердечко,
+    // и они слились в одно движение.
+    const BURST_DURATION = 0.65;
     const items = Array.from({ length: 15 }).map((_, i) => {
       const angle = (Math.PI * 2 * i) / 15 + Math.random() * 0.3;
-      const dist = 80 + Math.random() * 60;
+      const dist = 60 + Math.random() * 40;
       return {
         id: `${Date.now()}-${i}`,
         icon: BURST_ICONS[i % BURST_ICONS.length],
         dx: Math.cos(angle) * dist,
-        dy: Math.sin(angle) * dist - 40,
-        duration: 1.0 + Math.random() * 0.4,
-        rotation: Math.random() * 360,
+        dy: Math.sin(angle) * dist - 30,
+        duration: BURST_DURATION + Math.random() * 0.1,
+        rotation: Math.random() * 240,
       };
     });
     setBursts(items);
-    setTimeout(() => setBursts([]), 1500);
-    // Раньше экран сразу переключался на "успех" в тот же тик, что и
-    // взрыв сердечек — AnimatePresence успевала показать лишь ~0.3с
-    // выходной анимации, и взрыв (который длится 1-1.4с) обрывался,
-    // толком не будучи увиденным. Даём взрыву время долететь и погаснуть
-    // перед переходом на следующий экран.
-    setTimeout(() => setAnswered(true), 750);
+    setTimeout(() => setAnswered(true), BURST_DURATION * 1000);
   }
 
   return (
