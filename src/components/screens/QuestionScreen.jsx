@@ -52,19 +52,20 @@ export default function QuestionScreen({
   const showAvatar = Boolean(mediaUrl) && !['polaroid', 'envelope'].includes(cardShape);
 
   function handleYes() {
-    const items = Array.from({ length: 10 }).map((_, i) => {
-      const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.4;
-      const dist = 70 + Math.random() * 40;
+    const items = Array.from({ length: 15 }).map((_, i) => {
+      const angle = (Math.PI * 2 * i) / 15 + Math.random() * 0.3;
+      const dist = 80 + Math.random() * 60;
       return {
         id: `${Date.now()}-${i}`,
         icon: BURST_ICONS[i % BURST_ICONS.length],
         dx: Math.cos(angle) * dist,
-        dy: Math.sin(angle) * dist - 30,
-        duration: 0.9 + Math.random() * 0.3,
+        dy: Math.sin(angle) * dist - 40,
+        duration: 1.0 + Math.random() * 0.4,
+        rotation: Math.random() * 360,
       };
     });
     setBursts(items);
-    setTimeout(() => setBursts([]), 1300);
+    setTimeout(() => setBursts([]), 1500);
     setAnswered(true);
   }
 
@@ -127,8 +128,15 @@ export default function QuestionScreen({
                 {/* Кнопка ДА */}
                 <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
                   <motion.button
-                    whileHover={{ scale: 1.04, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{
+                      scale: 1.08,
+                      y: -4,
+                      boxShadow: `0 20px 40px -8px ${tokens.berry}80`,
+                    }}
+                    whileTap={{
+                      scale: 0.92,
+                      boxShadow: `0 8px 16px -8px ${tokens.berry}60`,
+                    }}
                     type="button"
                     onClick={handleYes}
                     style={{
@@ -139,8 +147,24 @@ export default function QuestionScreen({
                       fontFamily: tokens.fontUI, fontWeight: 700, fontSize: 16,
                       border: 'none', cursor: 'pointer',
                       boxShadow: `0 14px 30px -8px ${tokens.berry}60`,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      transition: 'box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                     }}
                   >
+                    {/* Блеск при наведении */}
+                    <motion.div
+                      initial={{ x: '-100%' }}
+                      whileHover={{ x: '100%' }}
+                      transition={{ duration: 0.5 }}
+                      style={{
+                        position: 'absolute',
+                        top: 0, left: 0,
+                        width: '30%', height: '100%',
+                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                        pointerEvents: 'none',
+                      }}
+                    />
                     {yesText}
                   </motion.button>
 
@@ -150,10 +174,34 @@ export default function QuestionScreen({
                       {bursts.map((b) => (
                         <motion.span
                           key={b.id}
-                          initial={{ opacity: 0, x: '-50%', y: '-50%', scale: 0.4 }}
-                          animate={{ opacity: [0, 1, 0], x: [`-50%`, `calc(-50% + ${b.dx}px)`], y: [`-50%`, `calc(-50% + ${b.dy}px)`], scale: [0.4, 1.1, 0.7] }}
-                          transition={{ duration: b.duration, ease: [0.2, 0.7, 0.3, 1] }}
-                          style={{ position: 'absolute', fontSize: 18 }}
+                          initial={{
+                            opacity: 0,
+                            x: '-50%',
+                            y: '-50%',
+                            scale: 0.2,
+                            rotate: 0,
+                          }}
+                          animate={{
+                            opacity: [0, 1, 0.8, 0],
+                            x: [`-50%`, `calc(-50% + ${b.dx}px)`],
+                            y: [`-50%`, `calc(-50% + ${b.dy}px)`],
+                            scale: [0.2, 1.2, 0.9, 0.5],
+                            rotate: [0, b.rotation],
+                          }}
+                          transition={{
+                            duration: b.duration,
+                            ease: [0.1, 0.8, 0.2, 1],
+                            opacity: { times: [0, 0.4, 0.8, 1] },
+                            scale: { times: [0, 0.3, 0.7, 1] },
+                            rotate: { duration: b.duration * 0.8 },
+                          }}
+                          style={{
+                            position: 'absolute',
+                            fontSize: 22,
+                            fontWeight: 'bold',
+                            textShadow: `0 2px 8px rgba(0,0,0,0.2)`,
+                            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
+                          }}
                       >
                         {b.icon}
                       </motion.span>
