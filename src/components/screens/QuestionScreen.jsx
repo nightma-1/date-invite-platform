@@ -42,7 +42,6 @@ export default function QuestionScreen({
   const [answered, setAnswered] = useState(false);
   const [bursts, setBursts] = useState([]);
   const [rings, setRings] = useState([]);
-  const [showStamp, setShowStamp] = useState(false);
   const cardPulse = useAnimationControls();
 
   // Дефолтные (и любые унаследованные от них) фразы написаны в женском роде —
@@ -55,10 +54,10 @@ export default function QuestionScreen({
   const showAvatar = Boolean(mediaUrl) && !['polaroid', 'envelope'].includes(cardShape);
 
   function handleYes() {
-    // "Вау"-момент собран из трёх слоёв, которые бьют одновременно —
+    // "Вау"-момент собран из слоёв, которые бьют одновременно —
     // ударная волна колец от кнопки, взрыв сердечек и импульс всей
-    // карточки с крупным "штампом"-сердцем по центру. Переход на
-    // следующий экран по-прежнему жёстко привязан к длительности эффекта
+    // карточки. Переход на следующий экран по-прежнему жёстко привязан
+    // к длительности эффекта
     // и случается СРАЗУ по его завершении, без паузы (иначе кажется,
     // будто интерфейс подвисает) — только сам эффект теперь чуть дольше
     // и заметно весомее, чем раньше.
@@ -85,10 +84,7 @@ export default function QuestionScreen({
       { id: `${Date.now()}-r2`, delay: 0.09 },
     ]);
 
-    // 3) Крупный "штамп"-акцент по центру карточки
-    setShowStamp(true);
-
-    // 4) Импульс всей карточки — придаёт эффекту вес
+    // 3) Импульс всей карточки — придаёт эффекту вес
     cardPulse.start({
       scale: [1, 1.035, 0.985, 1],
       transition: { duration: BURST_DURATION * 0.85, ease: [0.34, 1.56, 0.64, 1] },
@@ -96,7 +92,6 @@ export default function QuestionScreen({
 
     setTimeout(() => {
       setRings([]);
-      setShowStamp(false);
     }, BURST_DURATION * 1000 + 150);
 
     setTimeout(() => setAnswered(true), BURST_DURATION * 1000);
@@ -282,38 +277,6 @@ export default function QuestionScreen({
               </motion.div>
             </motion.div>
           </QuestionCardFrame>
-
-          {/* Крупный "штамп"-акцент по центру карточки */}
-          <AnimatePresence>
-            {showStamp && (
-              <motion.div
-                key="stamp"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                style={{
-                  position: 'absolute',
-                  left: '50%', top: '50%',
-                  pointerEvents: 'none',
-                  zIndex: 5,
-                }}
-              >
-                <motion.span
-                  initial={{ scale: 0, rotate: -18, x: '-50%', y: '-50%' }}
-                  animate={{ scale: [0, 1.3, 1, 0.9], rotate: [-18, 6, 0, 0] }}
-                  transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
-                  style={{
-                    display: 'inline-block',
-                    fontSize: 64,
-                    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.18))',
-                  }}
-                >
-                  ❤️
-                </motion.span>
-              </motion.div>
-            )}
-          </AnimatePresence>
           </motion.div>
         </motion.div>
       ) : (
