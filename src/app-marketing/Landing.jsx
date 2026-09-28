@@ -71,13 +71,6 @@ export default function Landing() {
   return (
     <div style={{ background: T.bg, minHeight: '100vh', fontFamily: T.font, overflowX: 'hidden' }}>
 
-      {/* NAV */}
-      <div className="mx-auto flex max-w-[1040px] items-center px-5 py-4">
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-          <img src="/logo.png" alt="Senti" style={{ height: 30, width: 'auto', display: 'block' }} />
-        </Link>
-      </div>
-
       {/* HERO */}
       <section style={{
         background: `linear-gradient(165deg, #ffffff 0%, ${T.pinkLight} 60%, #ffeef5 100%)`,
@@ -96,7 +89,14 @@ export default function Landing() {
           style={{ position: 'absolute', top: '55%', right: '4%', fontSize: 20, opacity: 0.4, pointerEvents: 'none' }}
         >✨</motion.span>
 
-        <div className="mx-auto max-w-[1040px] px-5 py-14 sm:py-16 lg:py-20" style={{ position: 'relative', zIndex: 1 }}>
+        {/* NAV — часть той же градиентной секции, а не отдельная белая полоса */}
+        <div className="mx-auto flex max-w-[1040px] items-center px-5 pt-5" style={{ position: 'relative', zIndex: 1 }}>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <img src="/logo.png" alt="Senti" style={{ height: 30, width: 'auto', display: 'block' }} />
+          </Link>
+        </div>
+
+        <div className="mx-auto max-w-[1040px] px-5 pb-14 pt-8 sm:pb-16 sm:pt-10 lg:pb-20 lg:pt-12" style={{ position: 'relative', zIndex: 1 }}>
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_340px] lg:gap-12">
             <div className="text-center lg:text-left">
               <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 14 }}>
