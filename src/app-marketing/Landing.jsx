@@ -71,6 +71,13 @@ export default function Landing() {
   return (
     <div style={{ background: T.bg, minHeight: '100vh', fontFamily: T.font, overflowX: 'hidden' }}>
 
+      {/* NAV */}
+      <div className="mx-auto flex max-w-[1040px] items-center px-5 py-4">
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+          <img src="/logo.png" alt="Senti" style={{ height: 30, width: 'auto', display: 'block' }} />
+        </Link>
+      </div>
+
       {/* HERO */}
       <section style={{
         background: `linear-gradient(165deg, #ffffff 0%, ${T.pinkLight} 60%, #ffeef5 100%)`,
@@ -276,7 +283,7 @@ export default function Landing() {
       {/* FOOTER */}
       <footer style={{ borderTop: `1px solid ${T.dark}12`, padding: '24px 20px' }}>
         <div className="mx-auto flex max-w-[1040px] flex-wrap items-center justify-center gap-4 sm:justify-between" style={{ textAlign: 'center' }}>
-          <span style={{ fontFamily: T.font, color: T.darkPurple, fontWeight: 700, fontSize: 17 }}>Senti ❤️</span>
+          <img src="/logo.png" alt="Senti" style={{ height: 24, width: 'auto', display: 'block' }} />
           <div className="flex flex-wrap justify-center gap-5">
             <Link to="/builder" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>Создать</Link>
             <Link to="/dashboard" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>Мои приглашения</Link>

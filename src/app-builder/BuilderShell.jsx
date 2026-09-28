@@ -117,19 +117,8 @@ export default function BuilderShell() {
           transition={{ duration: 0.45 }}
           style={{ maxWidth: 380, width: '100%', textAlign: 'center', position: 'relative', zIndex: 1 }}
         >
-          {/* Logo badge */}
-          <div style={{
-            width: 56, height: 56, borderRadius: '50%',
-            background: `linear-gradient(135deg, ${T.pink}, #ff8bab)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 14px', fontSize: 26,
-            boxShadow: `0 8px 20px ${T.pink}40`,
-          }}>
-            ❤️
-          </div>
-          <p style={{ fontFamily: T.font, fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.pink, marginBottom: 18 }}>
-            Senti
-          </p>
+          {/* Logo */}
+          <img src="/logo.png" alt="Senti" style={{ height: 40, width: 'auto', margin: '0 auto 18px', display: 'block' }} />
 
           <h1 style={{
             fontFamily: T.font,
@@ -354,8 +343,8 @@ export default function BuilderShell() {
         justifyContent: 'space-between',
         boxShadow: `0 1px 0 ${T.pinkBorder}`,
       }}>
-        <Link to="/" style={{ fontFamily: T.font, fontWeight: 700, fontSize: 17, color: T.darkPurple, textDecoration: 'none' }}>
-          Senti ❤️
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+          <img src="/logo.png" alt="Senti" style={{ height: 28, width: 'auto', display: 'block' }} />
         </Link>
       </div>
 
