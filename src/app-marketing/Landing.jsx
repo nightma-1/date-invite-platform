@@ -27,7 +27,7 @@ const FAQ = [
 export default function Landing() {
   const navigate = useNavigate();
   const previewTokens = getTemplateTokens('romantic');
-  const [mood, setMood] = useState('romantic');
+  const [mood, setMood] = useState('all');
   const [openFaq, setOpenFaq] = useState(null);
   const [landingGifs, setLandingGifs] = useState([]);
   const templates = templatesForMood(mood);
@@ -217,7 +217,7 @@ export default function Landing() {
                     <div style={{ border: `1px solid ${tpl.ink}35`, color: tpl.inkMuted || tpl.ink, padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13 }}>Нет</div>
                   </div>
                   <div style={{ borderTop: `1px solid ${tpl.ink}10`, padding: '10px 20px', fontFamily: tpl.fontUI, fontSize: 12, color: tpl.berry, fontWeight: 600 }}>
-                    Выбрать настроение →
+                    Выбрать этот шаблон →
                   </div>
                 </div>
               </button>

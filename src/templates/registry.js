@@ -19,6 +19,7 @@ export const TEMPLATES = {
 export const TEMPLATE_LIST = Object.values(TEMPLATES);
 
 export const MOODS = [
+  { id: 'all', label: '✨ Все' },
   { id: 'romantic', label: '❤️ Romantic' },
   { id: 'flirty', label: '😏 Flirty' },
   { id: 'funny', label: '😂 Funny' },
@@ -31,6 +32,7 @@ export function getTemplateTokens(templateId) {
 }
 
 export function templatesForMood(mood) {
+  if (!mood || mood === 'all') return TEMPLATE_LIST;
   const matches = TEMPLATE_LIST.filter((t) => t.mood === mood);
   return matches.length > 0 ? matches : TEMPLATE_LIST;
 }
