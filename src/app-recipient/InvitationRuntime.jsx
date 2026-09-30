@@ -249,7 +249,7 @@ export default function InvitationRuntime() {
           92% { opacity: var(--fh-opacity, 0.4); }
           100% { transform: translateY(105vh); opacity: 0; }
         }
-        .invite-heart-fall { animation: inviteHeartFall linear infinite; }
+        .invite-heart-fall { animation: inviteHeartFall linear infinite; animation-fill-mode: backwards; }
         @keyframes inviteTrailFade {
           0% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
           100% { opacity: 0; transform: translate(-50%, -90%) scale(0.6); }
