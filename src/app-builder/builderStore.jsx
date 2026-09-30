@@ -49,6 +49,10 @@ function initialDraft(draftId, initialTemplateId) {
   const templateId = initialTemplateId || 'romantic';
   return {
     draftId, templateId, mood: templateId, cardShape: 'polaroid', activeStepIndex: 0, steps: DEFAULT_STEPS,
+    // Какие шаги ещё ни разу не получали картинку от самого пользователя —
+    // пока шаг не тронут, картинку на нём можно свободно подменять свежим
+    // дефолтом из админки (см. APPLY_DEFAULT_MEDIA и эффект в BuilderProvider).
+    mediaTouched: {},
     // Кому адресовано приглашение — спрашиваем один раз при входе в конструктор
     // (см. AudienceGate в BuilderShell), это не отдельный шаг мастера и не
     // экран для получателя, а метаданные автора.
@@ -91,6 +95,9 @@ async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplate
     cardShape: inv.card_shape || 'polaroid',
     activeStepIndex: 0,
     steps,
+    // Это уже существующее приглашение — картинки в нём осознанные,
+    // автодефолты из админки поверх них проставлять не нужно.
+    mediaTouched: { question: true, reaction: true, date: true },
     recipientGender: inv.recipient_gender || null,
     editInvitationId: invitationId,
     slug: inv.slug,
@@ -161,6 +168,23 @@ function draftReducer(state, action) {
             ? { ...s, configuration_json: { ...s.configuration_json, ...action.payload } }
             : s
         ),
+        // Если пользователь сам поменял картинку (или явно убрал её) на шаге —
+        // запоминаем это, чтобы больше не подменять её автодефолтом из админки.
+        mediaTouched: Object.prototype.hasOwnProperty.call(action.payload || {}, 'mediaUrl')
+          ? { ...state.mediaTouched, [action.stepType]: true }
+          : state.mediaTouched,
+      };
+    // Автодефолт из библиотеки гифок (админка) — в отличие от UPDATE_STEP_CONFIG
+    // не помечает шаг как "тронутый", поэтому будет и дальше обновляться при
+    // каждом заходе в конструктор, пока пользователь сам не выберет картинку.
+    case 'APPLY_DEFAULT_MEDIA':
+      return {
+        ...state,
+        steps: state.steps.map((s) =>
+          s.step_type === action.stepType
+            ? { ...s, configuration_json: { ...s.configuration_json, mediaUrl: action.mediaUrl } }
+            : s
+        ),
       };
     default:
       return state;
@@ -206,10 +230,10 @@ export function BuilderProvider({ draftId, initialTemplateId, editInvitationId, 
   }, [editInvitationId]);
 
   // Подтягиваем актуальные дефолтные гифки из библиотеки (админ выбирает их
-  // на странице /admin) и подменяем ими хардкод-заглушки из DEFAULT_STEPS —
-  // но только пока пользователь сам ничего не выбрал на этом шаге, и только
-  // для нового черновика (в режиме редактирования уже опубликованного
-  // приглашения картинки не трогаем).
+  // на странице /admin) на КАЖДЫЙ заход в конструктор — но только на те шаги,
+  // где пользователь ещё ни разу сам не менял картинку (см. mediaTouched).
+  // В режиме редактирования уже опубликованного приглашения не трогаем —
+  // там картинки осознанно выбраны раньше.
   useEffect(() => {
     if (editInvitationId) return;
     let cancelled = false;
@@ -217,14 +241,11 @@ export function BuilderProvider({ draftId, initialTemplateId, editInvitationId, 
       .then((defaults) => {
         if (cancelled || !defaults) return;
         for (const [stepType, url] of Object.entries(defaults)) {
-          const hardcoded = DEFAULT_STEPS.find((s) => s.step_type === stepType)?.configuration_json?.mediaUrl;
-          const current = state.steps.find((s) => s.step_type === stepType)?.configuration_json?.mediaUrl;
-          if (current === hardcoded && url !== current) {
-            dispatch({ type: 'UPDATE_STEP_CONFIG', stepType, payload: { mediaUrl: url } });
-          }
+          if (state.mediaTouched?.[stepType]) continue; // пользователь уже сам выбрал картинку на этом шаге
+          dispatch({ type: 'APPLY_DEFAULT_MEDIA', stepType, mediaUrl: url });
         }
       })
-      .catch(() => {}); // тихо — не получилось, остаются хардкод-дефолты
+      .catch(() => {}); // тихо — не получилось, остаются прежние картинки
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editInvitationId]);
