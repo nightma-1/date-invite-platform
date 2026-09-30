@@ -3,10 +3,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { MOODS, templatesForMood, getTemplateTokens } from '../templates/registry.js';
+import { getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
 import { listActiveGifs } from '../lib/mediaLibrary.js';
@@ -14,12 +14,9 @@ import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
 export default function Landing() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const previewTokens = getTemplateTokens('romantic');
-  const [mood, setMood] = useState('all');
   const [openFaq, setOpenFaq] = useState(null);
   const [landingGifs, setLandingGifs] = useState([]);
-  const templates = templatesForMood(mood);
 
   const STEPS = t('landing.steps', { returnObjects: true });
   const FAQ = t('landing.faq', { returnObjects: true });
@@ -169,54 +166,6 @@ export default function Landing() {
                 ))
             }
           </div>
-        </div>
-      </section>
-
-      {/* ШАБЛОНЫ */}
-      <section className="mx-auto max-w-[1040px] px-5 py-14 sm:py-16">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <h2 style={{ fontFamily: T.font, color: T.darkPurple, fontSize: 26, fontWeight: 700 }} className="sm:text-[32px]">{t('landing.templatesTitle')}</h2>
-          <div className="flex flex-wrap gap-2">
-            {MOODS.map((m) => {
-              const a = mood === m.id;
-              return (
-                <button key={m.id} type="button" onClick={() => setMood(m.id)} style={{
-                  padding: '6px 16px', borderRadius: 20, fontSize: 13,
-                  border: `1.5px solid ${a ? T.pink : T.dark + '25'}`,
-                  background: a ? T.pink : 'transparent',
-                  color: a ? '#fff' : T.dark,
-                  fontWeight: a ? 600 : 400, cursor: 'pointer', fontFamily: T.font,
-                }}>
-                  {m.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map((tpl) => (
-            <motion.div key={tpl.id} whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 300 }}>
-              <button type="button" onClick={() => navigate(`/builder?template=${tpl.id}`)}
-                style={{ all: 'unset', cursor: 'pointer', display: 'block', width: '100%' }}>
-                <div style={{ background: tpl.bg, borderRadius: 16, overflow: 'hidden', border: `1px solid ${tpl.ink}12` }}>
-                  <div style={{ padding: '20px 20px 0' }}>
-                    <div style={{ height: 4, width: 32, borderRadius: 2, background: tpl.berry, marginBottom: 12 }} />
-                    <p style={{ fontFamily: tpl.fontDisplay, color: tpl.ink, fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{tpl.name}</p>
-                    <p style={{ fontFamily: tpl.fontUI, color: tpl.inkMuted || tpl.ink, fontSize: 13 }}>
-                      {t('landing.templatePreviewQuestion')}
-                    </p>
-                  </div>
-                  <div style={{ padding: '14px 20px 16px', display: 'flex', gap: 8 }}>
-                    <div style={{ background: tpl.berry, color: '#fff', padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13, fontWeight: 600 }}>{t('landing.yes')}</div>
-                    <div style={{ border: `1px solid ${tpl.ink}35`, color: tpl.inkMuted || tpl.ink, padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13 }}>{t('landing.no')}</div>
-                  </div>
-                  <div style={{ borderTop: `1px solid ${tpl.ink}10`, padding: '10px 20px', fontFamily: tpl.fontUI, fontSize: 12, color: tpl.berry, fontWeight: 600 }}>
-                    {t('landing.chooseTemplate')}
-                  </div>
-                </div>
-              </button>
-            </motion.div>
-          ))}
         </div>
       </section>
 
