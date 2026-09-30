@@ -122,6 +122,14 @@ export default {
     removeOption: 'Удалить вариант',
   },
 
+  questionScreen: {
+    yesDefault: 'Да, конечно ❤️',
+    noPhrases: ['Нет', 'Ты уверена?', 'Правда?', 'А если подумать?', 'Ну пожааалуйста', 'Ещё разок', 'Неееет 😭', 'Не поймаешь!'],
+    saidYesMale: 'Он сказал ДА!',
+    saidYesFemale: 'Она сказала ДА!',
+    continuing: 'Продолжаем…',
+  },
+
   steps: {
     question: {
       imageTitle: 'Картинка на экране',

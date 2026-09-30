@@ -4,9 +4,12 @@
 
 import { useRef, useState } from 'react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import RunawayButton from '../ui/RunawayButton.jsx';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
 
+// Фолбэк на случай, если i18n ещё не инициализирован — сам компонент всегда
+// берёт актуальный, переведённый набор через useTranslation() ниже.
 export const DEFAULT_NO_PHRASES = [
   'Нет', 'Ты уверена?', 'Правда?', 'А если подумать?',
   'Ну пожааалуйста', 'Ещё разок', 'Неееет 😭', 'Не поймаешь!',
@@ -25,8 +28,8 @@ const itemVariants = {
 
 export default function QuestionScreen({
   recipientName, questionText, mediaUrl,
-  yesText = 'Да, конечно ❤️',
-  noPhrases = DEFAULT_NO_PHRASES,
+  yesText,
+  noPhrases,
   recipientGender,
   tokens, onYes,
   // Временный переключатель формы карточки для живого сравнения на проде —
@@ -38,18 +41,25 @@ export default function QuestionScreen({
   stepIndex,
   stepCount,
 }) {
+  const { t } = useTranslation();
   const stageRef = useRef(null);
   const [answered, setAnswered] = useState(false);
   const [bursts, setBursts] = useState([]);
   const [rings, setRings] = useState([]);
   const cardPulse = useAnimationControls();
 
+  // yesText/noPhrases без явного значения от автора (напр. в превью на
+  // лендинге и в конструкторе) переводятся под текущий язык сайта — это
+  // UI-заглушки, а не авторский текст приглашения.
+  const effectiveYesText = yesText || t('questionScreen.yesDefault');
+  const effectiveNoPhrasesRaw = noPhrases || t('questionScreen.noPhrases', { returnObjects: true });
+
   // Дефолтные (и любые унаследованные от них) фразы написаны в женском роде —
   // если получатель мужского пола, поправляем род на лету, не трогая остальной
   // текст (который мог быть кастомным и его менять не нужно).
   const effectiveNoPhrases = recipientGender === 'male'
-    ? noPhrases.map((p) => (p === 'Ты уверена?' ? 'Ты уверен?' : p))
-    : noPhrases;
+    ? effectiveNoPhrasesRaw.map((p) => (p === 'Ты уверена?' ? 'Ты уверен?' : p))
+    : effectiveNoPhrasesRaw;
 
   const showAvatar = Boolean(mediaUrl) && !['polaroid', 'envelope'].includes(cardShape);
 
@@ -194,7 +204,7 @@ export default function QuestionScreen({
                         pointerEvents: 'none',
                       }}
                     />
-                    {yesText}
+                    {effectiveYesText}
                   </motion.button>
 
                   {/* Ударная волна — расширяющиеся кольца от кнопки */}
@@ -296,10 +306,10 @@ export default function QuestionScreen({
                 🥰
               </motion.div>
               <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
-                {recipientGender === 'male' ? 'Он сказал ДА!' : 'Она сказала ДА!'}
+                {recipientGender === 'male' ? t('questionScreen.saidYesMale') : t('questionScreen.saidYesFemale')}
               </h1>
               <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, opacity: 0.8 }}>
-                Продолжаем…
+                {t('questionScreen.continuing')}
               </p>
             </div>
           </QuestionCardFrame>

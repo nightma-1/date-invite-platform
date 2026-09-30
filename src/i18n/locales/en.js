@@ -122,6 +122,14 @@ export default {
     removeOption: 'Remove option',
   },
 
+  questionScreen: {
+    yesDefault: 'Yes, of course ❤️',
+    noPhrases: ['No', 'Are you sure?', 'Really?', 'Think about it?', 'Pleeease', 'One more try', 'Nooo 😭', "Can't catch me!"],
+    saidYesMale: 'He said YES!',
+    saidYesFemale: 'She said YES!',
+    continuing: 'Continuing…',
+  },
+
   steps: {
     question: {
       imageTitle: 'Picture on screen',

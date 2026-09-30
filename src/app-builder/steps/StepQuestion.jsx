@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBuilder } from '../builderStore.jsx';
-import QuestionScreen, { DEFAULT_NO_PHRASES } from '../../components/screens/QuestionScreen.jsx';
+import QuestionScreen from '../../components/screens/QuestionScreen.jsx';
 import { getTemplateTokens } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
@@ -151,7 +151,7 @@ export default function StepQuestion() {
             questionText={config.questionText || t('steps.question.previewDefaultQuestion')}
             mediaUrl={config.mediaUrl}
             yesText={config.yesText || t('steps.question.previewDefaultYes')}
-            noPhrases={config.noText ? [config.noText, ...DEFAULT_NO_PHRASES.slice(1)] : undefined}
+            noPhrases={config.noText ? [config.noText, ...t('questionScreen.noPhrases', { returnObjects: true }).slice(1)] : undefined}
             tokens={tokens}
             cardShape={state.cardShape}
             onYes={() => {}}

@@ -122,6 +122,14 @@ export default {
     removeOption: "Variantni o'chirish",
   },
 
+  questionScreen: {
+    yesDefault: "Ha, albatta ❤️",
+    noPhrases: ["Yo'q", "Ishonchingiz komilmi?", "Rostdanmi?", "O'ylab ko'rasizmi?", 'Iltimoooos', "Yana bir marta", "Yo'qqqq 😭", "Tutolmaysan!"],
+    saidYesMale: "U HA dedi!",
+    saidYesFemale: "U HA dedi!",
+    continuing: "Davom etamiz…",
+  },
+
   steps: {
     question: {
       imageTitle: 'Ekrandagi rasm',
