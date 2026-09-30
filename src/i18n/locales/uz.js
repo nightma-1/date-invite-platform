@@ -139,7 +139,7 @@ export default {
     },
     more: "Yana",
     uploadOwnFile: "O'z faylingizni yuklang",
-    photoUpTo10: '10 MB gacha rasm',
+    photoUpTo10: '15 MB gacha rasm yoki video',
     telegramStickerHint: "💡 Telegram'da stiker yoki gif bormi? Uni bosib turing → \"Galereyaga saqlash\" — keyin oddiy rasm sifatida shu yerga yuklang.",
     hide: 'Yashirish ↑',
     loadingGifs: 'GIF-lar yuklanmoqda…',
