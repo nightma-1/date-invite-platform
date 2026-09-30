@@ -68,6 +68,9 @@ export default function AdminPanel() {
   const wrap = (children) => (
     <div style={{
       background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+      backgroundAttachment: 'fixed',
+      backgroundSize: '100% 100vh',
+      backgroundRepeat: 'no-repeat',
       minHeight: '100vh',
     }}>
       <div className="mx-auto max-w-3xl px-5 py-14">{children}</div>

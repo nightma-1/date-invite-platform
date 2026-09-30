@@ -15,7 +15,15 @@ import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import { T } from '../app-builder/BuilderUI.jsx';
 
-const PAGE_BG = `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`;
+// Фиксируем градиент к вьюпорту (backgroundAttachment/Size), а не к высоте
+// всей страницы — иначе на длинной прокручиваемой странице розовый конец
+// градиента "уезжает" далеко вниз и видно только белое начало.
+const PAGE_BG_STYLE = {
+  background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+  backgroundAttachment: 'fixed',
+  backgroundSize: '100% 100vh',
+  backgroundRepeat: 'no-repeat',
+};
 
 // Та же логика, что decodeSelections в InvitationList.jsx / api/telegram/notify.js —
 // selections хранится как { [invitation_steps.id]: [optionId, ...] }.
@@ -109,7 +117,7 @@ export default function ResponseView() {
   }
   if (!session) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8" style={{ background: PAGE_BG, minHeight: '100vh' }}>
+      <div className="mx-auto max-w-4xl px-4 py-8" style={{ ...PAGE_BG_STYLE, minHeight: '100vh' }}>
         <AuthGate onAuthenticated={() => {}} />
       </div>
     );
@@ -126,7 +134,7 @@ export default function ResponseView() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: PAGE_BG,
+      ...PAGE_BG_STYLE,
       position: 'relative', overflow: 'hidden',
     }}>
       <div style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: T.pinkMid, opacity: 0.5, pointerEvents: 'none' }} />
@@ -207,7 +215,7 @@ export default function ResponseView() {
 
 function CenteredMessage({ text }) {
   return (
-    <div style={{ minHeight: '100vh', background: PAGE_BG }} className="flex items-center justify-center px-6 text-center">
+    <div style={{ minHeight: '100vh', ...PAGE_BG_STYLE }} className="flex items-center justify-center px-6 text-center">
       <p style={{ color: '#6B4D5A', fontSize: 14, opacity: 0.8 }}>{text}</p>
     </div>
   );

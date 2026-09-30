@@ -425,6 +425,12 @@ export default function BuilderShell() {
     <div style={{
       minHeight: '100vh',
       background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+      // Фиксируем градиент к вьюпорту, а не к высоте всей страницы —
+      // иначе на длинной прокручиваемой странице розовый конец градиента
+      // "уезжает" далеко вниз и видно только белое начало.
+      backgroundAttachment: 'fixed',
+      backgroundSize: '100% 100vh',
+      backgroundRepeat: 'no-repeat',
       display: 'flex',
       flexDirection: 'column',
     }}>
