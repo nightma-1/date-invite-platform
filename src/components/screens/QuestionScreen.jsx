@@ -141,7 +141,7 @@ export default function QuestionScreen({
               {showAvatar && (
                 <motion.div variants={itemVariants} style={{ position: 'relative', width: 136, height: 136, margin: '0 auto 20px' }}>
                   <div style={{
-                    position: 'absolute', inset: -10, borderRadius: '50%',
+                    position: 'absolute', inset: -10, borderRadius: 30,
                     background: tokens.berry, opacity: 0.12,
                   }} />
                   <img
