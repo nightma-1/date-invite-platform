@@ -349,7 +349,6 @@ export default function Landing() {
           <div className="flex flex-wrap items-center justify-center gap-5">
             <Link to="/builder" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.create')}</Link>
             <Link to="/dashboard" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.myInvitations')}</Link>
-            <Link to="/admin" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.admin')}</Link>
             <LanguageSwitcher />
           </div>
         </div>
