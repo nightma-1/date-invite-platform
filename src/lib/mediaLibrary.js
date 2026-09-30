@@ -40,7 +40,7 @@ export async function listActiveGifs() {
 export async function listAllGifs() {
   const { data, error } = await supabase
     .from('media_library')
-    .select('id, category, url, title, active, default_for_question, default_for_reaction, default_for_date')
+    .select('id, category, url, title, active, default_for_question, default_for_reaction, default_for_date, default_for_final')
     .eq('type', 'gif')
     .order('category');
   if (error) throw error;
@@ -54,6 +54,7 @@ export const DEFAULT_GIF_STEP_COLUMNS = {
   question: 'default_for_question',
   reaction: 'default_for_reaction',
   date: 'default_for_date',
+  final: 'default_for_final',
 };
 
 /** Текущие дефолтные гифки по шагам — { question: url, reaction: url, date: url }.

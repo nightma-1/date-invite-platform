@@ -200,6 +200,7 @@ export default {
       buttonHint: "Qabul qiluvchida tugma faqat sana va vaqt tanlangandan keyin faollashadi",
     },
     final: {
+      imageTitle: 'Ekrandagi rasm',
       titleSection: 'Yakuniy ekran sarlavhasi',
       titlePlaceholder: "Xo'sh, endi orqaga yo'l yo'q 😄❤️",
       descriptionSection: 'Tavsif',

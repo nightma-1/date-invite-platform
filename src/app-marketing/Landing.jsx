@@ -140,6 +140,7 @@ function LandingPreviewDemo() {
               title={t('landing.demo.finalTitle')}
               description={t('landing.demo.finalDescription')}
               summary={summaryLines}
+              mediaUrl={stepMedia.final}
               cardShape="polaroid"
               tokens={tokens}
               submitting={submitting}

@@ -47,7 +47,7 @@ function FallingHearts() {
   );
 }
 
-export default function FinalScreen({ title, description, summary, tokens, onSubmit, submitting, submitted, cardShape = 'classic' }) {
+export default function FinalScreen({ title, description, summary, mediaUrl, tokens, onSubmit, submitting, submitted, cardShape = 'classic' }) {
   const [localError, setLocalError] = useState(null);
 
   async function handleSubmit() {
@@ -61,7 +61,7 @@ export default function FinalScreen({ title, description, summary, tokens, onSub
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-    <QuestionCardFrame shape={cardShape} tokens={tokens}>
+    <QuestionCardFrame shape={cardShape} tokens={tokens} mediaUrl={cardShape === 'polaroid' ? mediaUrl : undefined}>
       {submitted ? (
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
@@ -80,7 +80,15 @@ export default function FinalScreen({ title, description, summary, tokens, onSub
         </motion.div>
       ) : (
         <>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>💌</div>
+          {/* В "полароиде" фото уже показывает сама рамка карточки — не дублируем */}
+          {cardShape !== 'polaroid' && (mediaUrl ? (
+            <img
+              src={mediaUrl} alt=""
+              style={{ width: 128, height: 128, borderRadius: 12, objectFit: 'cover', objectPosition: 'center', margin: '0 auto 16px', display: 'block' }}
+            />
+          ) : (
+            <div style={{ fontSize: 48, marginBottom: 12 }}>💌</div>
+          ))}
           <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
             {title || 'Ну всё, теперь пути назад нет 😄❤️'}
           </h1>

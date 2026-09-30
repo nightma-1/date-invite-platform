@@ -200,6 +200,7 @@ export default {
       buttonHint: "The button is only active for the recipient after they pick a date and time",
     },
     final: {
+      imageTitle: 'Picture on screen',
       titleSection: 'Final screen title',
       titlePlaceholder: "That's it, no turning back now 😄❤️",
       descriptionSection: 'Description',

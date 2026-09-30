@@ -42,7 +42,7 @@ export const DEFAULT_STEPS = [
       ],
     },
   },
-  { step_type: 'final', step_order: 5, enabled: true, configuration_json: { title: 'Ну всё, теперь пути назад нет 😄❤️', description: 'Наше свидание официально запланировано!' } },
+  { step_type: 'final', step_order: 5, enabled: true, configuration_json: { title: 'Ну всё, теперь пути назад нет 😄❤️', description: 'Наше свидание официально запланировано!', mediaUrl: null } },
 ];
 
 function initialDraft(draftId, initialTemplateId) {

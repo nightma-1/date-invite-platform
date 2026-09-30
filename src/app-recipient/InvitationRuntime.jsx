@@ -360,6 +360,7 @@ export default function InvitationRuntime() {
           title={content?.final_screen?.ru?.title}
           description={content?.final_screen?.ru?.description}
           summary={summaryLines}
+          mediaUrl={activeStep.configuration_json?.mediaUrl}
           tokens={tokens}
           submitting={submitting}
           submitted={submitted}

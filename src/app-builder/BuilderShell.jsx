@@ -125,6 +125,7 @@ export default function BuilderShell() {
           <FinalScreen
             title={c.title}
             description={c.description}
+            mediaUrl={c.mediaUrl}
             tokens={tokens}
             cardShape={state.cardShape}
             onSubmit={async () => {}}

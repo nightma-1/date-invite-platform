@@ -23,6 +23,7 @@ const DEFAULT_STEP_BADGES = [
   { stepType: 'question', column: 'default_for_question', icon: '❓', label: 'Вопрос' },
   { stepType: 'reaction', column: 'default_for_reaction', icon: '🎉', label: 'Реакция' },
   { stepType: 'date', column: 'default_for_date', icon: '🗓️', label: 'Дата' },
+  { stepType: 'final', column: 'default_for_final', icon: '💌', label: 'Финал' },
 ];
 
 export default function AdminPanel() {
@@ -226,7 +227,7 @@ function GifLibrarySection() {
     <div>
       <h2 className="mb-1 text-base font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>Библиотека гифок</h2>
       <p className="mb-4 text-xs" style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}>
-        Гифки отсюда видны всем в конструкторе. Значки под гифкой — ❓ Вопрос, 🎉 Реакция, 🗓️ Дата —
+        Гифки отсюда видны всем в конструкторе. Значки под гифкой — ❓ Вопрос, 🎉 Реакция, 🗓️ Дата, 💌 Финал —
         назначают её гифкой по умолчанию для нового приглашения и для демо на главной странице
         (на каждый шаг — только одна дефолтная гифка).
       </p>

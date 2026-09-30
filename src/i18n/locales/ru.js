@@ -200,6 +200,7 @@ export default {
       buttonHint: 'У получателя кнопка активна только после выбора даты и времени',
     },
     final: {
+      imageTitle: 'Картинка на экране',
       titleSection: 'Заголовок финального экрана',
       titlePlaceholder: 'Ну всё, теперь пути назад нет 😄❤️',
       descriptionSection: 'Описание',
