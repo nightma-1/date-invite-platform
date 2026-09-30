@@ -33,34 +33,15 @@ export default function InvitationRuntime() {
   const sceneRef = useRef(null);
   const blob1Ref = useRef(null);
   const blob2Ref = useRef(null);
-  const trailLayerRef = useRef(null);
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
-    // Курсор оставляет за собой тающий след из сердечек/искорок — только на
-    // устройствах с мышью (на тач это событие просто не приходит). Вставляем
-    // напрямую в DOM (а не через React state), чтобы частые mousemove не
-    // гоняли лишние ре-рендеры.
-    const TRAIL_ICONS = ['💗', '✨'];
-    let lastTrailAt = 0;
     function handleMove(e) {
       const r = scene.getBoundingClientRect();
       const px = (e.clientX - r.left) / r.width - 0.5;
       const py = (e.clientY - r.top) / r.height - 0.5;
       if (blob1Ref.current) blob1Ref.current.style.transform = `translate(${px * 16}px, ${py * 16}px)`;
       if (blob2Ref.current) blob2Ref.current.style.transform = `translate(${px * -16}px, ${py * -16}px)`;
-
-      const now = Date.now();
-      if (trailLayerRef.current && now - lastTrailAt > 100) {
-        lastTrailAt = now;
-        const span = document.createElement('span');
-        span.className = 'invite-trail-heart';
-        span.textContent = TRAIL_ICONS[Math.floor(Math.random() * TRAIL_ICONS.length)];
-        span.style.left = `${e.clientX - r.left}px`;
-        span.style.top = `${e.clientY - r.top}px`;
-        trailLayerRef.current.appendChild(span);
-        setTimeout(() => span.remove(), 900);
-      }
     }
     function handleLeave() {
       if (blob1Ref.current) blob1Ref.current.style.transform = '';
@@ -88,15 +69,6 @@ export default function InvitationRuntime() {
       delay: Math.random() * 8,
     }));
   }, []);
-
-  // Мягкие размытые пятна-боке, лениво покачивающиеся вверх-вниз — заполняют
-  // пустой фон вокруг карточки, не отвлекая от неё.
-  const bokehSpots = useMemo(() => ([
-    { w: 90, h: 90, top: '8%', left: '9%', opacity: 0.45, dur: 7, delay: 0 },
-    { w: 46, h: 46, top: '72%', left: '15%', opacity: 0.4, dur: 6, delay: 1 },
-    { w: 120, h: 120, top: '58%', left: '82%', opacity: 0.3, dur: 9, delay: 0.5 },
-    { w: 40, h: 40, top: '18%', left: '86%', opacity: 0.25, dur: 5.5, delay: 1.4 },
-  ]), []);
   const [state, setState] = useState({ status: 'loading' }); // loading | not_found | expired | ready
   const [invitation, setInvitation] = useState(null);
   const [content, setContent] = useState(null);
@@ -227,22 +199,15 @@ export default function InvitationRuntime() {
   return (
     <div
       ref={sceneRef}
-      className="invite-scene-breathe"
       style={{
         minHeight: '100vh',
         background: `linear-gradient(165deg, ${tokens.bg} 0%, ${tokens.bg} 55%, ${tokens.card === '#FFFFFF' ? '#ffeef5' : tokens.bgDark} 100%)`,
-        backgroundSize: '140% 140%',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Очень медленное, почти незаметное "дыхание" фонового градиента +
-          плывущие пятна-боке + тихий дождь сердечек + след за курсором */}
+      {/* Тихий дождь сердечек + живые пятна-кляксы, медленно меняющие форму */}
       <style>{`
-        @keyframes inviteBgBreathe { 0%, 100% { background-position: 0% 0%; } 50% { background-position: 20% 10%; } }
-        .invite-scene-breathe { animation: inviteBgBreathe 14s ease-in-out infinite; }
-        @keyframes inviteBokehDrift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(8px, -22px); } }
-        .invite-bokeh { animation: inviteBokehDrift ease-in-out infinite; }
         @keyframes inviteHeartFall {
           0% { transform: translateY(-24px); opacity: 0; }
           8% { opacity: var(--fh-opacity, 0.4); }
@@ -250,35 +215,19 @@ export default function InvitationRuntime() {
           100% { transform: translateY(105vh); opacity: 0; }
         }
         .invite-heart-fall { animation: inviteHeartFall linear infinite; animation-fill-mode: backwards; }
-        @keyframes inviteTrailFade {
-          0% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, -90%) scale(0.6); }
+        @keyframes inviteBlobMorph {
+          0%, 100% { border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; }
+          33% { border-radius: 63% 37% 41% 59% / 55% 48% 52% 45%; }
+          66% { border-radius: 37% 63% 55% 45% / 60% 40% 60% 40%; }
         }
-        .invite-trail-heart {
-          position: absolute; font-size: 15px; pointer-events: none;
-          animation: inviteTrailFade 0.9s ease-out forwards;
-        }
+        .invite-blob { animation: inviteBlobMorph 9s ease-in-out infinite; }
       `}</style>
 
-      {/* Тёплый декор — так же тепло, как на лендинге и в конструкторе; лёгкий параллакс при движении мыши */}
-      <div ref={blob1Ref} style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: tokens.berry, opacity: 0.12, pointerEvents: 'none', transition: 'transform .35s ease-out' }} />
-      <div ref={blob2Ref} style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: tokens.berry, opacity: 0.1, pointerEvents: 'none', transition: 'transform .35s ease-out' }} />
-      <div style={{ position: 'absolute', top: '58%', right: -30, width: 110, height: 110, borderRadius: '50%', background: tokens.amber || tokens.berry, opacity: 0.08, pointerEvents: 'none' }} />
-
-      {/* Плывущие пятна-боке — заполняют пустой фон вокруг карточки */}
-      {bokehSpots.map((b, i) => (
-        <div
-          key={i}
-          className="invite-bokeh"
-          style={{
-            position: 'absolute', top: b.top, left: b.left,
-            width: b.w, height: b.h, borderRadius: '50%',
-            background: i % 2 === 0 ? tokens.berry : (tokens.amber || tokens.berry),
-            opacity: b.opacity, filter: 'blur(1px)', pointerEvents: 'none',
-            animationDuration: `${b.dur}s`, animationDelay: `${b.delay}s`,
-          }}
-        />
-      ))}
+      {/* Живые пятна-кляксы — медленно "дышат" формой позади карточки; на
+          двух главных ещё и лёгкий параллакс при движении мыши (десктоп) */}
+      <div ref={blob1Ref} className="invite-blob" style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, background: tokens.berry, opacity: 0.12, pointerEvents: 'none', transition: 'transform .35s ease-out' }} />
+      <div ref={blob2Ref} className="invite-blob" style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, background: tokens.berry, opacity: 0.1, pointerEvents: 'none', transition: 'transform .35s ease-out', animationDelay: '1.5s' }} />
+      <div className="invite-blob" style={{ position: 'absolute', top: '58%', right: -30, width: 110, height: 110, background: tokens.amber || tokens.berry, opacity: 0.08, pointerEvents: 'none', animationDelay: '3s' }} />
 
       {/* Тихий, редкий дождь сердечек — фоновая деталь, не разовое событие */}
       {fallingHearts.map((h) => (
@@ -294,9 +243,6 @@ export default function InvitationRuntime() {
           {h.icon}
         </span>
       ))}
-
-      {/* Слой для следа сердечек за курсором — наполняется через ref в useEffect */}
-      <div ref={trailLayerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }} />
 
       {/* Кнопка "назад" — как в конструкторе, можно поправить предыдущий шаг */}
       {activeIndex > 0 && !submitted && (
