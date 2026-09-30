@@ -167,14 +167,20 @@ export default function QuestionScreen({
                 {/* Кнопка ДА */}
                 <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
                   <motion.button
+                    // Лёгкое "дыхание" кнопки, пока получатель не ответил —
+                    // мягко притягивает взгляд, не отвлекая от текста.
+                    animate={{ scale: [1, 1.035, 1] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
                     whileHover={{
                       scale: 1.08,
                       y: -4,
                       boxShadow: `0 20px 40px -8px ${tokens.berry}80`,
+                      transition: { duration: 0.25, ease: 'easeOut' },
                     }}
                     whileTap={{
                       scale: 0.92,
                       boxShadow: `0 8px 16px -8px ${tokens.berry}60`,
+                      transition: { duration: 0.15 },
                     }}
                     type="button"
                     onClick={handleYes}

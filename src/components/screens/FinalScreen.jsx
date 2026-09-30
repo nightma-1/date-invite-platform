@@ -2,9 +2,50 @@
  * © 2026 Senti. Все права защищены.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
+
+const FALL_HEART_ICONS = ['❤️', '💗', '✨'];
+
+// Дождь сердечек на пару секунд после успешной отправки ответа — чуть более
+// заметный "вау"-момент, чем просто статичный эмодзи.
+function FallingHearts() {
+  const [hearts, setHearts] = useState([]);
+
+  useEffect(() => {
+    setHearts(
+      Array.from({ length: 14 }).map((_, i) => ({
+        id: i,
+        icon: FALL_HEART_ICONS[i % FALL_HEART_ICONS.length],
+        left: 4 + Math.random() * 92,
+        size: 13 + Math.random() * 11,
+        duration: 1.7 + Math.random() * 1.1,
+        delay: Math.random() * 0.6,
+      }))
+    );
+    const timer = setTimeout(() => setHearts([]), 3200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (hearts.length === 0) return null;
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 2 }}>
+      {hearts.map((h) => (
+        <motion.span
+          key={h.id}
+          initial={{ y: -20, opacity: 0, rotate: 0 }}
+          animate={{ y: 360, opacity: [0, 1, 1, 0], rotate: 70 }}
+          transition={{ duration: h.duration, delay: h.delay, ease: 'linear' }}
+          style={{ position: 'absolute', top: 0, left: `${h.left}%`, fontSize: h.size }}
+        >
+          {h.icon}
+        </motion.span>
+      ))}
+    </div>
+  );
+}
 
 export default function FinalScreen({ title, description, summary, tokens, onSubmit, submitting, submitted, cardShape = 'classic' }) {
   const [localError, setLocalError] = useState(null);
@@ -26,7 +67,9 @@ export default function FinalScreen({ title, description, summary, tokens, onSub
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+          style={{ position: 'relative' }}
         >
+          <FallingHearts />
           <div style={{ fontSize: 56, marginBottom: 12 }}>🎉</div>
           <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
             Ответ отправлен!
