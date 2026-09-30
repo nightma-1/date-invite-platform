@@ -83,7 +83,7 @@ export default function Landing() {
         >✨</motion.span>
 
         {/* NAV — часть той же градиентной секции, а не отдельная белая полоса */}
-        <div className="mx-auto flex max-w-[1040px] items-center justify-between px-5 pt-5" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="mx-auto flex max-w-[1040px] items-center justify-between px-5 pt-5" style={{ position: 'relative', zIndex: 20 }}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
             <img src="/logo.png" alt="Senti" style={{ height: 30, width: 'auto', display: 'block' }} />
           </Link>
