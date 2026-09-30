@@ -6,6 +6,7 @@
 import { forwardRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import SmartMedia from '../components/ui/SmartMedia.jsx';
 
 // Design tokens matching onlyteplo.ru design system
 export const T = {
@@ -268,10 +269,11 @@ export function GifImagePicker({
       {/* Selected image thumbnail */}
       {currentUrl && (
         <div style={{ marginBottom: 12, position: 'relative', display: 'inline-block' }}>
-          <img
+          <SmartMedia
             src={currentUrl}
             alt={t('builderUI.preview')}
-            style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', objectPosition: 'top', display: 'block' }}
+            objectFit="cover" objectPosition="top"
+            style={{ width: 60, height: 60, borderRadius: 10, display: 'block' }}
           />
           <button
             type="button"
@@ -311,7 +313,7 @@ export function GifImagePicker({
                     transition: 'transform 0.18s, box-shadow 0.18s, border-color 0.18s',
                   }}
                 >
-                  <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', borderRadius: 13 }} />
+                  <SmartMedia src={gif.url} alt={gif.title || 'gif'} objectFit="cover" objectPosition="top" style={{ width: '100%', height: '100%', display: 'block', borderRadius: 13 }} />
                   {selected && (
                     <div style={{
                       position: 'absolute', top: -6, right: -6,
@@ -425,7 +427,7 @@ export function GifImagePicker({
                     transition: 'transform 0.18s, box-shadow 0.18s',
                   }}
                 >
-                  <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', borderRadius: 9 }} />
+                  <SmartMedia src={gif.url} alt={gif.title || 'gif'} objectFit="cover" objectPosition="top" style={{ width: '100%', height: '100%', display: 'block', borderRadius: 9 }} />
                   {selected && (
                     <div style={{
                       position: 'absolute', top: -6, right: -6,

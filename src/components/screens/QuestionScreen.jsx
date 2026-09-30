@@ -6,6 +6,7 @@ import { useRef, useState } from 'react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import RunawayButton from '../ui/RunawayButton.jsx';
+import SmartMedia from '../ui/SmartMedia.jsx';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
 
 // Фолбэк на случай, если i18n ещё не инициализирован — сам компонент всегда
@@ -144,11 +145,12 @@ export default function QuestionScreen({
                     position: 'absolute', inset: -10, borderRadius: 30,
                     background: tokens.berry, opacity: 0.12,
                   }} />
-                  <img
-                    src={mediaUrl} alt=""
+                  <SmartMedia
+                    src={mediaUrl}
+                    objectFit="cover" objectPosition="center"
                     style={{
                       position: 'relative',
-                      width: 136, height: 136, borderRadius: 22, objectFit: 'cover', objectPosition: 'center',
+                      width: 136, height: 136, borderRadius: 22,
                       boxShadow: `0 12px 28px -8px ${tokens.berry}55`,
                     }}
                   />

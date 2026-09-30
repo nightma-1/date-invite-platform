@@ -18,6 +18,7 @@ export async function publishDraft(state, userId) {
   const slug = generateSlug();
   const questionConfig = state.steps.find((s) => s.step_type === 'question').configuration_json;
   const reactionConfig = state.steps.find((s) => s.step_type === 'reaction').configuration_json;
+  const dateConfig = state.steps.find((s) => s.step_type === 'date').configuration_json;
   const finalConfig = state.steps.find((s) => s.step_type === 'final').configuration_json;
 
   // Загружаем картинки ДО создания записей: если Storage откажет, не останется
@@ -40,6 +41,25 @@ export async function publishDraft(state, userId) {
     reactionMediaUrl = await uploadMedia(pendingReactionFile, userId);
   } else if (reactionConfig.mediaUrl && !reactionConfig.mediaUrl.startsWith('blob:')) {
     reactionMediaUrl = reactionConfig.mediaUrl;
+  }
+
+  // Те же правила для шагов "Дата" и "Финал" — раньше их свои файлы вообще
+  // не отслеживались (pendingMedia.js не знал про ключи 'date'/'final'), из-за
+  // чего blob:-ссылка молча утекала в БД и у получателя картинка не открывалась.
+  let dateMediaUrl = null;
+  const pendingDateFile = getPendingMedia('date');
+  if (pendingDateFile) {
+    dateMediaUrl = await uploadMedia(pendingDateFile, userId);
+  } else if (dateConfig.mediaUrl && !dateConfig.mediaUrl.startsWith('blob:')) {
+    dateMediaUrl = dateConfig.mediaUrl;
+  }
+
+  let finalMediaUrl = null;
+  const pendingFinalFile = getPendingMedia('final');
+  if (pendingFinalFile) {
+    finalMediaUrl = await uploadMedia(pendingFinalFile, userId);
+  } else if (finalConfig.mediaUrl && !finalConfig.mediaUrl.startsWith('blob:')) {
+    finalMediaUrl = finalConfig.mediaUrl;
   }
 
   const { data: invitation, error: invError } = await supabase
@@ -67,9 +87,14 @@ export async function publishDraft(state, userId) {
   });
   if (contentError) throw contentError;
 
+  const stepMediaOverrides = {
+    reaction: reactionMediaUrl,
+    date: dateMediaUrl,
+    final: finalMediaUrl,
+  };
   for (const step of state.steps) {
-    const configuration_json = step.step_type === 'reaction'
-      ? { ...step.configuration_json, mediaUrl: reactionMediaUrl }
+    const configuration_json = step.step_type in stepMediaOverrides
+      ? { ...step.configuration_json, mediaUrl: stepMediaOverrides[step.step_type] }
       : step.configuration_json;
     const { error: stepError } = await supabase.from('invitation_steps').insert({
       invitation_id: invitation.id,

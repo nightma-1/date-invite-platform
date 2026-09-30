@@ -8,6 +8,7 @@
  */
 
 import { motion } from 'framer-motion';
+import SmartMedia from '../ui/SmartMedia.jsx';
 
 export const CARD_SHAPES = ['classic', 'arch', 'envelope', 'polaroid', 'blob'];
 
@@ -119,7 +120,7 @@ export function PolaroidFrame({ tokens, mediaUrl, children }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
       }}>
         {mediaUrl
-          ? <img src={mediaUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
+          ? <SmartMedia src={mediaUrl} objectFit="cover" objectPosition="center" style={{ width: '100%', height: '100%' }} />
           : <span style={{ fontSize: 64 }}>💌</span>}
       </div>
       <div style={{ padding: '20px 8px 26px', textAlign: 'center' }}>

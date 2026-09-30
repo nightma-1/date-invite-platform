@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import SmartMedia from '../ui/SmartMedia.jsx';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
 
 const FALL_HEART_ICONS = ['❤️', '💗', '✨'];
@@ -82,9 +83,10 @@ export default function FinalScreen({ title, description, summary, mediaUrl, tok
         <>
           {/* В "полароиде" фото уже показывает сама рамка карточки — не дублируем */}
           {cardShape !== 'polaroid' && (mediaUrl ? (
-            <img
-              src={mediaUrl} alt=""
-              style={{ width: 128, height: 128, borderRadius: 12, objectFit: 'cover', objectPosition: 'center', margin: '0 auto 16px', display: 'block' }}
+            <SmartMedia
+              src={mediaUrl}
+              objectFit="cover" objectPosition="center"
+              style={{ width: 128, height: 128, borderRadius: 12, margin: '0 auto 16px', display: 'block' }}
             />
           ) : (
             <div style={{ fontSize: 48, marginBottom: 12 }}>💌</div>

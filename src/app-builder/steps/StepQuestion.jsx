@@ -119,7 +119,7 @@ export default function StepQuestion() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/webm,video/mp4"
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />

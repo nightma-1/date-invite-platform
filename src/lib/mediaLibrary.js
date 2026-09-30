@@ -11,15 +11,17 @@
 import { supabase } from './supabaseClient.js';
 
 const BUCKET = 'gif-library';
-export const MAX_GIF_SIZE = 8 * 1024 * 1024; // 8 МБ — совпадает с лимитом бакета
-const ALLOWED_TYPES = ['image/gif', 'image/webp', 'image/png', 'image/jpeg'];
+export const MAX_GIF_SIZE = 20 * 1024 * 1024; // 20 МБ — совпадает с лимитом бакета (подняли ради видео-гифок)
+// Telegram-"гифки" часто на деле короткое видео без звука (webm/mp4), а не
+// настоящий gif/webp — поддерживаем оба вида.
+const ALLOWED_TYPES = ['image/gif', 'image/webp', 'image/png', 'image/jpeg', 'video/webm', 'video/mp4'];
 
 export function validateGifFile(file) {
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return 'Можно загрузить только GIF, WebP, PNG или JPG.';
+    return 'Можно загрузить GIF, WebP, PNG, JPG, WebM или MP4.';
   }
   if (file.size > MAX_GIF_SIZE) {
-    return `Файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 8 МБ.`;
+    return `Файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 20 МБ.`;
   }
   return null;
 }

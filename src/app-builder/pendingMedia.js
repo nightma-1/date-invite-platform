@@ -11,13 +11,14 @@
  * компромисс ради того, чтобы не заливать в Storage файлы черновиков,
  * которые никогда не оплатят.
  *
- * Ключ ('question' | 'reaction'): раньше был один общий слот на весь
- * конструктор, и загрузка своей картинки для экрана "Ого, ты сказал да?"
- * тихо затирала (или терялась под) картинку экрана вопроса — теперь у
- * каждого шага свой слот.
+ * Ключ ('question' | 'reaction' | 'date' | 'final'): раньше был один общий
+ * слот на весь конструктор, и загрузка своей картинки для экрана "Ого, ты
+ * сказал да?" тихо затирала (или терялась под) картинку экрана вопроса —
+ * теперь у каждого шага свой слот.
  */
 
-const pending = { question: null, reaction: null };
+const STEP_KEYS = ['question', 'reaction', 'date', 'final'];
+const pending = { question: null, reaction: null, date: null, final: null };
 
 export function setPendingMedia(key, file) {
   pending[key] = file;
@@ -31,7 +32,6 @@ export function clearPendingMedia(key) {
   if (key) {
     pending[key] = null;
   } else {
-    pending.question = null;
-    pending.reaction = null;
+    for (const k of STEP_KEYS) pending[k] = null;
   }
 }

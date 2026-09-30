@@ -12,6 +12,7 @@ import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep } from '../lib/mediaLibrary.js';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
+import SmartMedia from '../components/ui/SmartMedia.jsx';
 
 const t = getTemplateTokens('romantic');
 
@@ -257,7 +258,7 @@ function GifLibrarySection() {
           <select value={fileForm.category} onChange={(e) => setFileForm((f) => ({ ...f, category: e.target.value }))} style={inp}>
             {GIF_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input ref={fileInputRef} type="file" accept="image/gif,image/webp,image/png,image/jpeg"
+          <input ref={fileInputRef} type="file" accept="image/gif,image/webp,image/png,image/jpeg,video/webm,video/mp4"
                  onChange={handleAddByFile} disabled={saving} style={{ fontSize: 12 }} />
           <p className="text-[11px]" style={{ color: t.ink, opacity: 0.5 }}>GIF, WebP, PNG или JPG — до 8 МБ.</p>
         </div>
@@ -270,7 +271,7 @@ function GifLibrarySection() {
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
           {gifs.map((gif) => (
             <div key={gif.id} className="overflow-hidden rounded-lg border" style={{ borderColor: `${t.ink}20`, opacity: gif.active ? 1 : 0.4 }}>
-              <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
+              <SmartMedia src={gif.url} alt={gif.title || 'gif'} objectFit="cover" objectPosition="top" style={{ width: '100%', aspectRatio: '1', display: 'block' }} />
               <div className="flex items-center justify-between gap-1 px-1.5 py-1">
                 <button type="button" onClick={() => toggleActive(gif)}
                         title={gif.active ? 'Скрыть' : 'Показать'}

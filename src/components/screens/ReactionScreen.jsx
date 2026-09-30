@@ -3,6 +3,7 @@
  */
 
 import { motion } from 'framer-motion';
+import SmartMedia from '../ui/SmartMedia.jsx';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
 
 export default function ReactionScreen({ title, text, mediaUrl, recipientGender, tokens, onContinue, cardShape = 'classic' }) {
@@ -22,13 +23,18 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
     <QuestionCardFrame shape={cardShape} tokens={tokens} mediaUrl={cardShape === 'polaroid' ? mediaUrl : undefined}>
       {/* В "полароиде" фото уже показывает сама рамка карточки — не дублируем */}
       {cardShape !== 'polaroid' && (mediaUrl ? (
-        <motion.img
-          src={mediaUrl} alt=""
+        <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: 'spring', stiffness: 260 }}
-          style={{ width: 128, height: 128, borderRadius: 12, objectFit: 'cover', objectPosition: 'center', margin: '0 auto 16px' }}
-        />
+          style={{ width: 128, height: 128, margin: '0 auto 16px' }}
+        >
+          <SmartMedia
+            src={mediaUrl}
+            objectFit="cover" objectPosition="center"
+            style={{ width: '100%', height: '100%', borderRadius: 12 }}
+          />
+        </motion.div>
       ) : (
         <motion.div
           animate={{ scale: [1, 1.15, 1] }}

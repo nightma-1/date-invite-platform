@@ -45,16 +45,16 @@ export default function StepDate() {
     if (error) {
       setFileError(error);
       e.target.value = '';
-      clearPendingMedia();
+      clearPendingMedia('date');
       update({ mediaUrl: null });
       return;
     }
-    setPendingMedia(file);
+    setPendingMedia('date', file);
     update({ mediaUrl: URL.createObjectURL(file) });
   }
 
   function removeMedia() {
-    clearPendingMedia();
+    clearPendingMedia('date');
     update({ mediaUrl: null });
     setFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -76,7 +76,7 @@ export default function StepDate() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/webm,video/mp4"
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />

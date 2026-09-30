@@ -42,16 +42,16 @@ export default function StepFinal() {
     if (error) {
       setFileError(error);
       e.target.value = '';
-      clearPendingMedia();
+      clearPendingMedia('final');
       update({ mediaUrl: null });
       return;
     }
-    setPendingMedia(file);
+    setPendingMedia('final', file);
     update({ mediaUrl: URL.createObjectURL(file) });
   }
 
   function removeMedia() {
-    clearPendingMedia();
+    clearPendingMedia('final');
     update({ mediaUrl: null });
     setFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -73,7 +73,7 @@ export default function StepFinal() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/webm,video/mp4"
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
