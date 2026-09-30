@@ -58,24 +58,28 @@ export function ArchFrame({ tokens, children }) {
 export function EnvelopeFrame({ tokens, children }) {
   const accentGrad = `linear-gradient(135deg, ${tokens.berry}, ${tokens.amber || tokens.berry})`;
   return (
-    <div style={{ position: 'relative' }}>
+    // Один общий контейнер со скруглением и overflow:hidden — раньше
+    // цветная полоска-клапан была отдельным прямоугольником позади
+    // скруглённой карточки, и по углам торчали её несрезанные уголки.
+    // Теперь клапан — часть того же скруглённого контейнера и обрезается
+    // точно по его форме, без артефактов по краям.
+    <div
+      style={{
+        position: 'relative', overflow: 'hidden',
+        background: tokens.card, borderRadius: 22,
+        boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
+        boxSizing: 'border-box',
+      }}
+    >
       <div
         aria-hidden="true"
         style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 66,
+          position: 'absolute', top: 0, left: 0, right: 0, height: 56,
           background: accentGrad,
           clipPath: 'polygon(0 0, 100% 0, 50% 100%)',
-          zIndex: 1,
         }}
       />
-      <div
-        style={{
-          position: 'relative', zIndex: 2, marginTop: 34,
-          background: tokens.card, borderRadius: 22, padding: '40px 26px 34px',
-          boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
-          textAlign: 'center', boxSizing: 'border-box',
-        }}
-      >
+      <div style={{ position: 'relative', padding: '64px 26px 34px', textAlign: 'center' }}>
         <p style={{
           margin: '0 0 18px', fontFamily: tokens.fontUI, fontSize: 11, fontWeight: 700,
           letterSpacing: '.06em', textTransform: 'uppercase', color: tokens.berry, opacity: 0.8,
