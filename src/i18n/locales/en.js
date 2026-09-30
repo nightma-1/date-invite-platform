@@ -63,6 +63,8 @@ export default {
     checkEmail: 'Check your inbox — confirm your sign-up, then sign in again.',
     sessionError: "Couldn't get session data, try again",
     genericError: "Couldn't sign in",
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
   },
 
   builder: {

@@ -63,6 +63,8 @@ export default {
     checkEmail: "Pochtangizni tekshiring — ro'yxatdan o'tishni tasdiqlash kerak, keyin qayta kiring.",
     sessionError: "Sessiya ma'lumotlarini olib bo'lmadi, qayta urinib ko'ring",
     genericError: "Kirib bo'lmadi",
+    showPassword: "Parolni ko'rsatish",
+    hidePassword: "Parolni yashirish",
   },
 
   builder: {
