@@ -27,7 +27,7 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: 'spring', stiffness: 260 }}
-          style={{ width: 128, height: 128, borderRadius: 12, objectFit: 'cover', margin: '0 auto 16px' }}
+          style={{ width: 128, height: 128, borderRadius: 12, objectFit: 'cover', objectPosition: 'top', margin: '0 auto 16px' }}
         />
       ) : (
         <motion.div

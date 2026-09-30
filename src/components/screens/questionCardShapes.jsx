@@ -128,7 +128,7 @@ export function PolaroidFrame({ tokens, mediaUrl, children }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
       }}>
         {mediaUrl
-          ? <img src={mediaUrl} alt="" style={{ width: '100%', height: 200, objectFit: 'cover' }} />
+          ? <img src={mediaUrl} alt="" style={{ width: '100%', height: 200, objectFit: 'cover', objectPosition: 'top' }} />
           : <span style={{ fontSize: 64 }}>💌</span>}
       </div>
       <div style={{ padding: '20px 8px 26px', textAlign: 'center' }}>

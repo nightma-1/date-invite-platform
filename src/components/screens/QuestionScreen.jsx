@@ -145,7 +145,7 @@ export default function QuestionScreen({
                     src={mediaUrl} alt=""
                     style={{
                       position: 'relative',
-                      width: 136, height: 136, borderRadius: 22, objectFit: 'cover',
+                      width: 136, height: 136, borderRadius: 22, objectFit: 'cover', objectPosition: 'top',
                       boxShadow: `0 12px 28px -8px ${tokens.berry}55`,
                     }}
                   />

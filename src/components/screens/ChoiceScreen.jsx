@@ -56,7 +56,7 @@ export default function ChoiceScreen({ title, subtitle, options = [], allowMulti
               }}
             >
               {opt.imageUrl ? (
-                <img src={opt.imageUrl} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', margin: '0 auto 6px' }} />
+                <img src={opt.imageUrl} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', objectPosition: 'top', margin: '0 auto 6px' }} />
               ) : (
                 <div style={{ fontSize: 24, marginBottom: 4 }}>{opt.icon || '✨'}</div>
               )}

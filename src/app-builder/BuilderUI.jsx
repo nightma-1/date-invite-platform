@@ -271,7 +271,7 @@ export function GifImagePicker({
           <img
             src={currentUrl}
             alt={t('builderUI.preview')}
-            style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', display: 'block' }}
+            style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', objectPosition: 'top', display: 'block' }}
           />
           <button
             type="button"
@@ -311,7 +311,7 @@ export function GifImagePicker({
                     transition: 'transform 0.18s, box-shadow 0.18s, border-color 0.18s',
                   }}
                 >
-                  <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 13 }} />
+                  <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', borderRadius: 13 }} />
                   {selected && (
                     <div style={{
                       position: 'absolute', top: -6, right: -6,
@@ -422,7 +422,7 @@ export function GifImagePicker({
                     transition: 'transform 0.18s, box-shadow 0.18s',
                   }}
                 >
-                  <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 9 }} />
+                  <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', borderRadius: 9 }} />
                   {selected && (
                     <div style={{
                       position: 'absolute', top: -6, right: -6,

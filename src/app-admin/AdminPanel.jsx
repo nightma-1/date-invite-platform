@@ -269,7 +269,7 @@ function GifLibrarySection() {
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
           {gifs.map((gif) => (
             <div key={gif.id} className="overflow-hidden rounded-lg border" style={{ borderColor: `${t.ink}20`, opacity: gif.active ? 1 : 0.4 }}>
-              <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
+              <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
               <div className="flex items-center justify-between gap-1 px-1.5 py-1">
                 <button type="button" onClick={() => toggleActive(gif)}
                         title={gif.active ? 'Скрыть' : 'Показать'}
