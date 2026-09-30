@@ -22,18 +22,13 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
     <QuestionCardFrame shape={cardShape} tokens={tokens} mediaUrl={cardShape === 'polaroid' ? mediaUrl : undefined}>
       {/* В "полароиде" фото уже показывает сама рамка карточки — не дублируем */}
       {cardShape !== 'polaroid' && (mediaUrl ? (
-        <motion.div
+        <motion.img
+          src={mediaUrl} alt=""
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: 'spring', stiffness: 260 }}
-          style={{
-            width: 128, height: 128, borderRadius: 12, margin: '0 auto 16px',
-            background: `${tokens.berry}14`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-          }}
-        >
-          <img src={mediaUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-        </motion.div>
+          style={{ width: 128, height: 128, borderRadius: 12, objectFit: 'cover', objectPosition: 'center', margin: '0 auto 16px' }}
+        />
       ) : (
         <motion.div
           animate={{ scale: [1, 1.15, 1] }}
