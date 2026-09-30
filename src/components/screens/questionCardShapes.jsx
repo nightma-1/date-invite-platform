@@ -62,7 +62,7 @@ export function EnvelopeFrame({ tokens, children }) {
       <div
         aria-hidden="true"
         style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 110,
+          position: 'absolute', top: 0, left: 0, right: 0, height: 66,
           background: accentGrad,
           clipPath: 'polygon(0 0, 100% 0, 50% 100%)',
           zIndex: 1,
@@ -71,32 +71,19 @@ export function EnvelopeFrame({ tokens, children }) {
       <div
         style={{
           position: 'relative', zIndex: 2, marginTop: 34,
-          background: tokens.card, borderRadius: 22, padding: '86px 26px 34px',
+          background: tokens.card, borderRadius: 22, padding: '40px 26px 34px',
           boxShadow: `0 24px 60px -20px ${tokens.ink}35, 0 2px 8px ${tokens.ink}08`,
           textAlign: 'center', boxSizing: 'border-box',
         }}
       >
         <p style={{
-          margin: '0 0 6px', fontFamily: tokens.fontUI, fontSize: 11, fontWeight: 700,
+          margin: '0 0 18px', fontFamily: tokens.fontUI, fontSize: 11, fontWeight: 700,
           letterSpacing: '.06em', textTransform: 'uppercase', color: tokens.berry, opacity: 0.8,
         }}>
           Тебе письмо 💌
         </p>
         {children}
       </div>
-      <motion.div
-        animate={{ scale: [1, 1.06, 1] }}
-        transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
-        style={{
-          position: 'absolute', top: 70, left: '50%', transform: 'translate(-50%, -50%)', zIndex: 3,
-          width: 56, height: 56, borderRadius: '50%',
-          background: accentGrad,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 8px 20px -6px ${tokens.berry}60`, border: `3px solid ${tokens.card}`,
-        }}
-      >
-        <span style={{ fontSize: 22 }}>❤️</span>
-      </motion.div>
     </div>
   );
 }

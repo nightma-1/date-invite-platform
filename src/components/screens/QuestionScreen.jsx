@@ -61,7 +61,10 @@ export default function QuestionScreen({
     ? effectiveNoPhrasesRaw.map((p) => (p === 'Ты уверена?' ? 'Ты уверен?' : p))
     : effectiveNoPhrasesRaw;
 
-  const showAvatar = Boolean(mediaUrl) && !['polaroid', 'envelope'].includes(cardShape);
+  // У "полароида" фото уже встроено в саму рамку карточки — не дублируем его
+  // здесь отдельным аватаром. У всех остальных форм (включая конверт) картинка
+  // показывается как обычный круглый аватар над именем.
+  const showAvatar = Boolean(mediaUrl) && cardShape !== 'polaroid';
 
   function handleYes() {
     // "Вау"-момент собран из слоёв, которые бьют одновременно —
