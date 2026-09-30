@@ -2,7 +2,7 @@
  * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,15 @@ import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { listDefaultGifs } from '../lib/mediaLibrary.js';
+
+// Запасные картинки на случай, если дефолты ещё не загрузились из
+// библиотеки (или библиотека недоступна) — те же, что зашиты в
+// DEFAULT_STEPS конструктора (builderStore.jsx).
+const FALLBACK_STEP_MEDIA = {
+  question: 'https://media.gifs.ru/3671d835594acd8cbe836933cf33afb65420cf76_300.webp',
+  reaction: 'https://media.gifs.ru/af88024aba7512211a910cd9f3d4216d9b67cd3c_300.webp',
+};
 
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
 // всему сценарию (вопрос → реакция → дата → выбор → финал) на примерных
@@ -27,6 +36,18 @@ function LandingPreviewDemo() {
   const [collected, setCollected] = useState({ date: null, time: null });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [stepMedia, setStepMedia] = useState(FALLBACK_STEP_MEDIA);
+
+  useEffect(() => {
+    let cancelled = false;
+    listDefaultGifs()
+      .then((defaults) => {
+        if (cancelled || !defaults) return;
+        setStepMedia((prev) => ({ ...prev, ...defaults }));
+      })
+      .catch(() => {}); // тихо — остаются запасные картинки
+    return () => { cancelled = true; };
+  }, []);
 
   const STEP_COUNT = 5;
 
@@ -80,7 +101,7 @@ function LandingPreviewDemo() {
               recipientName={t('landing.previewRecipient')}
               questionText={t('landing.previewQuestion')}
               recipientGender="female"
-              mediaUrl="https://media.gifs.ru/3671d835594acd8cbe836933cf33afb65420cf76_300.webp"
+              mediaUrl={stepMedia.question}
               cardShape="polaroid"
               tokens={tokens}
               onYes={() => setStep(1)}
@@ -90,7 +111,7 @@ function LandingPreviewDemo() {
             <ReactionScreen
               title={t('landing.demo.reactionTitle')}
               text={t('landing.demo.reactionText')}
-              mediaUrl="https://media.gifs.ru/af88024aba7512211a910cd9f3d4216d9b67cd3c_300.webp"
+              mediaUrl={stepMedia.reaction}
               cardShape="polaroid"
               tokens={tokens}
               onContinue={() => setStep(2)}

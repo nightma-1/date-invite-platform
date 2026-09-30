@@ -5,6 +5,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
+import { listDefaultGifs } from '../lib/mediaLibrary.js';
 
 const STORAGE_PREFIX = 'date-invite-draft:';
 
@@ -200,6 +201,30 @@ export function BuilderProvider({ draftId, initialTemplateId, editInvitationId, 
           });
         }
       });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editInvitationId]);
+
+  // Подтягиваем актуальные дефолтные гифки из библиотеки (админ выбирает их
+  // на странице /admin) и подменяем ими хардкод-заглушки из DEFAULT_STEPS —
+  // но только пока пользователь сам ничего не выбрал на этом шаге, и только
+  // для нового черновика (в режиме редактирования уже опубликованного
+  // приглашения картинки не трогаем).
+  useEffect(() => {
+    if (editInvitationId) return;
+    let cancelled = false;
+    listDefaultGifs()
+      .then((defaults) => {
+        if (cancelled || !defaults) return;
+        for (const [stepType, url] of Object.entries(defaults)) {
+          const hardcoded = DEFAULT_STEPS.find((s) => s.step_type === stepType)?.configuration_json?.mediaUrl;
+          const current = state.steps.find((s) => s.step_type === stepType)?.configuration_json?.mediaUrl;
+          if (current === hardcoded && url !== current) {
+            dispatch({ type: 'UPDATE_STEP_CONFIG', stepType, payload: { mediaUrl: url } });
+          }
+        }
+      })
+      .catch(() => {}); // тихо — не получилось, остаются хардкод-дефолты
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editInvitationId]);

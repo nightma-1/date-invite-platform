@@ -10,12 +10,20 @@ import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
-import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif } from '../lib/mediaLibrary.js';
+import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep } from '../lib/mediaLibrary.js';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 
 const t = getTemplateTokens('romantic');
 
 const GIF_CATEGORIES = ['romantic', 'flirty', 'funny', 'cute', 'bold', 'custom'];
+
+// Шаги, для которых можно назначить гифку по умолчанию — показываются
+// значком под каждой гифкой в библиотеке.
+const DEFAULT_STEP_BADGES = [
+  { stepType: 'question', column: 'default_for_question', icon: '❓', label: 'Вопрос' },
+  { stepType: 'reaction', column: 'default_for_reaction', icon: '🎉', label: 'Реакция' },
+  { stepType: 'date', column: 'default_for_date', icon: '🗓️', label: 'Дата' },
+];
 
 export default function AdminPanel() {
   const [session, setSession] = useState(undefined);
@@ -193,6 +201,22 @@ function GifLibrarySection() {
     }
   }
 
+  async function toggleDefault(gif, badge) {
+    const nextValue = !gif[badge.column];
+    // Оптимистично обновляем локально: снимаем этот флаг со всех гифок и ставим (или снимаем) на выбранной
+    setGifs((prev) => prev.map((g) => {
+      if (g.id === gif.id) return { ...g, [badge.column]: nextValue };
+      if (nextValue && g[badge.column]) return { ...g, [badge.column]: false };
+      return g;
+    }));
+    try {
+      await setGifDefaultForStep(gif.id, badge.stepType, nextValue);
+    } catch (err) {
+      setError(err.message || 'Не получилось изменить гифку по умолчанию.');
+      reload();
+    }
+  }
+
   const inp = {
     padding: '8px 10px', borderRadius: 6, border: `1.5px solid ${t.ink}25`,
     fontFamily: t.fontUI, fontSize: 13, color: t.ink, background: t.card,
@@ -202,7 +226,9 @@ function GifLibrarySection() {
     <div>
       <h2 className="mb-1 text-base font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>Библиотека гифок</h2>
       <p className="mb-4 text-xs" style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}>
-        Гифки отсюда видны всем в конструкторе на шаге «Вопрос».
+        Гифки отсюда видны всем в конструкторе. Значки под гифкой — ❓ Вопрос, 🎉 Реакция, 🗓️ Дата —
+        назначают её гифкой по умолчанию для нового приглашения и для демо на главной странице
+        (на каждый шаг — только одна дефолтная гифка).
       </p>
 
       {error && <p style={{ color: '#C0392B', fontSize: 12, marginBottom: 10 }}>{error}</p>}
@@ -255,6 +281,28 @@ function GifLibrarySection() {
                         style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: '#C0392B' }}>
                   ✕
                 </button>
+              </div>
+              <div className="flex items-center justify-center gap-1 border-t px-1 py-1" style={{ borderColor: `${t.ink}15` }}>
+                {DEFAULT_STEP_BADGES.map((badge) => {
+                  const active = Boolean(gif[badge.column]);
+                  return (
+                    <button
+                      key={badge.stepType}
+                      type="button"
+                      onClick={() => toggleDefault(gif, badge)}
+                      title={active ? `Убрать дефолт для шага «${badge.label}»` : `Сделать дефолтной для шага «${badge.label}»`}
+                      style={{
+                        border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1,
+                        borderRadius: 4, padding: '2px 4px',
+                        background: active ? t.berry : 'transparent',
+                        opacity: active ? 1 : 0.35,
+                        filter: active ? 'none' : 'grayscale(1)',
+                      }}
+                    >
+                      {badge.icon}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}

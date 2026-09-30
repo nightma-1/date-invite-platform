@@ -40,11 +40,54 @@ export async function listActiveGifs() {
 export async function listAllGifs() {
   const { data, error } = await supabase
     .from('media_library')
-    .select('id, category, url, title, active')
+    .select('id, category, url, title, active, default_for_question, default_for_reaction, default_for_date')
     .eq('type', 'gif')
     .order('category');
   if (error) throw error;
   return data;
+}
+
+// Шаги конструктора, для которых можно назначить гифку по умолчанию —
+// ключ здесь совпадает со step_type в DEFAULT_STEPS (builderStore.jsx),
+// значение — имя колонки-флага в media_library.
+export const DEFAULT_GIF_STEP_COLUMNS = {
+  question: 'default_for_question',
+  reaction: 'default_for_reaction',
+  date: 'default_for_date',
+};
+
+/** Текущие дефолтные гифки по шагам — { question: url, reaction: url, date: url }.
+ *  Используется конструктором при создании нового черновика и демо на главной. */
+export async function listDefaultGifs() {
+  const columns = Object.values(DEFAULT_GIF_STEP_COLUMNS).join(', ');
+  const { data, error } = await supabase
+    .from('media_library')
+    .select(`url, ${columns}`)
+    .eq('type', 'gif')
+    .eq('active', true)
+    .or(Object.values(DEFAULT_GIF_STEP_COLUMNS).map((c) => `${c}.eq.true`).join(','));
+  if (error) throw error;
+  const result = {};
+  for (const row of data) {
+    for (const [stepType, column] of Object.entries(DEFAULT_GIF_STEP_COLUMNS)) {
+      if (row[column]) result[stepType] = row.url;
+    }
+  }
+  return result;
+}
+
+/** Назначить/снять гифку как дефолтную для конкретного шага (вопрос/реакция/дата).
+ *  Одновременно дефолтной для шага может быть только одна гифка — при назначении
+ *  новой флаг у прежней гифки этого шага снимается автоматически. */
+export async function setGifDefaultForStep(id, stepType, isDefault) {
+  const column = DEFAULT_GIF_STEP_COLUMNS[stepType];
+  if (!column) throw new Error(`Неизвестный шаг для дефолтной гифки: ${stepType}`);
+  if (isDefault) {
+    const { error: clearError } = await supabase.from('media_library').update({ [column]: false }).eq(column, true);
+    if (clearError) throw clearError;
+  }
+  const { error } = await supabase.from('media_library').update({ [column]: isDefault }).eq('id', id);
+  if (error) throw error;
 }
 
 /** Добавить гифку по прямой ссылке (например, из Giphy). */
