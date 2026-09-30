@@ -140,6 +140,7 @@ export default {
     more: 'More',
     uploadOwnFile: 'Upload your own file',
     photoUpTo10: 'Photo up to 10 MB',
+    telegramStickerHint: "💡 Got a sticker or GIF in Telegram? Long-press it → \"Save to gallery\" — then upload it here like a regular photo.",
     hide: 'Hide ↑',
     loadingGifs: 'Loading GIFs…',
     noGifsYet: 'No GIFs in the library yet.',

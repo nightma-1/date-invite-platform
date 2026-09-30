@@ -360,6 +360,9 @@ export function GifImagePicker({
               <p style={{ fontFamily: T.font, fontSize: 12, color: T.muted, margin: 0 }}>{t('builderUI.photoUpTo10')}</p>
             </div>
           </button>
+          <p style={{ fontFamily: T.font, fontSize: 11.5, color: T.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
+            {t('builderUI.telegramStickerHint')}
+          </p>
         </>
       ) : (
         <>
@@ -453,6 +456,9 @@ export function GifImagePicker({
               <p style={{ fontFamily: T.font, fontSize: 12, color: T.muted, margin: 0 }}>{t('builderUI.photoUpTo10')}</p>
             </div>
           </button>
+          <p style={{ fontFamily: T.font, fontSize: 11.5, color: T.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
+            {t('builderUI.telegramStickerHint')}
+          </p>
         </>
       )}
     </div>
