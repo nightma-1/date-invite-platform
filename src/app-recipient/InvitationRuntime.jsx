@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen, { DEFAULT_NO_PHRASES } from '../components/screens/QuestionScreen.jsx';
@@ -202,6 +203,22 @@ export default function InvitationRuntime() {
       {/* Тёплый декор — так же тепло, как на лендинге и в конструкторе; лёгкий параллакс при движении мыши */}
       <div ref={blob1Ref} style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: tokens.berry, opacity: 0.12, pointerEvents: 'none', transition: 'transform .35s ease-out' }} />
       <div ref={blob2Ref} style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: tokens.berry, opacity: 0.1, pointerEvents: 'none', transition: 'transform .35s ease-out' }} />
+      <div style={{ position: 'absolute', top: '58%', right: -30, width: 110, height: 110, borderRadius: '50%', background: tokens.amber || tokens.berry, opacity: 0.08, pointerEvents: 'none' }} />
+
+      {/* Плавающие сердечко/искорки — тот же вау-эффект, что и на сайте, но
+          тише, чтобы не отвлекать от самой карточки */}
+      <motion.span
+        initial={{ y: 0 }} animate={{ y: [0, -12, 0] }} transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
+        style={{ position: 'absolute', top: '9%', left: '9%', fontSize: 24, opacity: 0.5, pointerEvents: 'none' }}
+      >💗</motion.span>
+      <motion.span
+        initial={{ y: 0 }} animate={{ y: [0, 14, 0] }} transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+        style={{ position: 'absolute', bottom: '13%', right: '9%', fontSize: 20, opacity: 0.45, pointerEvents: 'none' }}
+      >✨</motion.span>
+      <motion.span
+        initial={{ y: 0 }} animate={{ y: [0, -9, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        style={{ position: 'absolute', top: '30%', right: '7%', fontSize: 16, opacity: 0.35, pointerEvents: 'none' }}
+      >✨</motion.span>
 
       {/* Кнопка "назад" — как в конструкторе, можно поправить предыдущий шаг */}
       {activeIndex > 0 && !submitted && (
