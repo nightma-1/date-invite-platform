@@ -10,8 +10,19 @@ import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 
 const t = getTemplateTokens('romantic');
+
+// Фиксируем градиент к вьюпорту (backgroundAttachment/Size), а не к высоте
+// всей страницы — иначе на длинной прокручиваемой странице розовый конец
+// градиента "уезжает" далеко вниз и видно только белое начало.
+const PAGE_BG_STYLE = {
+  background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+  backgroundAttachment: 'fixed',
+  backgroundSize: '100% 100vh',
+  backgroundRepeat: 'no-repeat',
+};
 
 // selections в responses хранится как { [invitation_steps.id]: [optionId, ...] } —
 // разворачиваем в читаемые "иконка + название" по конфигу соответствующего шага.
@@ -135,15 +146,19 @@ export default function InvitationList() {
 
   if (!session) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8" style={{ background: t.bg, minHeight: '100vh' }}>
-        <AuthGate onAuthenticated={() => {}} />
+      <div style={{ ...PAGE_BG_STYLE, minHeight: '100vh', position: 'relative' }}>
+        <DecorativeBlobs />
+        <div className="mx-auto max-w-4xl px-4 py-8" style={{ position: 'relative', zIndex: 1 }}>
+          <AuthGate onAuthenticated={() => {}} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ background: t.bg, minHeight: '100vh' }}>
-      <div className="mx-auto max-w-2xl px-5 py-14">
+    <div style={{ ...PAGE_BG_STYLE, minHeight: '100vh', position: 'relative' }}>
+      <DecorativeBlobs />
+      <div className="mx-auto max-w-2xl px-5 py-14" style={{ position: 'relative', zIndex: 1 }}>
         <div className="mb-4 flex items-center justify-between">
           <Link
             to="/"
