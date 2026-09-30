@@ -9,8 +9,8 @@ import { supabase } from '../lib/supabaseClient.js';
 const STORAGE_PREFIX = 'date-invite-draft:';
 
 export const DEFAULT_STEPS = [
-  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: 'Имя', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
-  { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!' } },
+  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: 'Имя', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: 'https://media.gifs.ru/3671d835594acd8cbe836933cf33afb65420cf76_300.webp' } },
+  { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!', mediaUrl: 'https://media.gifs.ru/af88024aba7512211a910cd9f3d4216d9b67cd3c_300.webp' } },
   // Дата и время — один шаг с двумя полями, получатель тоже видит их на одном экране
   { step_type: 'date', step_order: 2, enabled: true, configuration_json: { mode: 'recipient_picks', title: 'И так... Когда ты свободен?', buttonText: 'Выбери дату и время 💌' } },
   // Раньше был один шаг с переключателем категории и пустым списком —
@@ -47,7 +47,7 @@ export const DEFAULT_STEPS = [
 function initialDraft(draftId, initialTemplateId) {
   const templateId = initialTemplateId || 'romantic';
   return {
-    draftId, templateId, mood: templateId, cardShape: 'classic', activeStepIndex: 0, steps: DEFAULT_STEPS,
+    draftId, templateId, mood: templateId, cardShape: 'polaroid', activeStepIndex: 0, steps: DEFAULT_STEPS,
     // Кому адресовано приглашение — спрашиваем один раз при входе в конструктор
     // (см. AudienceGate в BuilderShell), это не отдельный шаг мастера и не
     // экран для получателя, а метаданные автора.
@@ -87,7 +87,7 @@ async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplate
     draftId: editDraftId,
     templateId: inv.template_key || initialTemplateId || 'romantic',
     mood: inv.mood || inv.template_key || 'romantic',
-    cardShape: inv.card_shape || 'classic',
+    cardShape: inv.card_shape || 'polaroid',
     activeStepIndex: 0,
     steps,
     recipientGender: inv.recipient_gender || null,

@@ -80,6 +80,8 @@ function LandingPreviewDemo() {
               recipientName={t('landing.previewRecipient')}
               questionText={t('landing.previewQuestion')}
               recipientGender="female"
+              mediaUrl="https://media.gifs.ru/3671d835594acd8cbe836933cf33afb65420cf76_300.webp"
+              cardShape="polaroid"
               tokens={tokens}
               onYes={() => setStep(1)}
             />
@@ -88,6 +90,8 @@ function LandingPreviewDemo() {
             <ReactionScreen
               title={t('landing.demo.reactionTitle')}
               text={t('landing.demo.reactionText')}
+              mediaUrl="https://media.gifs.ru/af88024aba7512211a910cd9f3d4216d9b67cd3c_300.webp"
+              cardShape="polaroid"
               tokens={tokens}
               onContinue={() => setStep(2)}
             />
@@ -95,6 +99,7 @@ function LandingPreviewDemo() {
           {step === 2 && (
             <DateTimeScreen
               title={t('landing.demo.dateTitle')}
+              cardShape="polaroid"
               tokens={tokens}
               onContinue={({ date, time }) => { setCollected({ date, time }); setStep(3); }}
             />
@@ -114,6 +119,7 @@ function LandingPreviewDemo() {
               title={t('landing.demo.finalTitle')}
               description={t('landing.demo.finalDescription')}
               summary={summaryLines}
+              cardShape="polaroid"
               tokens={tokens}
               submitting={submitting}
               submitted={submitted}
