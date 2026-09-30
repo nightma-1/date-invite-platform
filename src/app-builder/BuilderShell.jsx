@@ -480,9 +480,16 @@ export default function BuilderShell() {
           top: 110,
           left: 'calc(50% + 260px)',
           width: 300,
+          // Карточка с большим списком вариантов (например, в шаге выбора)
+          // может быть выше, чем остаётся места до низа экрана — раньше
+          // превью было зафиксировано без своего скролла, и низ карточки
+          // просто обрезался экраном без возможности до него долистать.
+          maxHeight: 'calc(100vh - 130px)',
+          overflowY: 'auto',
+          paddingBottom: 16,
         }}
       >
-        <p style={{ fontSize: 12, color: T.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font }}>
+        <p style={{ fontSize: 12, color: T.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font, position: 'sticky', top: 0, background: T.bg, paddingTop: 2, paddingBottom: 2, zIndex: 1 }}>
           {t('builderUI.preview')}
         </p>
         <AnimatePresence mode="wait">
