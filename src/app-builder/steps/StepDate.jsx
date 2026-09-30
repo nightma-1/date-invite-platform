@@ -12,6 +12,7 @@ import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
 import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
+import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
 export default function StepDate() {
   const { t } = useTranslation();
@@ -50,7 +51,9 @@ export default function StepDate() {
       return;
     }
     setPendingMedia('date', file);
-    update({ mediaUrl: URL.createObjectURL(file) });
+    const previewUrl = URL.createObjectURL(file);
+    registerBlobMediaType(previewUrl, file.type);
+    update({ mediaUrl: previewUrl });
   }
 
   function removeMedia() {

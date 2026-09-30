@@ -11,6 +11,7 @@ import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
 import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
+import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
 export default function StepReaction() {
   const { t } = useTranslation();
@@ -51,7 +52,9 @@ export default function StepReaction() {
       return;
     }
     setPendingMedia('reaction', file);
-    update({ mediaUrl: URL.createObjectURL(file) });
+    const previewUrl = URL.createObjectURL(file);
+    registerBlobMediaType(previewUrl, file.type);
+    update({ mediaUrl: previewUrl });
   }
 
   function removeMedia() {
