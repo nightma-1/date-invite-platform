@@ -302,6 +302,7 @@ export default function InvitationRuntime() {
           mode={activeStep.configuration_json?.mode}
           fixedDate={activeStep.configuration_json?.fixedDate}
           fixedTime={activeStep.configuration_json?.fixedTime}
+          mediaUrl={activeStep.configuration_json?.mediaUrl}
           tokens={tokens}
           onContinue={({ date, time }) => {
             setAnswers((a) => ({ ...a, selectedDate: date, selectedTime: time }));

@@ -95,6 +95,7 @@ export default function BuilderShell() {
             mode={c.mode}
             fixedDate={c.fixedDate}
             fixedTime={c.fixedTime}
+            mediaUrl={c.mediaUrl}
             tokens={tokens}
             cardShape={state.cardShape}
             onContinue={() => {}}

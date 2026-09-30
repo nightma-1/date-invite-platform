@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
 
-export default function DateTimeScreen({ title, buttonText, mode = 'recipient_picks', fixedDate, fixedTime, tokens, onContinue, cardShape = 'classic' }) {
+export default function DateTimeScreen({ title, buttonText, mode = 'recipient_picks', fixedDate, fixedTime, mediaUrl, tokens, onContinue, cardShape = 'classic' }) {
   const [selectedDate, setSelectedDate] = useState(fixedDate || '');
   const [selectedTime, setSelectedTime] = useState(fixedTime || '');
   const canContinue = mode === 'creator_sets' ? true : Boolean(selectedDate) && Boolean(selectedTime);
@@ -26,8 +26,16 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-    <QuestionCardFrame shape={cardShape} tokens={tokens}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>🗓️</div>
+    <QuestionCardFrame shape={cardShape} tokens={tokens} mediaUrl={cardShape === 'polaroid' ? mediaUrl : undefined}>
+      {/* В "полароиде" фото уже показывает сама рамка карточки — не дублируем */}
+      {cardShape !== 'polaroid' && (mediaUrl ? (
+        <img
+          src={mediaUrl} alt=""
+          style={{ width: 128, height: 128, borderRadius: 12, objectFit: 'cover', objectPosition: 'center', margin: '0 auto 16px', display: 'block' }}
+        />
+      ) : (
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🗓️</div>
+      ))}
       <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
         {title || 'Когда встретимся?'}
       </h1>
