@@ -8,12 +8,142 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
+import ReactionScreen from '../components/screens/ReactionScreen.jsx';
+import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
+import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
+import FinalScreen from '../components/screens/FinalScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
+// Живое превью в шапке — не статичная картинка, а настоящий проход по
+// всему сценарию (вопрос → реакция → дата → выбор → финал) на примерных
+// данных, чтобы посетитель мог сам дойти до конца и понять, что получит
+// его адресат. Ничего никуда не отправляется — это витрина, а не реальное
+// приглашение.
+function LandingPreviewDemo() {
+  const { t } = useTranslation();
+  const tokens = getTemplateTokens('romantic');
+  const [step, setStep] = useState(0);
+  const [collected, setCollected] = useState({ date: null, time: null });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const STEP_COUNT = 5;
+
+  function restart() {
+    setStep(0);
+    setCollected({ date: null, time: null });
+    setSubmitting(false);
+    setSubmitted(false);
+  }
+
+  async function handleDemoSubmit() {
+    setSubmitting(true);
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    setSubmitting(false);
+    setSubmitted(true);
+  }
+
+  const placeOptions = t('landing.demo.placeOptions', { returnObjects: true });
+  const foodOptions = t('landing.demo.foodOptions', { returnObjects: true });
+  const summaryLines = [
+    collected.date ? `📅 ${collected.date}` : null,
+    collected.time ? `🕒 ${collected.time}` : null,
+  ].filter(Boolean);
+
+  return (
+    <div>
+      {/* Точки прогресса по всему сценарию демо — не только внутри одного экрана */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginBottom: 14 }}>
+        {Array.from({ length: STEP_COUNT }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: i === step ? T.pink : `${T.dark}25`,
+              transition: 'background 0.2s',
+            }}
+          />
+        ))}
+      </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+          transition={{ duration: 0.25 }}
+        >
+          {step === 0 && (
+            <QuestionScreen
+              recipientName={t('landing.previewRecipient')}
+              questionText={t('landing.previewQuestion')}
+              recipientGender="female"
+              tokens={tokens}
+              onYes={() => setStep(1)}
+            />
+          )}
+          {step === 1 && (
+            <ReactionScreen
+              title={t('landing.demo.reactionTitle')}
+              text={t('landing.demo.reactionText')}
+              tokens={tokens}
+              onContinue={() => setStep(2)}
+            />
+          )}
+          {step === 2 && (
+            <DateTimeScreen
+              title={t('landing.demo.dateTitle')}
+              tokens={tokens}
+              onContinue={({ date, time }) => { setCollected({ date, time }); setStep(3); }}
+            />
+          )}
+          {step === 3 && (
+            <DoubleChoiceScreen
+              placeTitle={t('landing.demo.placeTitle')}
+              placeOptions={placeOptions}
+              foodTitle={t('landing.demo.foodTitle')}
+              foodOptions={foodOptions}
+              tokens={tokens}
+              onContinue={() => setStep(4)}
+            />
+          )}
+          {step === 4 && (
+            <FinalScreen
+              title={t('landing.demo.finalTitle')}
+              description={t('landing.demo.finalDescription')}
+              summary={summaryLines}
+              tokens={tokens}
+              submitting={submitting}
+              submitted={submitted}
+              onSubmit={handleDemoSubmit}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <p style={{ textAlign: 'center', fontSize: 12, color: T.muted, marginTop: 12 }}>
+        {step === 0 && !submitted ? t('landing.previewHint') : null}
+      </p>
+      {(step > 0 || submitted) && (
+        <button
+          type="button"
+          onClick={restart}
+          style={{
+            display: 'block', margin: '4px auto 0', background: 'none', border: 'none',
+            color: T.pink, fontFamily: T.font, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          {submitted ? t('landing.demo.playAgain') : t('landing.demo.restart')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function Landing() {
   const { t } = useTranslation();
-  const previewTokens = getTemplateTokens('romantic');
   const [openFaq, setOpenFaq] = useState(null);
 
   const STEPS = t('landing.steps', { returnObjects: true });
@@ -110,15 +240,10 @@ export default function Landing() {
             </div>
 
             <div className="mx-auto w-full max-w-[280px] sm:max-w-[300px] lg:mx-0 lg:max-w-none lg:w-[300px]">
-              <QuestionScreen
-                recipientName={t('landing.previewRecipient')}
-                questionText={t('landing.previewQuestion')}
-                tokens={previewTokens}
-                onYes={() => {}}
-              />
-              <p style={{ textAlign: 'center', fontSize: 12, color: T.muted, marginTop: 10 }}>
-                {t('landing.previewHint')}
+              <p style={{ textAlign: 'center', fontSize: 12, color: T.muted, marginBottom: 10, lineHeight: 1.4 }}>
+                {t('landing.demo.intro')}
               </p>
+              <LandingPreviewDemo />
             </div>
           </div>
         </div>
