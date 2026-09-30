@@ -14,6 +14,11 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
   const [selectedDate, setSelectedDate] = useState(fixedDate || '');
   const [selectedTime, setSelectedTime] = useState(fixedTime || '');
   const canContinue = mode === 'creator_sets' ? true : Boolean(selectedDate) && Boolean(selectedTime);
+  // Нативные date/time-инпуты рисуют плейсхолдер и иконку календаря по
+  // системной цветовой схеме браузера, а не по нашему CSS color — без
+  // явного color-scheme на тёмной карточке (Dark Romance) получается
+  // тёмное на тёмном, и поле выглядит пустым/невидимым, пока не выбрано значение.
+  const isDarkTemplate = tokens.card !== '#FFFFFF';
 
   return (
     <motion.div
@@ -43,6 +48,7 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
               border: `1.5px solid ${tokens.ink}20`,
               fontFamily: tokens.fontUI, fontSize: 14,
               color: tokens.ink, background: tokens.bg || '#fff',
+              colorScheme: isDarkTemplate ? 'dark' : 'light',
             }}
           />
           <input
@@ -55,6 +61,7 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
               border: `1.5px solid ${tokens.ink}20`,
               fontFamily: tokens.fontUI, fontSize: 14,
               color: tokens.ink, background: tokens.bg || '#fff',
+              colorScheme: isDarkTemplate ? 'dark' : 'light',
             }}
           />
         </div>
