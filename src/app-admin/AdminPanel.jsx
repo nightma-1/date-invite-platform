@@ -11,7 +11,7 @@ import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif } from '../lib/mediaLibrary.js';
-import { T } from '../app-builder/BuilderUI.jsx';
+import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 
 const t = getTemplateTokens('romantic');
 
@@ -72,8 +72,10 @@ export default function AdminPanel() {
       backgroundSize: '100% 100vh',
       backgroundRepeat: 'no-repeat',
       minHeight: '100vh',
+      position: 'relative',
     }}>
-      <div className="mx-auto max-w-3xl px-5 py-14">{children}</div>
+      <DecorativeBlobs />
+      <div className="mx-auto max-w-3xl px-5 py-14" style={{ position: 'relative', zIndex: 1 }}>{children}</div>
     </div>
   );
 

@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
-import { T } from '../app-builder/BuilderUI.jsx';
+import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 
 // Фиксируем градиент к вьюпорту (backgroundAttachment/Size), а не к высоте
 // всей страницы — иначе на длинной прокручиваемой странице розовый конец
@@ -135,10 +135,9 @@ export default function ResponseView() {
     <div style={{
       minHeight: '100vh',
       ...PAGE_BG_STYLE,
-      position: 'relative', overflow: 'hidden',
+      position: 'relative',
     }}>
-      <div style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: T.pinkMid, opacity: 0.5, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: T.pinkMid, opacity: 0.4, pointerEvents: 'none' }} />
+      <DecorativeBlobs />
 
       <div className="mx-auto max-w-[420px] px-4 py-10" style={{ position: 'relative', zIndex: 1 }}>
         <Link

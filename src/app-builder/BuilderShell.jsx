@@ -17,7 +17,7 @@ import { publishDraft } from './publishDraft.js';
 import { updateInvitationDraft } from './updateInvitation.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
-import { T } from './BuilderUI.jsx';
+import { T, DecorativeBlobs } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
@@ -309,8 +309,12 @@ export default function BuilderShell() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
+        position: 'relative',
       }}>
-        <AuthGate onAuthenticated={(user) => { setShowAuthGate(false); runPublish(user.id); }} />
+        <DecorativeBlobs />
+        <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <AuthGate onAuthenticated={(user) => { setShowAuthGate(false); runPublish(user.id); }} />
+        </div>
       </div>
     );
   }
@@ -325,11 +329,13 @@ export default function BuilderShell() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
+        position: 'relative',
       }}>
+        <DecorativeBlobs />
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          style={{ textAlign: 'center', maxWidth: 400, width: '100%' }}
+          style={{ textAlign: 'center', maxWidth: 400, width: '100%', position: 'relative', zIndex: 1 }}
         >
           <div style={{ fontSize: 56, marginBottom: 16 }}>{publishResult.edited ? '✅' : '🎉'}</div>
           <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 24, color: T.darkPurple, marginBottom: 8 }}>
@@ -431,9 +437,10 @@ export default function BuilderShell() {
       backgroundAttachment: 'fixed',
       backgroundSize: '100% 100vh',
       backgroundRepeat: 'no-repeat',
-      display: 'flex',
-      flexDirection: 'column',
+      position: 'relative',
     }}>
+      <DecorativeBlobs />
+      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Top bar */}
       <div style={{
         background: 'white',
@@ -601,6 +608,7 @@ export default function BuilderShell() {
             ? (publishing ? t('builder.saving') : (state.editInvitationId ? t('builder.saveChanges') : t('builder.publish')))
             : t('builder.continue')}
         </motion.button>
+      </div>
       </div>
     </div>
   );

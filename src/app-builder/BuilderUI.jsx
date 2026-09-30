@@ -5,6 +5,7 @@
 
 import { forwardRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 
 // Design tokens matching onlyteplo.ru design system
 export const T = {
@@ -20,6 +21,31 @@ export const T = {
   card: '#ffffff',
   font: "'Comfortaa', sans-serif",
 };
+
+// Единый тёплый декор для фона страниц (как на главной и на экране выбора
+// пола в конструкторе) — размытые розовые пятна + плавающие сердечко и
+// искорка. Фиксируется к вьюпорту, поэтому виден одинаково при любой
+// прокрутке длинной страницы. Использование: положить первым элементом
+// внутри position:relative обёртки страницы, а сам контент — со своим
+// position:relative, zIndex:1, чтобы быть поверх декора.
+export function DecorativeBlobs() {
+  return (
+    <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+      <div style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: T.pinkMid, opacity: 0.5, filter: 'blur(2px)' }} />
+      <div style={{ position: 'absolute', top: 60, right: -60, width: 160, height: 160, borderRadius: '50%', background: T.pinkMid, opacity: 0.4, filter: 'blur(2px)' }} />
+      <div style={{ position: 'absolute', bottom: -50, left: '10%', width: 140, height: 140, borderRadius: '50%', background: T.pinkBorder, opacity: 0.35 }} />
+      <div style={{ position: 'absolute', bottom: '20%', right: '6%', width: 90, height: 90, borderRadius: '50%', background: T.pinkMid, opacity: 0.3 }} />
+      <motion.span
+        initial={{ y: 0 }} animate={{ y: [0, -10, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+        style={{ position: 'absolute', top: '14%', left: '7%', fontSize: 26, opacity: 0.5 }}
+      >💗</motion.span>
+      <motion.span
+        initial={{ y: 0 }} animate={{ y: [0, 12, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+        style={{ position: 'absolute', bottom: '16%', right: '7%', fontSize: 22, opacity: 0.45 }}
+      >✨</motion.span>
+    </div>
+  );
+}
 
 // SectionCard: light-blue card with №N badge top-right
 export function SectionCard({ number, title, children }) {
