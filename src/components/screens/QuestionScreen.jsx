@@ -144,14 +144,20 @@ export default function QuestionScreen({
                     position: 'absolute', inset: -10, borderRadius: 30,
                     background: tokens.berry, opacity: 0.12,
                   }} />
-                  <img
-                    src={mediaUrl} alt=""
+                  <div
                     style={{
                       position: 'relative',
-                      width: 136, height: 136, borderRadius: 22, objectFit: 'cover', objectPosition: 'top',
+                      width: 136, height: 136, borderRadius: 22,
+                      background: `${tokens.berry}14`,
                       boxShadow: `0 12px 28px -8px ${tokens.berry}55`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                     }}
-                  />
+                  >
+                    <img
+                      src={mediaUrl} alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                  </div>
                 </motion.div>
               )}
 
