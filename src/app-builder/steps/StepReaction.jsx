@@ -122,8 +122,8 @@ export default function StepReaction() {
         />
       </SectionCard>
 
-      {/* Live preview */}
-      <div style={{ marginTop: 8, padding: '12px 0' }}>
+      {/* Live preview — на широких экранах превью уже показано сбоку (см. BuilderShell) */}
+      <div className="xl:hidden" style={{ marginTop: 8, padding: '12px 0' }}>
         <p style={{ fontSize: 12, color: T.muted, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font }}>
           {t('builderUI.preview')}
         </p>

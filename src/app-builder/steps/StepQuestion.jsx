@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBuilder } from '../builderStore.jsx';
 import QuestionScreen from '../../components/screens/QuestionScreen.jsx';
-import { getTemplateTokens } from '../../templates/registry.js';
+import { getTemplateTokens, TEMPLATE_LIST } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
@@ -68,7 +68,44 @@ export default function StepQuestion() {
 
   return (
     <div>
-      <SectionCard number="1" title={t('steps.question.imageTitle')}>
+      <SectionCard number="1" title={t('landing.templatesTitle')}>
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
+          {TEMPLATE_LIST.map((tpl) => {
+            const selected = state.templateId === tpl.id;
+            return (
+              <button
+                key={tpl.id}
+                type="button"
+                onClick={() => dispatch({ type: 'SET_TEMPLATE', templateId: tpl.id })}
+                style={{
+                  flexShrink: 0, width: 88, border: 'none', background: 'none', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0,
+                }}
+              >
+                <div style={{
+                  width: 76, height: 56, padding: 6, boxSizing: 'border-box',
+                  border: selected ? `3px solid ${T.pink}` : '2px solid transparent',
+                  borderRadius: 14, background: tpl.bg,
+                  transform: selected ? 'scale(1.06)' : 'scale(1)',
+                  boxShadow: selected ? `0 0 0 2px ${T.pink}55, 0 6px 16px ${T.pink}35` : 'none',
+                  transition: 'transform 0.18s, box-shadow 0.18s, border-color 0.18s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{ height: 4, width: 26, borderRadius: 2, background: tpl.berry }} />
+                </div>
+                <span style={{
+                  fontFamily: T.font, fontSize: 11, textAlign: 'center', lineHeight: 1.2,
+                  color: selected ? T.pink : T.muted, fontWeight: selected ? 700 : 500,
+                }}>
+                  {tpl.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </SectionCard>
+
+      <SectionCard number="2" title={t('steps.question.imageTitle')}>
         <GifImagePicker
           currentUrl={config.mediaUrl}
           gifs={gifs}
@@ -91,7 +128,7 @@ export default function StepQuestion() {
         )}
       </SectionCard>
 
-      <SectionCard number="2" title={t('steps.question.cardShapeTitle')}>
+      <SectionCard number="3" title={t('steps.question.cardShapeTitle')}>
         <CardShapePicker
           value={state.cardShape}
           onChange={(cardShape) => dispatch({ type: 'SET_CARD_SHAPE', cardShape })}
@@ -101,7 +138,7 @@ export default function StepQuestion() {
         </p>
       </SectionCard>
 
-      <SectionCard number="3" title={t('steps.question.textTitle')}>
+      <SectionCard number="4" title={t('steps.question.textTitle')}>
         <FieldLabel>{t('steps.question.recipientName')}</FieldLabel>
         <Inp
           type="text"
@@ -140,8 +177,8 @@ export default function StepQuestion() {
         </p>
       </SectionCard>
 
-      {/* Live preview */}
-      <div style={{ marginTop: 8, padding: '12px 0' }}>
+      {/* Live preview — на широких экранах превью уже показано сбоку (см. BuilderShell) */}
+      <div className="xl:hidden" style={{ marginTop: 8, padding: '12px 0' }}>
         <p style={{ fontSize: 12, color: T.muted, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font }}>
           {t('builderUI.preview')}
         </p>

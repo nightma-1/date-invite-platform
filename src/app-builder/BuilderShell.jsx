@@ -16,9 +16,14 @@ import AuthGate from './AuthGate.jsx';
 import { publishDraft } from './publishDraft.js';
 import { updateInvitationDraft } from './updateInvitation.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { getTemplateTokens, MOODS, templatesForMood } from '../templates/registry.js';
+import { getTemplateTokens } from '../templates/registry.js';
 import { T } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import QuestionScreen from '../components/screens/QuestionScreen.jsx';
+import ReactionScreen from '../components/screens/ReactionScreen.jsx';
+import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
+import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
+import FinalScreen from '../components/screens/FinalScreen.jsx';
 
 const STEP_COMPONENTS = {
   question: StepQuestion,
@@ -47,16 +52,94 @@ export default function BuilderShell() {
   const StepComponent = STEP_COMPONENTS[activeStep?.step_type];
   const isLastStep = state.activeStepIndex === orderedStepsForWizard.length - 1;
 
+  // Единая живая превьюшка для боковой панели — раньше каждый шаг рисовал
+  // своё превью отдельно внизу страницы, теперь один рендер на весь визард,
+  // переключается вместе с активным шагом.
+  function renderActiveStepPreview() {
+    if (!activeStep) return null;
+    switch (activeStep.step_type) {
+      case 'question': {
+        const c = activeStep.configuration_json;
+        return (
+          <QuestionScreen
+            recipientName={c.recipientName || t('steps.question.previewDefaultRecipient')}
+            questionText={c.questionText || t('steps.question.previewDefaultQuestion')}
+            mediaUrl={c.mediaUrl}
+            yesText={c.yesText}
+            noPhrases={c.noText ? [c.noText, ...t('questionScreen.noPhrases', { returnObjects: true }).slice(1)] : undefined}
+            tokens={tokens}
+            cardShape={state.cardShape}
+            onYes={() => {}}
+          />
+        );
+      }
+      case 'reaction': {
+        const c = activeStep.configuration_json;
+        return (
+          <ReactionScreen
+            title={c.title}
+            text={c.text}
+            mediaUrl={c.mediaUrl}
+            tokens={tokens}
+            cardShape={state.cardShape}
+            onContinue={() => {}}
+          />
+        );
+      }
+      case 'date': {
+        const c = activeStep.configuration_json;
+        return (
+          <DateTimeScreen
+            title={c.title}
+            buttonText={c.buttonText}
+            mode={c.mode}
+            fixedDate={c.fixedDate}
+            fixedTime={c.fixedTime}
+            tokens={tokens}
+            cardShape={state.cardShape}
+            onContinue={() => {}}
+          />
+        );
+      }
+      case 'choice_place': {
+        const place = activeStep.configuration_json;
+        const foodStep = state.steps.find((s) => s.step_type === 'choice_food');
+        const food = foodStep?.configuration_json || {};
+        return (
+          <DoubleChoiceScreen
+            placeTitle={place.title}
+            placeOptions={place.options}
+            placeAllowMultiple={place.allowMultiple}
+            foodTitle={food.title}
+            foodOptions={food.options}
+            foodAllowMultiple={food.allowMultiple}
+            tokens={tokens}
+            onContinue={() => {}}
+          />
+        );
+      }
+      case 'final': {
+        const c = activeStep.configuration_json;
+        return (
+          <FinalScreen
+            title={c.title}
+            description={c.description}
+            tokens={tokens}
+            cardShape={state.cardShape}
+            onSubmit={async () => {}}
+          />
+        );
+      }
+      default:
+        return null;
+    }
+  }
+
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState(null);
   const [publishResult, setPublishResult] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
-  // Существующее приглашение (редактирование) уже несёт свой templateId —
-  // экран выбора настроения нужен только при создании нового.
-  const [templatePicked, setTemplatePicked] = useState(Boolean(state.editInvitationId));
-  const [mood, setMood] = useState('all');
-  const moodTemplates = templatesForMood(mood);
 
   const canGoBack = state.activeStepIndex > 0;
   const canGoNext = state.activeStepIndex < orderedStepsForWizard.length - 1;
@@ -184,83 +267,6 @@ export default function BuilderShell() {
             ))}
           </div>
         </motion.div>
-      </div>
-    );
-  }
-
-  // Template/mood selection screen — раньше это была отдельная галерея на
-  // лендинге, теперь выбор настроения приглашения происходит внутри
-  // конструктора, сразу после выбора пола получателя.
-  if (!templatePicked) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: T.bg,
-        fontFamily: T.font,
-        padding: '24px 20px 60px',
-      }}>
-        <div style={{ maxWidth: 1040, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <img src="/logo.png" alt="Senti" style={{ height: 28, width: 'auto', display: 'block' }} />
-            <LanguageSwitcher />
-          </div>
-
-          <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
-            <h1 style={{ fontFamily: T.font, color: T.darkPurple, fontSize: 24, fontWeight: 700, margin: 0 }}>
-              {t('landing.templatesTitle')}
-            </h1>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {MOODS.map((m) => {
-                const active = mood === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMood(m.id)}
-                    style={{
-                      padding: '6px 16px', borderRadius: 20, fontSize: 13,
-                      border: `1.5px solid ${active ? T.pink : T.dark + '25'}`,
-                      background: active ? T.pink : 'transparent',
-                      color: active ? '#fff' : T.dark,
-                      fontWeight: active ? 600 : 400, cursor: 'pointer', fontFamily: T.font,
-                    }}
-                  >
-                    {m.id === 'all' ? t('builderUI.gifCategories.all') : m.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-            {moodTemplates.map((tpl) => (
-              <motion.div key={tpl.id} whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 300 }}>
-                <button
-                  type="button"
-                  onClick={() => { dispatch({ type: 'SET_TEMPLATE', templateId: tpl.id }); setTemplatePicked(true); }}
-                  style={{ all: 'unset', cursor: 'pointer', display: 'block', width: '100%' }}
-                >
-                  <div style={{ background: tpl.bg, borderRadius: 16, overflow: 'hidden', border: `1px solid ${tpl.ink}12` }}>
-                    <div style={{ padding: '20px 20px 0' }}>
-                      <div style={{ height: 4, width: 32, borderRadius: 2, background: tpl.berry, marginBottom: 12 }} />
-                      <p style={{ fontFamily: tpl.fontDisplay, color: tpl.ink, fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{tpl.name}</p>
-                      <p style={{ fontFamily: tpl.fontUI, color: tpl.inkMuted || tpl.ink, fontSize: 13 }}>
-                        {t('landing.templatePreviewQuestion')}
-                      </p>
-                    </div>
-                    <div style={{ padding: '14px 20px 16px', display: 'flex', gap: 8 }}>
-                      <div style={{ background: tpl.berry, color: '#fff', padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13, fontWeight: 600 }}>{t('landing.yes')}</div>
-                      <div style={{ border: `1px solid ${tpl.ink}35`, color: tpl.inkMuted || tpl.ink, padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13 }}>{t('landing.no')}</div>
-                    </div>
-                    <div style={{ borderTop: `1px solid ${tpl.ink}10`, padding: '10px 20px', fontFamily: tpl.fontUI, fontSize: 12, color: tpl.berry, fontWeight: 600 }}>
-                      {t('landing.chooseTemplate')}
-                    </div>
-                  </div>
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
       </div>
     );
   }
@@ -443,6 +449,34 @@ export default function BuilderShell() {
         }}>
           <span style={{ position: 'absolute', right: -8, top: -5, fontSize: 16 }}>❤️</span>
         </div>
+      </div>
+
+      {/* Живое превью сбоку — только на широких экранах; на узких форма и
+          превью по-прежнему идут одно под другим, как раньше */}
+      <div
+        className="hidden xl:flex xl:flex-col"
+        style={{
+          position: 'fixed',
+          top: 110,
+          left: 'calc(50% + 260px)',
+          width: 300,
+        }}
+      >
+        <p style={{ fontSize: 12, color: T.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font }}>
+          {t('builderUI.preview')}
+        </p>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={state.activeStepIndex}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            style={{ maxWidth: 280, margin: '0 auto' }}
+          >
+            {renderActiveStepPreview()}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Scrollable content */}
