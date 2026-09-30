@@ -31,8 +31,22 @@ export default function AuthGate({ onAuthenticated }) {
         : await supabase.auth.signUp({ email, password });
       if (authError) throw authError;
       if (mode === 'signup' && !data.session) {
-        setError('Проверь почту — нужно подтвердить регистрацию, потом войди снова.');
+        // Supabase не возвращает ошибку, если email уже зарегистрирован и
+        // подтверждён (защита от перебора email) — просто отдаёт "пустого"
+        // пользователя без identities и без session. Раньше это трактовалось
+        // как "надо подтвердить почту", и человек бесконечно ждал письмо,
+        // которое никогда не придёт. Отличаем этот случай явно.
+        const alreadyRegistered = data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
+        if (alreadyRegistered) {
+          setMode('signin');
+          setError('Этот email уже зарегистрирован. Войди с паролем, или используй «Забыл пароль», если не помнишь его.');
+        } else {
+          setError('Проверь почту — нужно подтвердить регистрацию, потом войди снова.');
+        }
         return;
+      }
+      if (!data.session) {
+        throw new Error('Не удалось получить данные сессии, попробуй ещё раз');
       }
       onAuthenticated(data.session.user);
     } catch (err) {
