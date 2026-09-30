@@ -2,29 +2,23 @@
  * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
-import { listActiveGifs } from '../lib/mediaLibrary.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
 export default function Landing() {
   const { t } = useTranslation();
   const previewTokens = getTemplateTokens('romantic');
   const [openFaq, setOpenFaq] = useState(null);
-  const [landingGifs, setLandingGifs] = useState([]);
 
   const STEPS = t('landing.steps', { returnObjects: true });
   const FAQ = t('landing.faq', { returnObjects: true });
   const priceFeatures = t('landing.priceFeatures', { returnObjects: true });
-
-  useEffect(() => {
-    listActiveGifs().then((all) => setLandingGifs(all.slice(0, 6))).catch(() => {});
-  }, []);
 
   const primaryBtn = {
     background: T.pink, color: '#fff', padding: '15px 28px',
@@ -142,30 +136,6 @@ export default function Landing() {
               <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.6 }}>{s.d}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* GIF ГАЛЕРЕЯ */}
-      <section style={{ background: T.pinkLight, padding: '56px 0' }} className="sm:py-16">
-        <div className="mx-auto max-w-[1040px] px-5">
-          <h2 style={{ fontFamily: T.font, color: T.darkPurple, fontSize: 26, fontWeight: 700, marginBottom: 8 }} className="sm:text-[32px]">
-            {t('landing.gifTitle')}
-          </h2>
-          <p style={{ color: T.muted, fontSize: 15, marginBottom: 24 }}>
-            {t('landing.gifSubtitle')}
-          </p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
-            {landingGifs.length > 0
-              ? landingGifs.map((gif) => (
-                  <div key={gif.id} style={{ borderRadius: 14, overflow: 'hidden', aspectRatio: '1', boxShadow: `0 6px 16px ${T.pink}18` }}>
-                    <img src={gif.url} alt={gif.title || 'gif'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-                  </div>
-                ))
-              : Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} style={{ borderRadius: 14, aspectRatio: '1', background: T.pinkMid, opacity: 0.5 }} />
-                ))
-            }
-          </div>
         </div>
       </section>
 
