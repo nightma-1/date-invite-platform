@@ -13,6 +13,9 @@ import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
+import { T } from '../app-builder/BuilderUI.jsx';
+
+const PAGE_BG = `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`;
 
 // Та же логика, что decodeSelections в InvitationList.jsx / api/telegram/notify.js —
 // selections хранится как { [invitation_steps.id]: [optionId, ...] }.
@@ -106,7 +109,7 @@ export default function ResponseView() {
   }
   if (!session) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8" style={{ background: '#FDF0F3', minHeight: '100vh' }}>
+      <div className="mx-auto max-w-4xl px-4 py-8" style={{ background: PAGE_BG, minHeight: '100vh' }}>
         <AuthGate onAuthenticated={() => {}} />
       </div>
     );
@@ -123,11 +126,11 @@ export default function ResponseView() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: `linear-gradient(165deg, ${tokens.bg} 0%, ${tokens.bg} 55%, ${tokens.card === '#FFFFFF' ? '#ffeef5' : tokens.bgDark} 100%)`,
+      background: PAGE_BG,
       position: 'relative', overflow: 'hidden',
     }}>
-      <div style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: tokens.berry, opacity: 0.12, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: tokens.berry, opacity: 0.1, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: -70, left: -70, width: 220, height: 220, borderRadius: '50%', background: T.pinkMid, opacity: 0.5, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: T.pinkMid, opacity: 0.4, pointerEvents: 'none' }} />
 
       <div className="mx-auto max-w-[420px] px-4 py-10" style={{ position: 'relative', zIndex: 1 }}>
         <Link
@@ -204,7 +207,7 @@ export default function ResponseView() {
 
 function CenteredMessage({ text }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#FDF0F3' }} className="flex items-center justify-center px-6 text-center">
+    <div style={{ minHeight: '100vh', background: PAGE_BG }} className="flex items-center justify-center px-6 text-center">
       <p style={{ color: '#6B4D5A', fontSize: 14, opacity: 0.8 }}>{text}</p>
     </div>
   );

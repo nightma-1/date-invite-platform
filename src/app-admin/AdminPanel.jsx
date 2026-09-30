@@ -11,6 +11,7 @@ import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif } from '../lib/mediaLibrary.js';
+import { T } from '../app-builder/BuilderUI.jsx';
 
 const t = getTemplateTokens('romantic');
 
@@ -65,7 +66,10 @@ export default function AdminPanel() {
   }, [session]);
 
   const wrap = (children) => (
-    <div style={{ background: t.bg, minHeight: '100vh' }}>
+    <div style={{
+      background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+      minHeight: '100vh',
+    }}>
       <div className="mx-auto max-w-3xl px-5 py-14">{children}</div>
     </div>
   );

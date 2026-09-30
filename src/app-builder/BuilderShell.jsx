@@ -153,7 +153,7 @@ export default function BuilderShell() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: T.bg,
+        background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -304,7 +304,7 @@ export default function BuilderShell() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: T.bg,
+        background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -320,7 +320,7 @@ export default function BuilderShell() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: T.bg,
+        background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -422,7 +422,12 @@ export default function BuilderShell() {
   const progress = ((state.activeStepIndex + 1) / orderedStepsForWizard.length) * 100;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      minHeight: '100vh',
+      background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
       {/* Top bar */}
       <div style={{
         background: 'white',
@@ -535,7 +540,7 @@ export default function BuilderShell() {
         bottom: 0,
         left: '50%',
         transform: 'translateX(-50%)',
-        background: T.bg,
+        background: '#ffffff',
         borderTop: `1px solid ${T.pinkBorder}`,
         padding: '12px 16px',
         display: 'flex',
