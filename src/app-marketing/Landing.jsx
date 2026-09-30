@@ -16,14 +16,6 @@ import { T } from '../app-builder/BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { listDefaultGifs } from '../lib/mediaLibrary.js';
 
-// Запасные картинки на случай, если дефолты ещё не загрузились из
-// библиотеки (или библиотека недоступна) — те же, что зашиты в
-// DEFAULT_STEPS конструктора (builderStore.jsx).
-const FALLBACK_STEP_MEDIA = {
-  question: 'https://media.gifs.ru/3671d835594acd8cbe836933cf33afb65420cf76_300.webp',
-  reaction: 'https://media.gifs.ru/af88024aba7512211a910cd9f3d4216d9b67cd3c_300.webp',
-};
-
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
 // всему сценарию (вопрос → реакция → дата → выбор → финал) на примерных
 // данных, чтобы посетитель мог сам дойти до конца и понять, что получит
@@ -36,7 +28,10 @@ function LandingPreviewDemo() {
   const [collected, setCollected] = useState({ date: null, time: null });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [stepMedia, setStepMedia] = useState(FALLBACK_STEP_MEDIA);
+  // Пусто, пока не загрузится актуальный дефолт из админки — раньше здесь
+  // стояла зашитая в код СТАРАЯ картинка, которая на долю секунды мелькала
+  // перед тем, как подставлялась текущая.
+  const [stepMedia, setStepMedia] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +40,7 @@ function LandingPreviewDemo() {
         if (cancelled || !defaults) return;
         setStepMedia((prev) => ({ ...prev, ...defaults }));
       })
-      .catch(() => {}); // тихо — остаются запасные картинки
+      .catch(() => {}); // тихо — просто без картинки на превью
     return () => { cancelled = true; };
   }, []);
 

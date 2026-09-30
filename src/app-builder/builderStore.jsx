@@ -10,8 +10,13 @@ import { listDefaultGifs } from '../lib/mediaLibrary.js';
 const STORAGE_PREFIX = 'date-invite-draft:';
 
 export const DEFAULT_STEPS = [
-  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: 'Имя', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: 'https://media.gifs.ru/3671d835594acd8cbe836933cf33afb65420cf76_300.webp' } },
-  { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!', mediaUrl: 'https://media.gifs.ru/af88024aba7512211a910cd9f3d4216d9b67cd3c_300.webp' } },
+  // mediaUrl у вопроса/реакции/даты/финала изначально пустой — актуальная
+  // дефолтная гифка каждого шага подтягивается из админки при заходе в
+  // конструктор (см. эффект APPLY_DEFAULT_MEDIA ниже). Раньше здесь были
+  // зашитые в код URL, из-за которых на долю секунды мелькала СТАРАЯ
+  // картинка перед тем, как подставлялась актуальная.
+  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: 'Имя', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
+  { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!', mediaUrl: null } },
   // Дата и время — один шаг с двумя полями, получатель тоже видит их на одном экране
   { step_type: 'date', step_order: 2, enabled: true, configuration_json: { mode: 'recipient_picks', title: 'И так... Когда ты свободен?', buttonText: 'Выбери дату и время 💌' } },
   // Раньше был один шаг с переключателем категории и пустым списком —
