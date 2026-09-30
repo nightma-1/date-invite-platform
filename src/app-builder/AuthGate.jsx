@@ -4,9 +4,12 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
+import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
 export default function AuthGate({ onAuthenticated }) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState('signin');
@@ -23,7 +26,7 @@ export default function AuthGate({ onAuthenticated }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    if (!email || !password) { setError('Заполни email и пароль'); return; }
+    if (!email || !password) { setError(t('auth.fillFields')); return; }
     setLoading(true);
     try {
       const { data, error: authError } = mode === 'signin'
@@ -39,18 +42,18 @@ export default function AuthGate({ onAuthenticated }) {
         const alreadyRegistered = data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
         if (alreadyRegistered) {
           setMode('signin');
-          setError('Этот email уже зарегистрирован. Войди с паролем, или используй «Забыл пароль», если не помнишь его.');
+          setError(t('auth.alreadyRegistered'));
         } else {
-          setError('Проверь почту — нужно подтвердить регистрацию, потом войди снова.');
+          setError(t('auth.checkEmail'));
         }
         return;
       }
       if (!data.session) {
-        throw new Error('Не удалось получить данные сессии, попробуй ещё раз');
+        throw new Error(t('auth.sessionError'));
       }
       onAuthenticated(data.session.user);
     } catch (err) {
-      setError(err.message || 'Не получилось войти');
+      setError(err.message || t('auth.genericError'));
     } finally {
       setLoading(false);
     }
@@ -66,16 +69,20 @@ export default function AuthGate({ onAuthenticated }) {
         boxShadow: '0 4px 24px rgba(42,31,43,0.08)',
       }}
     >
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+        <LanguageSwitcher />
+      </div>
+
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>💌</div>
         <h2 style={{ fontFamily: '"Cormorant Garamond", serif', color: '#2A1F2B', fontSize: 22, fontWeight: 700, margin: 0 }}>
-          {mode === 'signin' ? 'Войди, чтобы продолжить' : 'Создай аккаунт'}
+          {mode === 'signin' ? t('auth.signinTitle') : t('auth.signupTitle')}
         </h2>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" style={inputStyle} />
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Пароль" style={inputStyle} />
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.email')} style={inputStyle} />
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.password')} style={inputStyle} />
 
         {error && (
           <p style={{ color: '#C0392B', fontSize: 13, margin: 0 }}>{error}</p>
@@ -91,7 +98,7 @@ export default function AuthGate({ onAuthenticated }) {
             opacity: loading ? 0.7 : 1, marginTop: 4,
           }}
         >
-          {loading ? 'Секунду…' : mode === 'signin' ? 'Войти' : 'Зарегистрироваться'}
+          {loading ? t('auth.signingIn') : mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
         </button>
 
         <button
@@ -103,7 +110,7 @@ export default function AuthGate({ onAuthenticated }) {
             color: '#6B4D5A', textDecoration: 'underline',
           }}
         >
-          {mode === 'signin' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
+          {mode === 'signin' ? t('auth.toggleToSignup') : t('auth.toggleToSignin')}
         </button>
       </form>
     </motion.div>

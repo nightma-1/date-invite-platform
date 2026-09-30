@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBuilder } from '../builderStore.jsx';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
@@ -13,6 +14,7 @@ import { listActiveGifs } from '../../lib/mediaLibrary.js';
 import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
 
 export default function StepDate() {
+  const { t } = useTranslation();
   const { state, dispatch } = useBuilder();
   const config = state.steps.find((s) => s.step_type === 'date').configuration_json;
   const fileInputRef = useRef(null);
@@ -27,7 +29,7 @@ export default function StepDate() {
     setGifsError(null);
     listActiveGifs()
       .then(setGifs)
-      .catch(() => setGifsError('Не получилось загрузить гифки. Попробуй ещё раз.'))
+      .catch(() => setGifsError(t('builderUI.gifsLoadError')))
       .finally(() => setGifsLoading(false));
   }, []);
 
@@ -60,7 +62,7 @@ export default function StepDate() {
 
   return (
     <div>
-      <SectionCard number="1" title="Картинка на экране">
+      <SectionCard number="1" title={t('steps.date.imageTitle')}>
         <GifImagePicker
           currentUrl={config.mediaUrl}
           gifs={gifs}
@@ -83,12 +85,12 @@ export default function StepDate() {
         )}
       </SectionCard>
 
-      <SectionCard number="2" title="Дата и время">
-        <FieldLabel>Кто выбирает дату и время</FieldLabel>
+      <SectionCard number="2" title={t('steps.date.sectionTitle')}>
+        <FieldLabel>{t('steps.date.whoPicks')}</FieldLabel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {[
-            { value: 'recipient_picks', label: 'Пусть выберет сам' },
-            { value: 'creator_sets', label: 'Указать свою дату и время' },
+            { value: 'recipient_picks', label: t('steps.date.recipientPicks') },
+            { value: 'creator_sets', label: t('steps.date.creatorSets') },
           ].map((opt) => (
             <button
               key={opt.value}
@@ -114,7 +116,7 @@ export default function StepDate() {
         {config.mode === 'creator_sets' && (
           <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
             <div style={{ flex: 1 }}>
-              <FieldLabel>Дата</FieldLabel>
+              <FieldLabel>{t('steps.date.date')}</FieldLabel>
               <Inp
                 type="date"
                 value={config.fixedDate || ''}
@@ -122,7 +124,7 @@ export default function StepDate() {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <FieldLabel>Время</FieldLabel>
+              <FieldLabel>{t('steps.date.time')}</FieldLabel>
               <Inp
                 type="time"
                 value={config.fixedTime || ''}
@@ -132,24 +134,24 @@ export default function StepDate() {
           </div>
         )}
 
-        <FieldLabel>Заголовок</FieldLabel>
+        <FieldLabel>{t('steps.date.title')}</FieldLabel>
         <TxtArea
           value={config.title || ''}
           onChange={(e) => update({ title: e.target.value })}
-          placeholder="И так... Когда ты свободен?"
+          placeholder={t('steps.date.titlePlaceholder')}
           rows={2}
           maxLength={300}
         />
         <CharCount value={config.title} max={300} />
 
-        <FieldLabel style={{ marginTop: 12 }}>Текст кнопки</FieldLabel>
+        <FieldLabel style={{ marginTop: 12 }}>{t('steps.date.buttonText')}</FieldLabel>
         <Inp
           value={config.buttonText || ''}
           onChange={(e) => update({ buttonText: e.target.value })}
-          placeholder="Выбери дату и время 💌"
+          placeholder={t('steps.date.buttonPlaceholder')}
         />
         <p style={{ fontSize: 12, color: T.muted, marginTop: 4, fontFamily: T.font }}>
-          У получателя кнопка активна только после выбора даты и времени
+          {t('steps.date.buttonHint')}
         </p>
       </SectionCard>
     </div>

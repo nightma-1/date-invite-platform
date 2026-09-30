@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
@@ -15,7 +16,7 @@ import { getTemplateTokens } from '../templates/registry.js';
 
 // Та же логика, что decodeSelections в InvitationList.jsx / api/telegram/notify.js —
 // selections хранится как { [invitation_steps.id]: [optionId, ...] }.
-function decodeSelections(steps, selections) {
+function decodeSelections(steps, selections, fallbackTitle) {
   if (!selections || !steps?.length) return [];
   return steps
     .filter((s) => s.step_type === 'choice_place' || s.step_type === 'choice_food' || s.step_type === 'choice_block')
@@ -24,7 +25,7 @@ function decodeSelections(steps, selections) {
       if (!ids || ids.length === 0) return null;
       const options = step.configuration_json?.options || [];
       return {
-        title: step.configuration_json?.title || 'Выбор',
+        title: step.configuration_json?.title || fallbackTitle,
         options: ids.map((id) => {
           const opt = options.find((o) => o.id === id);
           return opt ? { icon: opt.icon || '✨', label: opt.label } : { icon: '✨', label: id };
@@ -34,16 +35,20 @@ function decodeSelections(steps, selections) {
     .filter(Boolean);
 }
 
-function formatDateTime(dateStr, timeStr) {
+const DATE_LOCALES = { ru: 'ru-RU', uz: 'uz-UZ', en: 'en-US' };
+
+function formatDateTime(dateStr, timeStr, lang, joinWord) {
   if (!dateStr) return null;
   const d = new Date(`${dateStr}T${timeStr || '00:00'}`);
   if (Number.isNaN(d.getTime())) return dateStr;
-  const datePart = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-  const timePart = timeStr ? d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : null;
-  return timePart ? `${datePart} в ${timePart}` : datePart;
+  const locale = DATE_LOCALES[lang] || 'ru-RU';
+  const datePart = d.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
+  const timePart = timeStr ? d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : null;
+  return timePart ? `${datePart} ${joinWord} ${timePart}` : datePart;
 }
 
 export default function ResponseView() {
+  const { t, i18n } = useTranslation();
   const { invitationId } = useParams();
   const [session, setSession] = useState(undefined);
   const [state, setState] = useState({ status: 'loading' }); // loading | not_found | forbidden | ready
@@ -97,7 +102,7 @@ export default function ResponseView() {
   }, [session, invitationId]);
 
   if (session === undefined || (session && state.status === 'loading')) {
-    return <CenteredMessage text="Загрузка…" />;
+    return <CenteredMessage text={t('responseView.loading')} />;
   }
   if (!session) {
     return (
@@ -107,12 +112,12 @@ export default function ResponseView() {
     );
   }
   if (state.status === 'not_found') {
-    return <CenteredMessage text="Приглашение не найдено." />;
+    return <CenteredMessage text={t('responseView.notFound')} />;
   }
 
   const tokens = getTemplateTokens(invitation.template_key);
-  const choiceAnswers = decodeSelections(invitation.invitation_steps, response?.selections);
-  const when = response ? formatDateTime(response.selected_date, response.selected_time) : null;
+  const choiceAnswers = decodeSelections(invitation.invitation_steps, response?.selections, t('dashboard.choiceFallbackTitle'));
+  const when = response ? formatDateTime(response.selected_date, response.selected_time, i18n.resolvedLanguage, t('responseView.dateTimeJoin')) : null;
   const genderEmoji = invitation.recipient_gender === 'male' ? '👨' : invitation.recipient_gender === 'female' ? '👩' : '';
 
   return (
@@ -130,7 +135,7 @@ export default function ResponseView() {
           className="mb-5 inline-flex items-center gap-1.5 text-xs no-underline"
           style={{ color: tokens.ink, opacity: 0.55, fontFamily: tokens.fontUI }}
         >
-          ← Мои приглашения
+          {t('responseView.back')}
         </Link>
 
         <TicketCard
@@ -146,8 +151,8 @@ export default function ResponseView() {
             </h1>
             <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, opacity: 0.75, marginBottom: 24 }}>
               {!response
-                ? 'Пока нет ответа'
-                : response.answered_yes ? 'Ответила: Да, увидимся! ✨' : 'Ответила: Нет 💔'}
+                ? t('responseView.noAnswer')
+                : response.answered_yes ? t('responseView.answeredYes') : t('responseView.answeredNo')}
             </p>
 
             {response && when && (
@@ -187,7 +192,7 @@ export default function ResponseView() {
 
             {!response && (
               <p style={{ fontFamily: tokens.fontUI, color: tokens.ink, opacity: 0.5, fontSize: 13, marginTop: 8 }}>
-                Как только {invitation.recipient_name} ответит, здесь появятся все детали.
+                {t('responseView.waitingForAnswer', { name: invitation.recipient_name })}
               </p>
             )}
           </div>

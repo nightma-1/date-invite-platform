@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useBuilder } from './builderStore.jsx';
 import StepQuestion from './steps/StepQuestion.jsx';
 import StepReaction from './steps/StepReaction.jsx';
@@ -17,6 +18,7 @@ import { updateInvitationDraft } from './updateInvitation.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import { T } from './BuilderUI.jsx';
+import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
 const STEP_COMPONENTS = {
   question: StepQuestion,
@@ -26,20 +28,14 @@ const STEP_COMPONENTS = {
   final: StepFinal,
 };
 
-const STEP_TITLES = {
-  question: 'настрой экран\nприглашения',
-  reaction: 'настрой экран\nподтверждения',
-  date: 'настрой экран\nдаты и времени',
-  choice_place: 'настрой экран\nвыбора места и еды',
-  final: 'финальный\nэкран',
-};
-
 const GENDER_OPTIONS = [
-  { value: 'female', emoji: '👩', label: 'Женщину' },
-  { value: 'male', emoji: '👨', label: 'Мужчину' },
+  { value: 'female', emoji: '👩' },
+  { value: 'male', emoji: '👨' },
 ];
 
 export default function BuilderShell() {
+  const { t } = useTranslation();
+  const STEP_TITLES = t('builder.stepTitles', { returnObjects: true });
   const { state, dispatch } = useBuilder();
   const tokens = getTemplateTokens(state.templateId);
   const orderedSteps = [...state.steps].sort((a, b) => a.step_order - b.step_order);
@@ -77,7 +73,7 @@ export default function BuilderShell() {
         color: T.muted,
         fontSize: 14,
       }}>
-        Загружаем приглашение…
+        {t('builder.loadingInvitation')}
       </div>
     );
   }
@@ -117,6 +113,11 @@ export default function BuilderShell() {
           transition={{ duration: 0.45 }}
           style={{ maxWidth: 380, width: '100%', textAlign: 'center', position: 'relative', zIndex: 1 }}
         >
+          {/* Language switcher */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+            <LanguageSwitcher />
+          </div>
+
           {/* Logo */}
           <img src="/logo.png" alt="Senti" style={{ height: 40, width: 'auto', margin: '0 auto 18px', display: 'block' }} />
 
@@ -129,7 +130,7 @@ export default function BuilderShell() {
             lineHeight: 1.3,
             marginBottom: 10,
           }}>
-            кого хочешь пригласить на свидание?
+            {t('builder.genderTitle')}
           </h1>
           <p style={{
             fontFamily: T.font,
@@ -138,7 +139,7 @@ export default function BuilderShell() {
             marginBottom: 32,
             lineHeight: 1.5,
           }}>
-            Создадим тёплое приглашение за пару минут — свою картинку, вопрос и дату выберешь на следующих шагах
+            {t('builder.genderSubtitle')}
           </p>
 
           <div style={{ display: 'flex', gap: 14 }}>
@@ -172,7 +173,7 @@ export default function BuilderShell() {
                   {g.emoji}
                 </div>
                 <span style={{ fontFamily: T.font, fontWeight: 600, fontSize: 16, color: T.dark }}>
-                  {g.label}
+                  {t(`builder.gender${g.value === 'male' ? 'Male' : 'Female'}`)}
                 </span>
               </motion.button>
             ))}
@@ -205,7 +206,7 @@ export default function BuilderShell() {
       const { invitationId, slug } = await publishDraft(state, userId);
       setPublishResult({ invitationId, slug });
     } catch (err) {
-      setPublishError(err.message || 'Не получилось сохранить приглашение');
+      setPublishError(err.message || t('builder.publishGenericError'));
     } finally {
       setPublishing(false);
     }
@@ -244,12 +245,12 @@ export default function BuilderShell() {
         >
           <div style={{ fontSize: 56, marginBottom: 16 }}>{publishResult.edited ? '✅' : '🎉'}</div>
           <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 24, color: T.darkPurple, marginBottom: 8 }}>
-            {publishResult.edited ? 'Изменения сохранены' : 'Готово! Приглашение опубликовано'}
+            {publishResult.edited ? t('builder.editedTitle') : t('builder.publishedTitle')}
           </h1>
           <p style={{ color: T.muted, fontFamily: T.font, fontSize: 13, marginBottom: 20, opacity: 0.8 }}>
             {publishResult.edited
-              ? 'Ссылка та же — пересылать заново не нужно'
-              : 'Скопируй ссылку и отправь тому, кого приглашаешь'}
+              ? t('builder.editedSubtitle')
+              : t('builder.publishedSubtitle')}
           </p>
 
           <div style={{
@@ -290,7 +291,7 @@ export default function BuilderShell() {
                 flexShrink: 0,
               }}
             >
-              {linkCopied ? 'Скопировано ✓' : 'Копировать'}
+              {linkCopied ? t('builder.copied') : t('builder.copy')}
             </button>
           </div>
 
@@ -307,7 +308,7 @@ export default function BuilderShell() {
               textDecoration: 'underline',
             }}
           >
-            Открыть и посмотреть, как видит получатель →
+            {t('builder.openAsRecipient')}
           </a>
 
           <Link to="/dashboard">
@@ -322,7 +323,7 @@ export default function BuilderShell() {
               border: `1.5px solid ${T.pinkBorder}`,
               cursor: 'pointer',
             }}>
-              Перейти в «Мои приглашения» →
+              {t('builder.goToDashboard')}
             </button>
           </Link>
         </motion.div>
@@ -346,6 +347,7 @@ export default function BuilderShell() {
         <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
           <img src="/logo.png" alt="Senti" style={{ height: 28, width: 'auto', display: 'block' }} />
         </Link>
+        <LanguageSwitcher />
       </div>
 
       {/* Progress bar with heart */}
@@ -398,7 +400,7 @@ export default function BuilderShell() {
                 fontSize: 14,
                 fontFamily: T.font,
               }}>
-                Шаг — редактирование скоро появится
+                {t('builder.stepEditingComingSoon')}
               </div>
             )}
           </motion.div>
@@ -469,8 +471,8 @@ export default function BuilderShell() {
           }}
         >
           {isLastStep
-            ? (publishing ? 'Сохраняем…' : (state.editInvitationId ? 'Сохранить изменения 💾' : 'Опубликовать 💌'))
-            : 'Продолжить'}
+            ? (publishing ? t('builder.saving') : (state.editInvitationId ? t('builder.saveChanges') : t('builder.publish')))
+            : t('builder.continue')}
         </motion.button>
       </div>
     </div>

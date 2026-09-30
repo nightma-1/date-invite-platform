@@ -4,17 +4,18 @@
 
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
+import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
-const STATUS_LABELS = { draft: 'Черновик', published: 'Активно', expired: 'Истекло', archived: 'Архив' };
 const t = getTemplateTokens('romantic');
 
 // selections в responses хранится как { [invitation_steps.id]: [optionId, ...] } —
 // разворачиваем в читаемые "иконка + название" по конфигу соответствующего шага.
-function decodeSelections(inv, response) {
+function decodeSelections(inv, response, fallbackTitle) {
   if (!response?.selections || !inv.invitation_steps?.length) return [];
   return inv.invitation_steps
     .filter((s) => s.step_type === 'choice_place' || s.step_type === 'choice_food' || s.step_type === 'choice_block')
@@ -26,12 +27,14 @@ function decodeSelections(inv, response) {
         const opt = options.find((o) => o.id === id);
         return opt ? `${opt.icon || ''} ${opt.label}`.trim() : id;
       });
-      return { title: step.configuration_json?.title || 'Выбор', labels };
+      return { title: step.configuration_json?.title || fallbackTitle, labels };
     })
     .filter(Boolean);
 }
 
 export default function InvitationList() {
+  const { t: tr } = useTranslation();
+  const STATUS_LABELS = tr('dashboard.status', { returnObjects: true });
   const [session, setSession] = useState(undefined);
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,12 +50,12 @@ export default function InvitationList() {
   }
 
   async function deleteInvitation(inv) {
-    if (!confirm(`Удалить приглашение «${inv.recipient_name}»? Это нельзя отменить, ссылка перестанет работать.`)) return;
+    if (!confirm(tr('dashboard.deleteConfirm', { name: inv.recipient_name }))) return;
     setDeletingId(inv.id);
     const { error } = await supabase.from('invitations').delete().eq('id', inv.id);
     setDeletingId(null);
     if (error) {
-      alert('Не получилось удалить: ' + (error.message || 'попробуй ещё раз'));
+      alert(tr('dashboard.deleteFailed', { reason: error.message || tr('dashboard.deleteFailedFallback') }));
       return;
     }
     setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
@@ -128,7 +131,7 @@ export default function InvitationList() {
     return () => { cancelled = true; };
   }, [session]);
 
-  if (session === undefined) return <p className="p-8 text-center text-sm opacity-60">Загрузка…</p>;
+  if (session === undefined) return <p className="p-8 text-center text-sm opacity-60">{tr('dashboard.loading')}</p>;
 
   if (!session) {
     return (
@@ -141,15 +144,18 @@ export default function InvitationList() {
   return (
     <div style={{ background: t.bg, minHeight: '100vh' }}>
       <div className="mx-auto max-w-2xl px-5 py-14">
-        <Link
-          to="/"
-          className="mb-4 inline-flex items-center gap-1.5 text-xs no-underline"
-          style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}
-        >
-          ← На главную
-        </Link>
+        <div className="mb-4 flex items-center justify-between">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-xs no-underline"
+            style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}
+          >
+            {tr('dashboard.backHome')}
+          </Link>
+          <LanguageSwitcher />
+        </div>
         <h1 className="mb-4 text-2xl" style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700 }}>
-          Мои приглашения
+          {tr('dashboard.title')}
         </h1>
 
         {telegramLinked === false && (
@@ -161,32 +167,32 @@ export default function InvitationList() {
             style={{ background: '#EAF6FF', border: '1.5px solid #B3E0FF' }}
           >
             <span style={{ color: '#1E6FA8', fontFamily: t.fontUI, fontSize: 13.5, fontWeight: 600 }}>
-              🔔 Подключи Telegram, чтобы получать уведомления об ответах
+              {tr('dashboard.telegramConnectText')}
             </span>
             <span style={{ color: '#1E6FA8', fontFamily: t.fontUI, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
-              Подключить →
+              {tr('dashboard.telegramConnectAction')}
             </span>
           </a>
         )}
         {telegramLinked === true && (
           <p className="mb-8 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>
-            🔔 Уведомления в Telegram подключены
+            {tr('dashboard.telegramConnected')}
           </p>
         )}
 
-        {loading && <p className="text-sm opacity-60">Загрузка…</p>}
+        {loading && <p className="text-sm opacity-60">{tr('dashboard.loading')}</p>}
 
         {!loading && invitations.length === 0 && (
           <p className="text-sm" style={{ color: t.ink, opacity: 0.6, fontFamily: t.fontUI }}>
-            Пока нет ни одного.{' '}
-            <Link to="/builder" className="underline" style={{ color: t.berry }}>Создать первое →</Link>
+            {tr('dashboard.empty')}{' '}
+            <Link to="/builder" className="underline" style={{ color: t.berry }}>{tr('dashboard.createFirst')}</Link>
           </p>
         )}
 
         <div className="space-y-3">
           {invitations.map((inv) => {
             const response = inv.responses?.[0];
-            const choiceAnswers = decodeSelections(inv, response);
+            const choiceAnswers = decodeSelections(inv, response, tr('dashboard.choiceFallbackTitle'));
             return (
               <TicketCard key={inv.id} tokens={t}>
                 <div className="p-4">
@@ -202,12 +208,12 @@ export default function InvitationList() {
                   <p className="mb-2 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>/i/{inv.slug}</p>
                   {response ? (
                     <p className="text-sm" style={{ color: t.berry, fontFamily: t.fontUI }}>
-                      {response.answered_yes ? '❤️ Ответила: Да' : 'Ответила: Нет'}
+                      {response.answered_yes ? tr('dashboard.answeredYes') : tr('dashboard.answeredNo')}
                       {response.selected_date && ` · ${response.selected_date}`}
                       {response.selected_time && ` ${response.selected_time}`}
                     </p>
                   ) : (
-                    <p className="text-sm" style={{ color: t.ink, opacity: 0.4, fontFamily: t.fontUI }}>Пока без ответа</p>
+                    <p className="text-sm" style={{ color: t.ink, opacity: 0.4, fontFamily: t.fontUI }}>{tr('dashboard.noAnswerYet')}</p>
                   )}
                   {choiceAnswers.length > 0 && (
                     <div className="mt-1.5 space-y-0.5">
@@ -221,12 +227,12 @@ export default function InvitationList() {
                   <div className="mt-2 mb-3 flex flex-wrap gap-x-4 gap-y-1">
                     {response && (
                       <Link to={`/dashboard/response/${inv.id}`} className="inline-block text-xs underline" style={{ color: t.berry, fontWeight: 600 }}>
-                        💌 Посмотреть ответ →
+                        {tr('dashboard.viewResponse')}
                       </Link>
                     )}
                     {inv.status === 'published' && (
                       <Link to={`/i/${inv.slug}`} className="inline-block text-xs underline" style={{ color: t.ink, opacity: 0.6 }}>
-                        Открыть ссылку получателя →
+                        {tr('dashboard.openRecipientLink')}
                       </Link>
                     )}
                   </div>
@@ -237,7 +243,7 @@ export default function InvitationList() {
                       className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline"
                       style={{ background: 'white', color: t.ink, border: `1.5px solid ${t.ink}25`, fontFamily: t.fontUI }}
                     >
-                      ✏️ Изменить
+                      {tr('dashboard.edit')}
                     </Link>
                     {inv.status === 'published' && (
                       <button
@@ -250,7 +256,7 @@ export default function InvitationList() {
                           border: 'none', fontFamily: t.fontUI, cursor: 'pointer',
                         }}
                       >
-                        {copiedSlug === inv.slug ? 'Скопировано ✓' : '🔗 Скопировать ссылку'}
+                        {copiedSlug === inv.slug ? tr('dashboard.copied') : tr('dashboard.copyLink')}
                       </button>
                     )}
                     <button
@@ -264,7 +270,7 @@ export default function InvitationList() {
                         opacity: deletingId === inv.id ? 0.5 : 1,
                       }}
                     >
-                      {deletingId === inv.id ? 'Удаляем…' : '🗑️ Удалить'}
+                      {deletingId === inv.id ? tr('dashboard.deleting') : tr('dashboard.delete')}
                     </button>
                   </div>
                 </div>

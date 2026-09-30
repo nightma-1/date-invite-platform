@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBuilder } from '../builderStore.jsx';
 import ReactionScreen from '../../components/screens/ReactionScreen.jsx';
 import { getTemplateTokens } from '../../templates/registry.js';
@@ -12,6 +13,7 @@ import { listActiveGifs } from '../../lib/mediaLibrary.js';
 import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
 
 export default function StepReaction() {
+  const { t } = useTranslation();
   const { state, dispatch } = useBuilder();
   const tokens = getTemplateTokens(state.templateId);
   const config = state.steps.find((s) => s.step_type === 'reaction').configuration_json;
@@ -28,7 +30,7 @@ export default function StepReaction() {
     setGifsError(null);
     listActiveGifs()
       .then(setGifs)
-      .catch(() => setGifsError('Не получилось загрузить гифки. Попробуй ещё раз.'))
+      .catch(() => setGifsError(t('builderUI.gifsLoadError')))
       .finally(() => setGifsLoading(false));
   }, []);
 
@@ -68,7 +70,7 @@ export default function StepReaction() {
 
   return (
     <div>
-      <SectionCard number="1" title="Картинка на экране">
+      <SectionCard number="1" title={t('steps.reaction.imageTitle')}>
         <GifImagePicker
           currentUrl={currentMediaUrl}
           gifs={gifs}
@@ -91,39 +93,39 @@ export default function StepReaction() {
         )}
       </SectionCard>
 
-      <SectionCard number="2" title="Заголовок и кнопки">
-        <FieldLabel>Заголовок</FieldLabel>
+      <SectionCard number="2" title={t('steps.reaction.textTitle')}>
+        <FieldLabel>{t('steps.reaction.title')}</FieldLabel>
         <TxtArea
           value={config.title || ''}
           onChange={(e) => update({ title: e.target.value })}
-          placeholder="Подожди, ты действительно сказал да?"
+          placeholder={t('steps.reaction.titlePlaceholder')}
           rows={2}
           maxLength={300}
         />
         <CharCount value={config.title} max={300} />
 
-        <FieldLabel style={{ marginTop: 12 }}>Подзаголовок</FieldLabel>
+        <FieldLabel style={{ marginTop: 12 }}>{t('steps.reaction.subtitle')}</FieldLabel>
         <TxtArea
           value={config.text || ''}
           onChange={(e) => update({ text: e.target.value })}
-          placeholder="Я была готова что скажешь 'нет' ахах"
+          placeholder={t('steps.reaction.subtitlePlaceholder')}
           rows={3}
           maxLength={300}
         />
         <CharCount value={config.text} max={300} />
 
-        <FieldLabel style={{ marginTop: 12 }}>Кнопка подтверждения</FieldLabel>
+        <FieldLabel style={{ marginTop: 12 }}>{t('steps.reaction.confirmButton')}</FieldLabel>
         <Inp
           value={config.confirmText || ''}
           onChange={(e) => update({ confirmText: e.target.value })}
-          placeholder="Да Да ДА!"
+          placeholder={t('steps.reaction.confirmPlaceholder')}
         />
       </SectionCard>
 
       {/* Live preview */}
       <div style={{ marginTop: 8, padding: '12px 0' }}>
         <p style={{ fontSize: 12, color: T.muted, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font }}>
-          Превью
+          {t('builderUI.preview')}
         </p>
         <div style={{ maxWidth: 280, margin: '0 auto' }}>
           <ReactionScreen

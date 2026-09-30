@@ -7,6 +7,7 @@
  * вариантов под конкретную тему.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useBuilder } from '../builderStore.jsx';
 import { T, SectionCard, FieldLabel, TxtArea, CharCount } from '../BuilderUI.jsx';
 
@@ -15,6 +16,7 @@ function makeOptionId() {
 }
 
 export default function ChoiceStepFields({ stepType }) {
+  const { t } = useTranslation();
   const { state, dispatch } = useBuilder();
   const config = state.steps.find((s) => s.step_type === stepType).configuration_json;
   const options = config.options || [];
@@ -37,7 +39,7 @@ export default function ChoiceStepFields({ stepType }) {
 
   return (
     <div>
-      <SectionCard number="1" title="Заголовок">
+      <SectionCard number="1" title={t('steps.choiceFields.titleSection')}>
         <TxtArea
           value={config.title || ''}
           onChange={(e) => update({ title: e.target.value })}
@@ -61,18 +63,18 @@ export default function ChoiceStepFields({ stepType }) {
             checked={Boolean(config.allowMultiple)}
             onChange={(e) => update({ allowMultiple: e.target.checked })}
           />
-          Можно выбрать несколько
+          {t('steps.choiceFields.allowMultiple')}
         </label>
         <p style={{ fontSize: 12, color: T.muted, marginTop: 4, fontFamily: T.font }}>
           {config.allowMultiple
-            ? 'Получатель отметит несколько вариантов и нажмёт кнопку, чтобы продолжить'
-            : 'Получатель выберет один вариант'}
+            ? t('steps.choiceFields.allowMultipleHintOn')
+            : t('steps.choiceFields.allowMultipleHintOff')}
         </p>
       </SectionCard>
 
-      <SectionCard number="2" title="Варианты">
+      <SectionCard number="2" title={t('steps.choiceFields.optionsTitle')}>
         <p style={{ fontSize: 12, color: T.muted, marginBottom: 12, fontFamily: T.font }}>
-          Уже готовый набор — можно менять, удалять и добавлять свои
+          {t('steps.choiceFields.optionsHint')}
         </p>
 
         {/* Сетка 2 колонки — как карточки, которые увидит получатель, а не
@@ -93,7 +95,7 @@ export default function ChoiceStepFields({ stepType }) {
               <button
                 type="button"
                 onClick={() => removeOption(opt.id)}
-                aria-label="Удалить вариант"
+                aria-label={t('builderUI.removeOption')}
                 style={{
                   position: 'absolute', top: 6, right: 6,
                   width: 22, height: 22, borderRadius: '50%',
@@ -127,7 +129,7 @@ export default function ChoiceStepFields({ stepType }) {
                 type="text"
                 value={opt.label}
                 onChange={(e) => updateOption(opt.id, { label: e.target.value })}
-                placeholder="Название"
+                placeholder={t('steps.choiceFields.optionNamePlaceholder')}
                 style={{
                   width: '100%',
                   height: 34,
@@ -163,7 +165,7 @@ export default function ChoiceStepFields({ stepType }) {
             marginTop: 10,
           }}
         >
-          + Добавить вариант
+          {t('steps.choiceFields.addOption')}
         </button>
       </SectionCard>
     </div>

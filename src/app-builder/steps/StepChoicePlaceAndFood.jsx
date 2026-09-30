@@ -7,6 +7,7 @@
  * конструктор совпадал с тем, что видит получатель.
  */
 
+import { useTranslation } from 'react-i18next';
 import { T } from '../BuilderUI.jsx';
 import ChoiceStepFields from './ChoiceStepFields.jsx';
 
@@ -20,14 +21,15 @@ function GroupLabel({ icon, text }) {
 }
 
 export default function StepChoicePlaceAndFood() {
+  const { t } = useTranslation();
   return (
     <div>
-      <GroupLabel icon="📍" text="Куда пойти" />
+      <GroupLabel icon="📍" text={t('steps.choicePlaceFood.whereGroup')} />
       <ChoiceStepFields stepType="choice_place" />
 
       <div style={{ height: 1, background: T.pinkBorder, margin: '28px 0' }} />
 
-      <GroupLabel icon="🍽️" text="Что поесть" />
+      <GroupLabel icon="🍽️" text={t('steps.choicePlaceFood.foodGroup')} />
       <ChoiceStepFields stepType="choice_food" />
     </div>
   );

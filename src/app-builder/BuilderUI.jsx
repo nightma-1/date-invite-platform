@@ -4,6 +4,7 @@
  */
 
 import { forwardRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Design tokens matching onlyteplo.ru design system
 export const T = {
@@ -143,11 +144,11 @@ export function CharCount({ value, max }) {
 
 // CardShapePicker: pick the outer "frame" shape used for every screen of the invitation
 export const CARD_SHAPE_OPTIONS = [
-  { value: 'classic', label: 'Классика' },
-  { value: 'arch', label: 'Арка' },
-  { value: 'envelope', label: 'Конверт' },
-  { value: 'polaroid', label: 'Полароид' },
-  { value: 'blob', label: 'Органика' },
+  { value: 'classic', labelKey: 'builderUI.cardShapes.classic' },
+  { value: 'arch', labelKey: 'builderUI.cardShapes.arch' },
+  { value: 'envelope', labelKey: 'builderUI.cardShapes.envelope' },
+  { value: 'polaroid', labelKey: 'builderUI.cardShapes.polaroid' },
+  { value: 'blob', labelKey: 'builderUI.cardShapes.blob' },
 ];
 
 function ShapeSwatch({ shape }) {
@@ -178,6 +179,7 @@ function ShapeSwatch({ shape }) {
 }
 
 export function CardShapePicker({ value, onChange }) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
       {CARD_SHAPE_OPTIONS.map((opt) => {
@@ -206,7 +208,7 @@ export function CardShapePicker({ value, onChange }) {
               fontFamily: T.font, fontSize: 11, textAlign: 'center', lineHeight: 1.2,
               color: selected ? T.pink : T.muted, fontWeight: selected ? 700 : 500,
             }}>
-              {opt.label}
+              {t(opt.labelKey)}
             </span>
           </button>
         );
@@ -226,19 +228,12 @@ export function GifImagePicker({
   onUploadClick,
   fileInputRef,
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
 
   const categories = ['all', ...new Set((gifs || []).map((g) => g.category).filter(Boolean))];
-  const CATEGORY_LABELS = {
-    romantic: '❤️ Романтика',
-    flirty: '😏 Флирт',
-    funny: '😂 Смешные',
-    cute: '🥹 Милые',
-    bold: '🔥 Яркие',
-    custom: '✨ Другое',
-    all: 'Все',
-  };
+  const CATEGORY_LABELS = t('builderUI.gifCategories', { returnObjects: true });
   const visibleGifs = activeCategory === 'all' ? (gifs || []) : (gifs || []).filter((g) => g.category === activeCategory);
   const previewGifs = (gifs || []).slice(0, 3);
 
@@ -249,7 +244,7 @@ export function GifImagePicker({
         <div style={{ marginBottom: 12, position: 'relative', display: 'inline-block' }}>
           <img
             src={currentUrl}
-            alt="превью"
+            alt={t('builderUI.preview')}
             style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', display: 'block' }}
           />
           <button
@@ -319,7 +314,7 @@ export function GifImagePicker({
               }}
             >
               <span style={{ fontSize: 20 }}>🖼️</span>
-              <span>Ещё</span>
+              <span>{t('builderUI.more')}</span>
             </button>
           </div>
 
@@ -335,8 +330,8 @@ export function GifImagePicker({
           >
             <span style={{ fontSize: 20 }}>📁</span>
             <div style={{ textAlign: 'left' }}>
-              <p style={{ fontFamily: T.font, fontSize: 14, color: T.dark, margin: 0 }}>Загрузить свой файл</p>
-              <p style={{ fontFamily: T.font, fontSize: 12, color: T.muted, margin: 0 }}>Фото до 10 МБ</p>
+              <p style={{ fontFamily: T.font, fontSize: 14, color: T.dark, margin: 0 }}>{t('builderUI.uploadOwnFile')}</p>
+              <p style={{ fontFamily: T.font, fontSize: 12, color: T.muted, margin: 0 }}>{t('builderUI.photoUpTo10')}</p>
             </div>
           </button>
         </>
@@ -369,18 +364,18 @@ export function GifImagePicker({
                 color: T.muted, fontFamily: T.font, cursor: 'pointer',
               }}
             >
-              Скрыть ↑
+              {t('builderUI.hide')}
             </button>
           </div>
 
           {gifsLoading && (
-            <p style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>Загружаем гифки…</p>
+            <p style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>{t('builderUI.loadingGifs')}</p>
           )}
           {gifsError && (
             <p style={{ color: '#C0392B', fontSize: 12, marginBottom: 8 }}>{gifsError}</p>
           )}
           {!gifsLoading && !gifsError && visibleGifs.length === 0 && (
-            <p style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>В библиотеке пока нет гифок.</p>
+            <p style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>{t('builderUI.noGifsYet')}</p>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
@@ -428,8 +423,8 @@ export function GifImagePicker({
           >
             <span style={{ fontSize: 20 }}>📁</span>
             <div style={{ textAlign: 'left' }}>
-              <p style={{ fontFamily: T.font, fontSize: 14, color: T.dark, margin: 0 }}>Загрузить свой файл</p>
-              <p style={{ fontFamily: T.font, fontSize: 12, color: T.muted, margin: 0 }}>Фото до 10 МБ</p>
+              <p style={{ fontFamily: T.font, fontSize: 14, color: T.dark, margin: 0 }}>{t('builderUI.uploadOwnFile')}</p>
+              <p style={{ fontFamily: T.font, fontSize: 12, color: T.muted, margin: 0 }}>{t('builderUI.photoUpTo10')}</p>
             </div>
           </button>
         </>

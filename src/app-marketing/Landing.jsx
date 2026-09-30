@@ -5,32 +5,25 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { MOODS, templatesForMood, getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
 import { listActiveGifs } from '../lib/mediaLibrary.js';
-
-const STEPS = [
-  { n: '01', t: 'Создай', d: 'Выбери картинку, напиши вопрос, добавь GIF — 3 минуты.' },
-  { n: '02', t: 'Отправь', d: 'Одна ссылка в любой мессенджер.' },
-  { n: '03', t: 'Узнай ответ', d: 'Она пройдёт сценарий и ответит.' },
-];
-
-const FAQ = [
-  { q: 'Нужно ли ей регистрироваться?', a: 'Нет. Просто открывает ссылку.' },
-  { q: 'Сколько действует ссылка?', a: '7 дней с момента публикации.' },
-  { q: 'Можно ли изменить?', a: 'Да, в течение 3 дней после публикации.' },
-  { q: 'Можно загрузить своё фото или GIF?', a: 'Да, до 5 МБ (JPG, PNG, WebP, GIF).' },
-  { q: 'Как узнаю об ответе?', a: 'Ответ появится в «Моих приглашениях».' },
-];
+import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
 export default function Landing() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const previewTokens = getTemplateTokens('romantic');
   const [mood, setMood] = useState('all');
   const [openFaq, setOpenFaq] = useState(null);
   const [landingGifs, setLandingGifs] = useState([]);
   const templates = templatesForMood(mood);
+
+  const STEPS = t('landing.steps', { returnObjects: true });
+  const FAQ = t('landing.faq', { returnObjects: true });
+  const priceFeatures = t('landing.priceFeatures', { returnObjects: true });
 
   useEffect(() => {
     listActiveGifs().then((all) => setLandingGifs(all.slice(0, 6))).catch(() => {});
@@ -90,35 +83,36 @@ export default function Landing() {
         >✨</motion.span>
 
         {/* NAV — часть той же градиентной секции, а не отдельная белая полоса */}
-        <div className="mx-auto flex max-w-[1040px] items-center px-5 pt-5" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="mx-auto flex max-w-[1040px] items-center justify-between px-5 pt-5" style={{ position: 'relative', zIndex: 1 }}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
             <img src="/logo.png" alt="Senti" style={{ height: 30, width: 'auto', display: 'block' }} />
           </Link>
+          <LanguageSwitcher />
         </div>
 
         <div className="mx-auto max-w-[1040px] px-5 pb-14 pt-8 sm:pb-16 sm:pt-10 lg:pb-20 lg:pt-12" style={{ position: 'relative', zIndex: 1 }}>
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_340px] lg:gap-12">
             <div className="text-center lg:text-left">
               <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 14 }}>
-                💌 Приглашение на свидание
+                {t('landing.heroTag')}
               </p>
               <h1 className="text-[34px] leading-[1.15] sm:text-[44px] lg:text-[50px]" style={{ fontFamily: T.font, color: T.darkPurple, fontWeight: 700, marginBottom: 16 }}>
-                Не просто спроси её.
+                {t('landing.heroTitleLine1')}
                 <br />
-                <span style={{ color: T.pink }}>Удиви её.</span>
+                <span style={{ color: T.pink }}>{t('landing.heroTitleHighlight')}</span>
               </h1>
               <p className="mx-auto lg:mx-0" style={{ color: T.muted, fontSize: 16, lineHeight: 1.6, marginBottom: 28, maxWidth: 420 }}>
-                Тёплая картинка, свой вопрос и убегающая кнопка «Нет» — приглашение готово за 3 минуты и одну ссылку.
+                {t('landing.heroSubtitle')}
               </p>
               <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
                 <Link to="/builder">
                   <ShimmerButton whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>
-                    Создать приглашение
+                    {t('landing.createBtn')}
                   </ShimmerButton>
                 </Link>
                 <Link to="/dashboard">
                   <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} style={ghostBtn}>
-                    Мои приглашения
+                    {t('landing.myInvitationsBtn')}
                   </motion.button>
                 </Link>
               </div>
@@ -126,13 +120,13 @@ export default function Landing() {
 
             <div className="mx-auto w-full max-w-[280px] sm:max-w-[300px] lg:mx-0 lg:max-w-none lg:w-[300px]">
               <QuestionScreen
-                recipientName="Муниса"
-                questionText="Пойдёшь со мной на свидание этим вечером? 🌙"
+                recipientName={t('landing.previewRecipient')}
+                questionText={t('landing.previewQuestion')}
                 tokens={previewTokens}
                 onYes={() => {}}
               />
               <p style={{ textAlign: 'center', fontSize: 12, color: T.muted, marginTop: 10 }}>
-                ↑ Нажми «Нет» — она убегает
+                {t('landing.previewHint')}
               </p>
             </div>
           </div>
@@ -143,9 +137,9 @@ export default function Landing() {
       <section className="mx-auto max-w-[1040px] px-5 py-14 sm:py-16">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-0">
           {STEPS.map((s, i) => (
-            <div key={s.n} className="sm:[&:not(:first-child)]:pl-8 sm:[&:not(:last-child)]:pr-8 sm:[&:not(:last-child)]:border-r" style={{ borderColor: `${T.dark}12` }}>
+            <div key={i} className="sm:[&:not(:first-child)]:pl-8 sm:[&:not(:last-child)]:pr-8 sm:[&:not(:last-child)]:border-r" style={{ borderColor: `${T.dark}12` }}>
               <span style={{ display: 'block', fontSize: 44, fontFamily: T.font, color: T.pink, fontWeight: 700, lineHeight: 1, marginBottom: 12 }}>
-                {s.n}
+                {String(i + 1).padStart(2, '0')}
               </span>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: T.dark, marginBottom: 6, fontFamily: T.font }}>{s.t}</h3>
               <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.6 }}>{s.d}</p>
@@ -158,10 +152,10 @@ export default function Landing() {
       <section style={{ background: T.pinkLight, padding: '56px 0' }} className="sm:py-16">
         <div className="mx-auto max-w-[1040px] px-5">
           <h2 style={{ fontFamily: T.font, color: T.darkPurple, fontSize: 26, fontWeight: 700, marginBottom: 8 }} className="sm:text-[32px]">
-            GIF в приглашении
+            {t('landing.gifTitle')}
           </h2>
           <p style={{ color: T.muted, fontSize: 15, marginBottom: 24 }}>
-            Библиотека живых гифок + загрузи своё фото или анимацию до 5 МБ
+            {t('landing.gifSubtitle')}
           </p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
             {landingGifs.length > 0
@@ -181,7 +175,7 @@ export default function Landing() {
       {/* ШАБЛОНЫ */}
       <section className="mx-auto max-w-[1040px] px-5 py-14 sm:py-16">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <h2 style={{ fontFamily: T.font, color: T.darkPurple, fontSize: 26, fontWeight: 700 }} className="sm:text-[32px]">Настроения приглашения</h2>
+          <h2 style={{ fontFamily: T.font, color: T.darkPurple, fontSize: 26, fontWeight: 700 }} className="sm:text-[32px]">{t('landing.templatesTitle')}</h2>
           <div className="flex flex-wrap gap-2">
             {MOODS.map((m) => {
               const a = mood === m.id;
@@ -209,15 +203,15 @@ export default function Landing() {
                     <div style={{ height: 4, width: 32, borderRadius: 2, background: tpl.berry, marginBottom: 12 }} />
                     <p style={{ fontFamily: tpl.fontDisplay, color: tpl.ink, fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{tpl.name}</p>
                     <p style={{ fontFamily: tpl.fontUI, color: tpl.inkMuted || tpl.ink, fontSize: 13 }}>
-                      Пойдёшь со мной на свидание?
+                      {t('landing.templatePreviewQuestion')}
                     </p>
                   </div>
                   <div style={{ padding: '14px 20px 16px', display: 'flex', gap: 8 }}>
-                    <div style={{ background: tpl.berry, color: '#fff', padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13, fontWeight: 600 }}>Да</div>
-                    <div style={{ border: `1px solid ${tpl.ink}35`, color: tpl.inkMuted || tpl.ink, padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13 }}>Нет</div>
+                    <div style={{ background: tpl.berry, color: '#fff', padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13, fontWeight: 600 }}>{t('landing.yes')}</div>
+                    <div style={{ border: `1px solid ${tpl.ink}35`, color: tpl.inkMuted || tpl.ink, padding: '7px 16px', borderRadius: 4, fontFamily: tpl.fontUI, fontSize: 13 }}>{t('landing.no')}</div>
                   </div>
                   <div style={{ borderTop: `1px solid ${tpl.ink}10`, padding: '10px 20px', fontFamily: tpl.fontUI, fontSize: 12, color: tpl.berry, fontWeight: 600 }}>
-                    Выбрать этот шаблон →
+                    {t('landing.chooseTemplate')}
                   </div>
                 </div>
               </button>
@@ -231,21 +225,18 @@ export default function Landing() {
         <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: T.pink, opacity: 0.15, pointerEvents: 'none' }} />
         <div className="mx-auto max-w-[480px] px-5 py-14 text-center sm:py-16" style={{ position: 'relative', zIndex: 1 }}>
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 12 }}>
-            Один раз, без подписки
+            {t('landing.priceTag')}
           </p>
           <p className="text-[44px] sm:text-[56px]" style={{ fontFamily: T.font, color: '#fff', fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>
             19 000
           </p>
-          <p style={{ color: '#fff', opacity: 0.55, fontSize: 18, marginBottom: 24, fontFamily: T.font }}>сум</p>
+          <p style={{ color: '#fff', opacity: 0.55, fontSize: 18, marginBottom: 24, fontFamily: T.font }}>{t('landing.priceCurrency')}</p>
           <div style={{ color: '#fff', opacity: 0.8, fontSize: 14, marginBottom: 28, lineHeight: 2.2, fontFamily: T.font }}>
-            <p>✓ 7 дней онлайн</p>
-            <p>✓ 3 дня на редактирование</p>
-            <p>✓ Без подписки</p>
-            <p>✓ Ответ в реальном времени</p>
+            {priceFeatures.map((f, i) => <p key={i}>{f}</p>)}
           </div>
           <Link to="/builder">
             <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>
-              Создать приглашение
+              {t('landing.createBtn')}
             </motion.button>
           </Link>
         </div>
@@ -254,7 +245,7 @@ export default function Landing() {
       {/* FAQ */}
       <section className="mx-auto max-w-[720px] px-5 py-14 sm:py-16">
         <h2 style={{ fontFamily: T.font, color: T.darkPurple, fontSize: 26, fontWeight: 700, marginBottom: 24 }} className="sm:text-[32px]">
-          Вопросы
+          {t('landing.faqTitle')}
         </h2>
         {FAQ.map((item, i) => (
           <div key={i} style={{ borderBottom: `1px solid ${T.dark}15` }}>
@@ -284,10 +275,11 @@ export default function Landing() {
       <footer style={{ borderTop: `1px solid ${T.dark}12`, padding: '24px 20px' }}>
         <div className="mx-auto flex max-w-[1040px] flex-wrap items-center justify-center gap-4 sm:justify-between" style={{ textAlign: 'center' }}>
           <img src="/logo.png" alt="Senti" style={{ height: 24, width: 'auto', display: 'block' }} />
-          <div className="flex flex-wrap justify-center gap-5">
-            <Link to="/builder" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>Создать</Link>
-            <Link to="/dashboard" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>Мои приглашения</Link>
-            <Link to="/admin" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>Админ</Link>
+          <div className="flex flex-wrap items-center justify-center gap-5">
+            <Link to="/builder" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.create')}</Link>
+            <Link to="/dashboard" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.myInvitations')}</Link>
+            <Link to="/admin" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.admin')}</Link>
+            <LanguageSwitcher />
           </div>
         </div>
       </footer>
