@@ -115,6 +115,7 @@ function LandingPreviewDemo() {
           {step === 2 && (
             <DateTimeScreen
               title={t('landing.demo.dateTitle')}
+              mediaUrl={stepMedia.date}
               cardShape="polaroid"
               tokens={tokens}
               onContinue={({ date, time }) => { setCollected({ date, time }); setStep(3); }}
