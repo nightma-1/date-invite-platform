@@ -97,8 +97,7 @@ export default function AdminPanel() {
       <div className="mx-auto max-w-md text-center">
         <h1 className="mb-2 text-xl" style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700 }}>Нет доступа</h1>
         <p className="text-sm" style={{ color: t.ink, opacity: 0.6, fontFamily: t.fontUI }}>
-          Этот раздел только для администраторов. Установи <code>is_admin = true</code> в таблице{' '}
-          <code>profiles</code> через Supabase Dashboard.
+          Этот раздел доступен только администраторам.
         </p>
       </div>
     );
