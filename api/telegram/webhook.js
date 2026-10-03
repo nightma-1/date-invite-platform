@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { verifyLinkCode, webhookSecret, safeEqual } from '../_lib/telegramLink.js';
 
 // Service-role клиент — только на сервере, никогда не попадает на клиент
 const supabaseAdmin = createClient(
@@ -26,6 +27,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
 
+  // Запросы принимаем только от Telegram: при setWebhook задаётся secret_token,
+  // и Telegram присылает его в этом заголовке. Без проверки любой мог слать
+  // поддельные апдейты и привязывать свой chat_id к чужому аккаунту.
+  let expectedSecret;
+  try {
+    expectedSecret = webhookSecret();
+  } catch (e) {
+    return res.status(500).json({ error: 'telegram bot is not configured' });
+  }
+  if (!safeEqual(req.headers['x-telegram-bot-api-secret-token'], expectedSecret)) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
   const update = req.body;
   const message = update?.message;
 
@@ -36,12 +50,13 @@ export default async function handler(req, res) {
 
   const chatId = message.chat.id;
   const parts = message.text.split(' ');
-  const userId = parts[1]; // deep-link: t.me/bot?start={user_id}
+  const code = parts[1]; // deep-link: t.me/bot?start={подписанный код из /api/telegram/connect}
+  const userId = code ? verifyLinkCode(code) : null;
 
   if (!userId) {
     await sendMessage(
       chatId,
-      'Открой этого бота по ссылке из своего кабинета на сайте — так я узнаю, кому присылать уведомления.'
+      'Открой этого бота по ссылке из своего кабинета на сайте (ссылка действует 15 минут) — так я узнаю, кому присылать уведомления.'
     );
     return res.status(200).json({ ok: true });
   }

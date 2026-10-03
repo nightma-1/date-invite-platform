@@ -3,23 +3,43 @@
  * Несанкционированное копирование или распространение запрещено.
  */
 
-// Редиректит пользователя на deep-link бота (t.me/<bot>?start=<user_id>),
-// сам узнавая username бота через Telegram getMe — так фронтенд никогда
-// не должен знать токен бота или его username напрямую.
+// Возвращает ссылку-deep-link на бота (t.me/<bot>?start=<подписанный код>) для
+// авторизованного пользователя. Токен бота и username на фронтенд не попадают.
+// Раньше эндпоинт принимал голый ?uid= без авторизации — это позволяло
+// привязать чужой аккаунт к своему Telegram.
+
+import { createClient } from '@supabase/supabase-js';
+import { createLinkCode } from '../_lib/telegramLink.js';
+import { rateLimit, clientIp } from '../_lib/rateLimit.js';
 
 let cachedUsername = null;
 
 export default async function handler(req, res) {
-  const uid = req.query.uid;
-  if (!uid || typeof uid !== 'string') {
-    res.status(400).send('missing uid');
-    return;
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'method not allowed' });
+  }
+
+  if (!rateLimit(`tg-connect:${clientIp(req)}`, { max: 20, windowMs: 60_000 })) {
+    return res.status(429).json({ error: 'too many requests' });
+  }
+
+  const authHeader = req.headers.authorization || '';
+  const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!accessToken) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false },
+  });
+  const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+  if (userError || !userData?.user) {
+    return res.status(401).json({ error: 'unauthorized' });
   }
 
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
-    res.status(500).send('telegram bot is not configured');
-    return;
+    return res.status(500).json({ error: 'telegram bot is not configured' });
   }
 
   try {
@@ -29,12 +49,11 @@ export default async function handler(req, res) {
       cachedUsername = data?.result?.username || null;
     }
     if (!cachedUsername) {
-      res.status(500).send('could not resolve bot username');
-      return;
+      return res.status(500).json({ error: 'could not resolve bot username' });
     }
-    res.writeHead(302, { Location: `https://t.me/${cachedUsername}?start=${encodeURIComponent(uid)}` });
-    res.end();
+    const code = createLinkCode(userData.user.id);
+    return res.status(200).json({ url: `https://t.me/${cachedUsername}?start=${code}` });
   } catch (e) {
-    res.status(500).send('telegram lookup failed');
+    return res.status(500).json({ error: 'telegram lookup failed' });
   }
 }

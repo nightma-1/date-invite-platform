@@ -29,6 +29,11 @@ const SERVICE_ID = process.env.CLICK_SERVICE_ID;
 const MERCHANT_ID = process.env.CLICK_MERCHANT_ID;
 const SECRET_KEY = process.env.CLICK_SECRET_KEY;
 
+/** Click полностью настроен только если заданы все три переменные. */
+export function isClickConfigured() {
+  return Boolean(SERVICE_ID && MERCHANT_ID && SECRET_KEY);
+}
+
 export const CLICK_ACTION = { PREPARE: 0, COMPLETE: 1 };
 
 export const CLICK_ERROR = {
@@ -64,11 +69,25 @@ function buildCompleteSign({
   );
 }
 
-/** Проверяет sign_string входящего запроса. Работает и для Prepare, и для Complete. */
+/**
+ * Проверяет sign_string входящего запроса. Работает и для Prepare, и для Complete.
+ *
+ * Закрыто по умолчанию: если секрет не задан, подпись считалась бы от строки
+ * "undefined" и любой мог бы её подделать, поэтому без настроенного Click
+ * проверка всегда проваливается. Также проверяем service_id и сравниваем
+ * подписи за постоянное время.
+ */
 export function verifySign(body) {
-  const expected =
-    Number(body.action) === CLICK_ACTION.PREPARE ? buildPrepareSign(body) : buildCompleteSign(body);
-  return expected === body.sign_string;
+  if (!isClickConfigured() || !body || typeof body.sign_string !== 'string') return false;
+  if (String(body.service_id) !== String(SERVICE_ID)) return false;
+
+  const action = Number(body.action);
+  if (action !== CLICK_ACTION.PREPARE && action !== CLICK_ACTION.COMPLETE) return false;
+
+  const expected = action === CLICK_ACTION.PREPARE ? buildPrepareSign(body) : buildCompleteSign(body);
+  const a = Buffer.from(expected, 'utf8');
+  const b = Buffer.from(body.sign_string.toLowerCase(), 'utf8');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 export function buildPrepareResponse({ click_trans_id, merchant_trans_id, merchant_prepare_id, error, error_note }) {
@@ -81,6 +100,7 @@ export function buildCompleteResponse({ click_trans_id, merchant_trans_id, merch
 
 export const clickProvider = {
   async createPayment({ invitationId, amount, returnUrl }) {
+    if (!isClickConfigured()) throw new Error('Click is not configured');
     const params = new URLSearchParams({
       service_id: SERVICE_ID,
       merchant_id: MERCHANT_ID,

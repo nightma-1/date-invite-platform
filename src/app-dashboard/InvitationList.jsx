@@ -53,6 +53,24 @@ export default function InvitationList() {
   const [deletingId, setDeletingId] = useState(null);
   const [telegramLinked, setTelegramLinked] = useState(null); // null = ещё не знаем
 
+  async function connectTelegram() {
+    // Открываем окно сразу (в обработчике клика), иначе браузер заблокирует попап
+    const win = window.open('', '_blank');
+    try {
+      const res = await fetch('/api/telegram/connect', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || 'telegram connect failed');
+      if (win) win.location.href = data.url;
+      else window.location.href = data.url;
+    } catch (e) {
+      win?.close();
+      console.error('telegram connect failed', e);
+    }
+  }
+
   function copyLink(slug) {
     const url = `${window.location.origin}/i/${slug}`;
     navigator.clipboard?.writeText(url);
@@ -174,12 +192,11 @@ export default function InvitationList() {
         </h1>
 
         {telegramLinked === false && (
-          <a
-            href={`/api/telegram/connect?uid=${session.user.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mb-8 flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 no-underline"
-            style={{ background: '#EAF6FF', border: '1.5px solid #B3E0FF' }}
+          <button
+            type="button"
+            onClick={connectTelegram}
+            className="mb-8 flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left"
+            style={{ background: '#EAF6FF', border: '1.5px solid #B3E0FF', cursor: 'pointer' }}
           >
             <span style={{ color: '#1E6FA8', fontFamily: t.fontUI, fontSize: 13.5, fontWeight: 600 }}>
               {tr('dashboard.telegramConnectText')}
@@ -187,7 +204,7 @@ export default function InvitationList() {
             <span style={{ color: '#1E6FA8', fontFamily: t.fontUI, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
               {tr('dashboard.telegramConnectAction')}
             </span>
-          </a>
+          </button>
         )}
         {telegramLinked === true && (
           <p className="mb-8 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>

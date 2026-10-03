@@ -9,6 +9,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { safeEqual } from '../_lib/telegramLink.js';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -54,8 +55,8 @@ function formatAnswered(invitation, extra) {
     '',
     extra?.answered_yes === false ? '💔 Ответ: Нет' : '✅ Ответ: Да',
   ];
-  if (extra?.selected_date) lines.push(`📅 Дата: ${extra.selected_date}`);
-  if (extra?.selected_time) lines.push(`🕒 Время: ${extra.selected_time}`);
+  if (extra?.selected_date) lines.push(`📅 Дата: ${escapeHtml(extra.selected_date)}`);
+  if (extra?.selected_time) lines.push(`🕒 Время: ${escapeHtml(extra.selected_time)}`);
 
   const choiceAnswers = decodeSelections(invitation.invitation_steps, extra?.selections);
   for (const c of choiceAnswers) {
@@ -83,7 +84,7 @@ export default async function handler(req, res) {
   }
 
   const secret = req.headers['x-notify-secret'];
-  if (!secret || secret !== process.env.NOTIFY_WEBHOOK_SECRET) {
+  if (!process.env.NOTIFY_WEBHOOK_SECRET || !safeEqual(secret, process.env.NOTIFY_WEBHOOK_SECRET)) {
     return res.status(401).json({ error: 'unauthorized' });
   }
 

@@ -6,10 +6,17 @@
 import { createClient } from '@supabase/supabase-js';
 import { verifySign, buildPrepareResponse, buildCompleteResponse, CLICK_ACTION, CLICK_ERROR } from '../../src/lib/clickProvider.js';
 
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Service-role клиент — только на сервере. Создаём лениво, чтобы падать с
+// понятной ошибкой, а не с «supabaseUrl is required» при загрузке модуля.
+let adminClient = null;
+function getAdmin() {
+  if (!adminClient) {
+    adminClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
+  }
+  return adminClient;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,6 +24,9 @@ export default async function handler(req, res) {
   }
 
   const body = req.body;
+  if (!body || typeof body !== 'object') {
+    return res.status(400).json({ error: 'bad request' });
+  }
   const action = Number(body.action);
   const isPrepare = action === CLICK_ACTION.PREPARE;
 
@@ -31,7 +41,7 @@ export default async function handler(req, res) {
 async function handlePrepare(body, res) {
   const invitationId = body.merchant_trans_id;
 
-  const { data: payment, error: findError } = await supabaseAdmin
+  const { data: payment, error: findError } = await getAdmin()
     .from('payments')
     .select('*')
     .eq('invitation_id', invitationId)
@@ -65,7 +75,7 @@ async function handlePrepare(body, res) {
   }
 
   // click_prepare_id уже назначен базой при создании строки (bigserial) — просто фиксируем click_trans_id
-  await supabaseAdmin.from('payments').update({ transaction_id: String(body.click_trans_id) }).eq('id', payment.id);
+  await getAdmin().from('payments').update({ transaction_id: String(body.click_trans_id) }).eq('id', payment.id);
 
   return res.status(200).json(
     buildPrepareResponse({
@@ -82,7 +92,7 @@ async function handleComplete(body, res) {
   const invitationId = body.merchant_trans_id;
   const preparedId = body.merchant_prepare_id;
 
-  const { data: payment, error: findError } = await supabaseAdmin
+  const { data: payment, error: findError } = await getAdmin()
     .from('payments')
     .select('*')
     .eq('invitation_id', invitationId)
@@ -113,9 +123,23 @@ async function handleComplete(body, res) {
     );
   }
 
+  // Сумму сверяем и на Complete, а не только на Prepare: иначе можно
+  // «подтвердить» платёж с другой суммой в уже подписанном запросе.
+  if (Number(body.error) >= 0 && Number(body.amount) !== payment.amount) {
+    return res.status(200).json(
+      buildCompleteResponse({
+        click_trans_id: body.click_trans_id,
+        merchant_trans_id: invitationId,
+        merchant_confirm_id: payment.click_prepare_id,
+        error: CLICK_ERROR.INVALID_AMOUNT,
+        error_note: 'Сумма не совпадает',
+      })
+    );
+  }
+
   // Click сообщает об отмене/ошибке платежа на своей стороне
   if (Number(body.error) < 0) {
-    await supabaseAdmin.from('payments').update({ status: 'failed' }).eq('id', payment.id);
+    await getAdmin().from('payments').update({ status: 'failed' }).eq('id', payment.id);
     return res.status(200).json(
       buildCompleteResponse({
         click_trans_id: body.click_trans_id,
@@ -127,13 +151,13 @@ async function handleComplete(body, res) {
     );
   }
 
-  await supabaseAdmin
+  await getAdmin()
     .from('payments')
     .update({ status: 'paid', transaction_id: String(body.click_trans_id) })
     .eq('id', payment.id);
 
   // Триггер set_publication_deadlines сам посчитает edit_until/expires_at
-  const { error: publishError } = await supabaseAdmin
+  const { error: publishError } = await getAdmin()
     .from('invitations')
     .update({ status: 'published' })
     .eq('id', invitationId);

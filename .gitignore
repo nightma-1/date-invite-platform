@@ -1,10 +1,19 @@
 node_modules/
 dist/
+.vercel/
+
+# Секреты: никогда не коммитим. Шаблон с именами переменных — .env.example
 .env
-.env.local
-.env*.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+service-account*.json
+
 *.log
 .cache/
 /tmp/
+.DS_Store
 supabase/.branches/
 supabase/.temp/
