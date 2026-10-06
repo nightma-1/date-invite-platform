@@ -10,6 +10,7 @@ import InvitationList from './app-dashboard/InvitationList.jsx';
 import ResponseView from './app-dashboard/ResponseView.jsx';
 import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
+import PaymentStatus from './app-builder/PaymentStatus.jsx';
 
 function newDraftId() {
   return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/builder" element={<NewDraftRedirect />} />
         <Route path="/builder/edit/:invitationId" element={<EditBuilderRoute />} />
         <Route path="/builder/:draftId" element={<BuilderRoute />} />
+        <Route path="/payment/:invitationId" element={<PaymentStatus />} />
         <Route path="/i/:slug" element={<InvitationRuntime />} />
         <Route path="/dashboard" element={<InvitationList />} />
         <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />

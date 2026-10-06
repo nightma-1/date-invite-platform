@@ -288,13 +288,23 @@ export default function BuilderShell() {
         setPublishResult({ invitationId, slug, edited: true });
         return;
       }
-      // ВРЕМЕННО: пока не подключён мерчант-аккаунт Click, публикуем сразу
-      // бесплатно (publishDraft уже проставляет status:'published') и не
-      // уходим на оплату. Когда Click будет готов — верни здесь редирект на
-      // /api/click/create, а publishDraft.js — обратно на insert со
-      // status:'draft'.
-      const { invitationId, slug } = await publishDraft(state, userId);
-      setPublishResult({ invitationId, slug });
+      // Новое приглашение: сохраняем черновик (status остаётся 'draft'),
+      // затем уходим на оплату Click. Сама публикация (status: 'published')
+      // происходит в /api/click/webhook.js после реального списания —
+      // отсюда мы просто редиректим на страницу оплаты и ничего не ждём.
+      const { invitationId } = await publishDraft(state, userId);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      const res = await fetch('/api/click/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ invitationId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.paymentUrl) {
+        throw new Error(data.error || t('builder.publishGenericError'));
+      }
+      window.location.href = data.paymentUrl;
     } catch (err) {
       setPublishError(err.message || t('builder.publishGenericError'));
     } finally {

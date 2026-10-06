@@ -109,7 +109,7 @@ export default async function handler(req, res) {
   const { paymentUrl } = await clickProvider.createPayment({
     invitationId,
     amount: INVITATION_PRICE,
-    returnUrl: `${process.env.PUBLIC_APP_URL}/builder/${invitationId}?paid=pending`,
+    returnUrl: `${process.env.PUBLIC_APP_URL || 'https://senti.uz'}/payment/${invitationId}`,
   });
 
   return res.status(200).json({ paymentUrl, paymentId: payment.id });
