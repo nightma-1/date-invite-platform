@@ -1,0 +1,13 @@
+-- © 2026 Senti.
+--
+-- "owner insert payments" (добавлена в 2026-10-06, миграция не закоммичена,
+-- только применена вручную) разрешала insert в payments любому
+-- authenticated-пользователю, проверяя только user_id = auth.uid() — без
+-- проверки status/amount/invitation_id. Сейчас это неопасно, потому что
+-- у роли authenticated нет табличного GRANT INSERT на payments (см.
+-- 20261004000000_security_hardening.sql), и Postgres проверяет GRANT раньше
+-- RLS. Но раз это нигде не используется — все платежи создаёт только
+-- api/click/create.js через service-role клиент — политика является мёртвым
+-- кодом, который станет дырой в день, когда кто-нибудь добавит GRANT INSERT
+-- для authenticated, не разобравшись, почему insert не проходил.
+drop policy if exists "owner insert payments" on public.payments;
