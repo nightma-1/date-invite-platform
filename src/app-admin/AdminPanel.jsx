@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
+import NotFound from '../components/ui/NotFound.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep } from '../lib/mediaLibrary.js';
@@ -92,16 +93,7 @@ export default function AdminPanel() {
   if (session === undefined) return wrap(<p className="text-sm opacity-60">Загрузка…</p>);
   if (!session) return wrap(<AuthGate onAuthenticated={() => {}} />);
 
-  if (isAdmin === false) {
-    return wrap(
-      <div className="mx-auto max-w-md text-center">
-        <h1 className="mb-2 text-xl" style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700 }}>Нет доступа</h1>
-        <p className="text-sm" style={{ color: t.ink, opacity: 0.6, fontFamily: t.fontUI }}>
-          Этот раздел доступен только администраторам.
-        </p>
-      </div>
-    );
-  }
+  if (isAdmin === false) return <NotFound />;
 
   if (isAdmin === null || !stats) return wrap(<p className="text-sm opacity-60">Загрузка…</p>);
 

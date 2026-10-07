@@ -10,6 +10,12 @@ import InvitationList from './app-dashboard/InvitationList.jsx';
 import ResponseView from './app-dashboard/ResponseView.jsx';
 import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
+import NotFound from './components/ui/NotFound.jsx';
+
+// Адрес админки нарочно не угадываемый и не в публичных ссылках сайта —
+// /admin слишком легко найти перебором ботов. Поменять адрес, если он
+// когда-нибудь «утечёт», можно только здесь.
+const ADMIN_PATH = '/ops-216f69dbb4';
 
 function newDraftId() {
   return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -54,7 +60,8 @@ export default function App() {
         <Route path="/i/:slug" element={<InvitationRuntime />} />
         <Route path="/dashboard" element={<InvitationList />} />
         <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />
-        <Route path="/admin" element={<AdminPanel />} />
+        <Route path={ADMIN_PATH} element={<AdminPanel />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
