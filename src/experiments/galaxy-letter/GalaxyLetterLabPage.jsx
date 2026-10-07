@@ -56,6 +56,15 @@ export default function GalaxyLetterLabPage() {
         <Field label="Фото для портрета-из-частиц">
           <input type="file" accept="image/*" onChange={handleFile} style={{ fontSize: 12, color: '#cfc9ff' }} />
         </Field>
+        <Field label="...или URL фото (для быстрого теста)">
+          <input
+            placeholder="https://..."
+            onBlur={(e) => {
+              if (e.target.value.trim()) setPhotoUrl(e.target.value.trim());
+            }}
+            style={inputStyle}
+          />
+        </Field>
         <Field label="Подпись на портрете">
           <input value={finalCaption} onChange={(e) => setFinalCaption(e.target.value)} style={inputStyle} />
         </Field>
