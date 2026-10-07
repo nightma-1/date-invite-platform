@@ -138,6 +138,8 @@ export default function BuilderShell() {
   }
 
   const [showAuthGate, setShowAuthGate] = useState(false);
+  const [showPaymentChoice, setShowPaymentChoice] = useState(false);
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState('invoice');
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState(null);
   const [publishResult, setPublishResult] = useState(null);
@@ -275,12 +277,33 @@ export default function BuilderShell() {
 
   async function handlePublish() {
     setPublishError(null);
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) { setShowAuthGate(true); return; }
-    await runPublish(sessionData.session.user.id);
+    // Редактирование опубликованного приглашения — платить повторно не
+    // нужно, сразу сохраняем изменения, как и раньше.
+    if (state.editInvitationId) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) { setShowAuthGate(true); return; }
+      await runPublish(sessionData.session.user.id);
+      return;
+    }
+    // Новое приглашение — сначала спрашиваем, какой кнопкой платить
+    // (обе кнопки Click требуются по их правилам интеграции), а уже потом
+    // идём через AuthGate, если человек не вошёл.
+    setShowPaymentChoice(true);
   }
 
-  async function runPublish(userId) {
+  async function handleChoosePaymentMethod(method) {
+    setShowPaymentChoice(false);
+    setPublishError(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      setPendingPaymentMethod(method);
+      setShowAuthGate(true);
+      return;
+    }
+    await runPublish(sessionData.session.user.id, method);
+  }
+
+  async function runPublish(userId, method = 'invoice') {
     setPublishing(true);
     try {
       if (state.editInvitationId) {
@@ -298,7 +321,7 @@ export default function BuilderShell() {
       const res = await fetch('/api/click/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ invitationId }),
+        body: JSON.stringify({ invitationId, method }),
       });
       const data = await res.json();
       if (!res.ok || !data.paymentUrl) {
@@ -310,6 +333,63 @@ export default function BuilderShell() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  if (showPaymentChoice) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        position: 'relative',
+      }}>
+        <DecorativeBlobs />
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          style={{ textAlign: 'center', maxWidth: 360, width: '100%', position: 'relative', zIndex: 1 }}
+        >
+          <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 20, color: T.darkPurple, marginBottom: 20 }}>
+            {t('builder.choosePaymentTitle')}
+          </h1>
+          <button
+            type="button"
+            onClick={() => handleChoosePaymentMethod('invoice')}
+            style={{
+              display: 'block', width: '100%', background: T.pink, color: '#fff', padding: '14px 24px',
+              borderRadius: 100, fontFamily: T.font, fontWeight: 700, fontSize: 15, border: 'none',
+              cursor: 'pointer', marginBottom: 12,
+            }}
+          >
+            {t('builder.payWithClick')}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleChoosePaymentMethod('card')}
+            style={{
+              display: 'block', width: '100%', background: 'white', color: T.dark, padding: '14px 24px',
+              borderRadius: 100, fontFamily: T.font, fontWeight: 700, fontSize: 15,
+              border: `1.5px solid ${T.pinkBorder}`, cursor: 'pointer', marginBottom: 12,
+            }}
+          >
+            {t('builder.payWithCard')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPaymentChoice(false)}
+            style={{
+              background: 'none', border: 'none', color: T.muted, fontFamily: T.font,
+              fontSize: 13, textDecoration: 'underline', cursor: 'pointer',
+            }}
+          >
+            {t('builder.cancel')}
+          </button>
+        </motion.div>
+      </div>
+    );
   }
 
   if (showAuthGate) {
@@ -325,7 +405,7 @@ export default function BuilderShell() {
       }}>
         <DecorativeBlobs />
         <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <AuthGate onAuthenticated={(user) => { setShowAuthGate(false); runPublish(user.id); }} />
+          <AuthGate onAuthenticated={(user) => { setShowAuthGate(false); runPublish(user.id, pendingPaymentMethod); }} />
         </div>
       </div>
     );
