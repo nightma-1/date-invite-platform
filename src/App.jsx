@@ -16,7 +16,7 @@ import PaymentStatus from './app-builder/PaymentStatus.jsx';
 // Адрес админки нарочно не угадываемый и не в публичных ссылках сайта —
 // /admin слишком легко найти перебором ботов. Поменять адрес, если он
 // когда-нибудь «утечёт», можно только здесь.
-const ADMIN_PATH = '/ops-216f69dbb4';
+const ADMIN_PATH = '/xujayin';
 
 function newDraftId() {
   return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
