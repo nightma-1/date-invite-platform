@@ -79,6 +79,10 @@ const TextParticleField = forwardRef(function TextParticleField(
         return;
       }
 
+      // ВАЖНО: берём точки со ВСЕЙ фотографии (не только самые яркие) —
+      // иначе тёмные зоны (волосы, тени, контур лица) выпадут совсем, и
+      // вместо портрета получится световое пятно без формы. Яркость влияет
+      // на ВЕРОЯТНОСТЬ попадания точки в выборку, а не на отбор "топ-N".
       const samples = [];
       for (let y = 0; y < targetH; y += SAMPLE_STEP) {
         for (let x = 0; x < targetW; x += SAMPLE_STEP) {
@@ -86,12 +90,28 @@ const TextParticleField = forwardRef(function TextParticleField(
           const a = data[idx + 3];
           if (a < 40) continue;
           const lum = (0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]) / 255;
-          samples.push({ nx: x / targetW, ny: y / targetH, lum });
+          // Даже самая тёмная точка имеет шанс попасть в выборку (0.08) —
+          // это и сохраняет силуэт/контур, а не только светлые блики
+          if (Math.random() < lum * 0.85 + 0.08) {
+            samples.push({ nx: x / targetW, ny: y / targetH, lum });
+          }
         }
       }
-      // Светлые места (лицо, блики) получают больше шансов — так портрет
-      // читается, а не превращается в равномерный шум
-      samples.sort((a, b) => (b.lum + Math.random() * 0.25) - (a.lum + Math.random() * 0.25));
+      // Подстраховка: полностью чёрное/прозрачное фото не должно уронить
+      // анимацию делением на ноль — берём равномерную сетку без порога
+      if (samples.length === 0) {
+        for (let y = 0; y < targetH; y += SAMPLE_STEP) {
+          for (let x = 0; x < targetW; x += SAMPLE_STEP) {
+            samples.push({ nx: x / targetW, ny: y / targetH, lum: 0.3 });
+          }
+        }
+      }
+      // Перемешиваем, чтобы соседние по индексу частицы не ложились
+      // полосами по одной строке сканирования
+      for (let i = samples.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [samples[i], samples[j]] = [samples[j], samples[i]];
+      }
 
       const particles = particlesRef.current;
       for (let i = 0; i < particles.length; i++) {
