@@ -1,76 +1,126 @@
 /**
  * © 2026 Senti.
- * Ядро эффекта: ОДНА система частиц-слов ("люблю" на разных языках),
- * которая перестраивается между двумя формами — наклонённой спиральной
- * галактикой (рукава, светящееся ядро, пыль) и портретом из фото.
+ * Ядро эффекта: одна система частиц-слов ("люблю" на разных языках),
+ * которая живёт как наклонённая спиральная галактика и по команде
+ * перестраивается в портрет с фото.
  *
- * Частицы — мелкие слова (спрайты, нарисованные заранее), складываются
- * аддитивным смешиванием, поэтому плотные места светятся, а редкие
- * выглядят как отдельные звёзды. Портрет читается за счёт плотности и
- * яркости частиц по контрастно-нормализованной яркости фото.
+ * Две вещи, которые делают картинку похожей на настоящую:
+ *
+ * 1) Галактика — логарифмическая спираль с несколькими оборотами,
+ *    наклонённая к зрителю (диск виден под углом, а не плашмя), с
+ *    плотным тёплым ядром и аддитивным смешиванием: плотные места
+ *    светятся, редкие читаются как отдельные звёзды-слова.
+ *
+ * 2) Портрет — слова выкладываются СТРОКАМИ, как напечатанный текст,
+ *    а яркость каждого слова берётся из фотографии. Именно построчная
+ *    сетка (а не случайная россыпь) даёт читаемое лицо.
  *
  * progress: 0 = галактика, 1 = портрет.
  */
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { pickLoveWords } from './loveWords.js';
 
-const COUNT = 6500;
+const SPRITE_FONT = 28;
 const ARMS = 2;
-const SPRITE_FONT = 26;
-const TILT = 1.05; // наклон диска к зрителю (рад)
+const TURNS = 2.15;        // сколько оборотов делает рукав — отсюда "кольца"
+const R_INNER = 0.07;
+const COS_INC = 0.47;      // наклон диска: во столько раз он сжат по вертикали
+const SIN_INC = Math.sqrt(1 - COS_INC * COS_INC);
 
-// Палитра: тёплое ядро → сиреневые/голубые рукава
 const PALETTE = [
-  [255, 236, 200], // ядро
-  [235, 225, 255],
-  [190, 175, 255],
-  [150, 175, 255],
-  [255, 190, 225],
+  [255, 241, 214], // ядро, тёплый
+  [232, 238, 255], // внутренние рукава
+  [186, 203, 255],
+  [146, 170, 240],
+  [226, 186, 255], // редкие сиреневые
 ];
 
-function rand() { return Math.random(); }
-function gauss() { return (rand() + rand() + rand() + rand() - 2) / 2; }
-function smooth(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
+const r1 = () => Math.random();
+const gauss = () => (r1() + r1() + r1() + r1() - 2) / 2;
+const smooth = (t) => { const x = Math.max(0, Math.min(1, t)); return x * x * (3 - 2 * x); };
 
 function buildSprites(words) {
-  // для каждой комбинации (слово × цвет) — маленький canvas с текстом
-  const sprites = [];
-  const measure = document.createElement('canvas').getContext('2d');
-  measure.font = `${SPRITE_FONT}px "Manrope", sans-serif`;
-  PALETTE.forEach((c) => {
-    const row = words.map((w) => {
-      const wpx = Math.ceil(measure.measureText(w.text).width) + 6;
-      const cv = document.createElement('canvas');
-      cv.width = wpx;
-      cv.height = SPRITE_FONT + 8;
-      const g = cv.getContext('2d');
-      g.font = `${SPRITE_FONT}px "Manrope", sans-serif`;
-      g.textBaseline = 'middle';
-      g.textAlign = 'center';
-      g.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
-      g.fillText(w.text, wpx / 2, cv.height / 2);
-      return cv;
-    });
-    sprites.push(row);
-  });
-  return sprites;
+  const m = document.createElement('canvas').getContext('2d');
+  m.font = `${SPRITE_FONT}px "Manrope", sans-serif`;
+  return PALETTE.map((c) => words.map((w) => {
+    const wpx = Math.ceil(m.measureText(w.text).width) + 8;
+    const cv = document.createElement('canvas');
+    cv.width = wpx; cv.height = SPRITE_FONT + 10;
+    const g = cv.getContext('2d');
+    g.font = `${SPRITE_FONT}px "Manrope", sans-serif`;
+    g.textBaseline = 'middle'; g.textAlign = 'center';
+    g.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+    g.fillText(w.text, wpx / 2, cv.height / 2);
+    return cv;
+  }));
 }
 
 function buildGlow() {
   const cv = document.createElement('canvas');
   cv.width = cv.height = 64;
   const g = cv.getContext('2d');
-  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.25, 'rgba(255,255,255,0.35)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 64, 64);
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.22, 'rgba(255,255,255,0.3)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
   return cv;
 }
 
+/** Фото → нормализованная по контрасту карта яркости */
+function analysePhoto(img) {
+  const W = 180;
+  const H = Math.max(40, Math.min(300, Math.round((img.height / img.width) * W)));
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  const g = off.getContext('2d');
+  g.drawImage(img, 0, 0, W, H);
+  let data;
+  try { data = g.getImageData(0, 0, W, H).data; } catch { return null; }
+
+  const lum = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    lum[i] = (0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]) / 255;
+  }
+  // автоконтраст по перцентилям
+  const s = Float32Array.from(lum).sort();
+  const lo = s[Math.floor(s.length * 0.03)];
+  const hi = s[Math.floor(s.length * 0.97)];
+  const rg = Math.max(0.06, hi - lo);
+  for (let i = 0; i < lum.length; i++) lum[i] = Math.min(1, Math.max(0, (lum[i] - lo) / rg));
+
+  // боксовый блюр → unsharp: вытягивает черты лица
+  const R = 6;
+  const tmp = new Float32Array(W * H);
+  const blur = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    let acc = 0; let n = 0;
+    for (let x = -R; x <= R; x++) if (x >= 0 && x < W) { acc += lum[y * W + x]; n++; }
+    for (let x = 0; x < W; x++) {
+      tmp[y * W + x] = acc / n;
+      if (x + R + 1 < W) { acc += lum[y * W + x + R + 1]; n++; }
+      if (x - R >= 0) { acc -= lum[y * W + x - R]; n--; }
+    }
+  }
+  for (let x = 0; x < W; x++) {
+    let acc = 0; let n = 0;
+    for (let y = -R; y <= R; y++) if (y >= 0 && y < H) { acc += tmp[y * W + x]; n++; }
+    for (let y = 0; y < H; y++) {
+      blur[y * W + x] = acc / n;
+      if (y + R + 1 < H) { acc += tmp[(y + R + 1) * W + x]; n++; }
+      if (y - R >= 0) { acc -= tmp[(y - R) * W + x]; n--; }
+    }
+  }
+  const out = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const d = lum[i] + 0.85 * (lum[i] - blur[i]);
+    out[i] = Math.pow(Math.min(1, Math.max(0, d)), 1.25);
+  }
+  return { W, H, lum: out };
+}
+
 const TextParticleField = forwardRef(function TextParticleField(
-  { photoUrl, interactive = true, onProgressSettle },
+  { photoUrl, count, interactive = true, onProgressSettle },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -78,160 +128,156 @@ const TextParticleField = forwardRef(function TextParticleField(
   const particlesRef = useRef([]);
   const spritesRef = useRef(null);
   const glowRef = useRef(null);
+  const photoRef = useRef(null);
+  const layoutRef = useRef(null);
+  const layoutKeyRef = useRef('');
   const progressRef = useRef(0);
   const rotationRef = useRef(0);
-  const spinRef = useRef(0.0016);
-  const draggingRef = useRef(false);
-  const dragStartRef = useRef({ x: 0, progress: 0 });
-  const portraitAspectRef = useRef(1.25);
-  const [photoReady, setPhotoReady] = useState(!photoUrl);
+  const dragRef = useRef(null);
+  const [photoReady, setPhotoReady] = useState(false);
 
-  // 1. Пул частиц в 3D-координатах галактики
+  // --- пул частиц: спираль в координатах диска -----------------------------
   useEffect(() => {
-    const words = pickLoveWords(36);
+    const words = pickLoveWords(40);
     spritesRef.current = buildSprites(words);
     glowRef.current = buildGlow();
-    const list = [];
-    for (let i = 0; i < COUNT; i++) {
-      const kind = rand();
-      let r; let ang; let z; let colorIdx; let size; let bright;
-      if (kind < 0.14) {
-        // ядро-балдж: плотное гауссово облако
-        r = Math.abs(gauss()) * 0.13;
-        ang = rand() * Math.PI * 2;
-        z = gauss() * 0.06;
-        colorIdx = 0;
-        size = 0.8 + rand() * 0.9;
-        bright = 0.3 + rand() * 0.4;
-      } else if (kind < 0.88) {
-        // рукава: логарифмическая спираль, рассеяние растёт с радиусом
-        r = 0.08 + Math.pow(rand(), 0.75) * 0.92;
+
+    const N = count || (window.innerWidth < 480 ? 7000 : 9500);
+    const k = TURNS * Math.PI * 2 / Math.log(1 / R_INNER);
+    const list = new Array(N);
+    for (let i = 0; i < N; i++) {
+      const kind = r1();
+      let r; let ang; let z; let ci; let size; let bright; let big = false;
+      if (kind < 0.13) {
+        // балдж
+        r = R_INNER + Math.abs(gauss()) * 0.1;
+        ang = r1() * Math.PI * 2;
+        z = gauss() * 0.05;
+        ci = 0; size = 0.6 + r1() * 0.7; bright = 0.3 + r1() * 0.35;
+      } else if (kind < 0.93) {
+        // рукава
         const arm = i % ARMS;
-        const spread = (0.1 + r * 0.22) * gauss() * 1.8;
-        ang = (arm / ARMS) * Math.PI * 2 + Math.log(1 + r * 4.5) * 2.5 + spread;
-        z = gauss() * 0.035 * (1.1 - r * 0.6);
-        colorIdx = r < 0.3 ? 1 : (rand() < 0.2 ? 4 : (rand() < 0.5 ? 2 : 3));
-        size = 0.7 + rand() * 1.2;
-        bright = 0.25 + rand() * 0.5;
+        r = R_INNER + Math.pow(r1(), 0.62) * (1 - R_INNER);
+        ang = (arm / ARMS) * Math.PI * 2 + k * Math.log(r / R_INNER)
+            + gauss() * (0.13 + r * 0.3);
+        // радиальное рассыпание — без него рукав выглядит гладким «проводом»
+        r = Math.max(0.03, r * (1 + gauss() * 0.14));
+        z = gauss() * 0.028 * (1.2 - r * 0.7);
+        ci = r < 0.26 ? 1 : (r1() < 0.12 ? 4 : (r1() < 0.55 ? 2 : 3));
+        size = 0.45 + r1() * 0.9; bright = 0.17 + r1() * 0.4;
       } else {
-        // гало/межзвёздные одиночки
-        r = 0.2 + rand() * 1.1;
-        ang = rand() * Math.PI * 2;
-        z = gauss() * 0.25;
-        colorIdx = 1;
-        size = 0.7 + rand() * 0.9;
-        bright = 0.25 + rand() * 0.4;
+        // разреженное гало + редкие крупные читаемые слова
+        r = 0.5 + r1() * 0.7;
+        ang = r1() * Math.PI * 2;
+        z = gauss() * 0.22;
+        ci = r1() < 0.4 ? 4 : 2;
+        big = r1() < 0.05;
+        size = big ? 3.2 + r1() * 1.6 : 0.6 + r1() * 0.7;
+        bright = big ? 0.22 + r1() * 0.18 : 0.16 + r1() * 0.26;
       }
-      list.push({
-        r, ang, z, colorIdx, size, bright,
-        word: Math.floor(rand() * words.length),
-        seed: rand(),
-        tw: rand() * Math.PI * 2,
-        twSpeed: 0.6 + rand() * 1.6,
-        px: 0.5, py: 0.5, pLum: 0, hasSpot: false,
-      });
+      list[i] = {
+        r, ang, z, ci, size, bright, big,
+        w: Math.floor(r1() * words.length),
+        seed: r1(),
+        tw: r1() * Math.PI * 2,
+        ts: 0.5 + r1() * 1.5,
+        slot: null,
+      };
     }
     particlesRef.current = list;
-  }, []);
+    layoutRef.current = null;
+    layoutKeyRef.current = '';
+  }, [count]);
 
-  // 2. Фото → контрастная карта плотности → цели частиц
+  // --- фото ---------------------------------------------------------------
   useEffect(() => {
-    if (!photoUrl) { setPhotoReady(false); return undefined; }
+    if (!photoUrl) {
+      photoRef.current = null; layoutRef.current = null; layoutKeyRef.current = '';
+      setPhotoReady(false);
+      return undefined;
+    }
     let cancelled = false;
     setPhotoReady(false);
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       if (cancelled) return;
-      const W = 130;
-      const H = Math.max(40, Math.min(220, Math.round((img.height / img.width) * W)));
-      portraitAspectRef.current = H / W;
-      const off = document.createElement('canvas');
-      off.width = W; off.height = H;
-      const octx = off.getContext('2d');
-      octx.drawImage(img, 0, 0, W, H);
-      let data;
-      try { data = octx.getImageData(0, 0, W, H).data; } catch { return; }
-
-      const lum = new Float32Array(W * H);
-      for (let i = 0; i < W * H; i++) {
-        lum[i] = (0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]) / 255;
-      }
-      // автоконтраст по перцентилям 4%..96%
-      const sorted = Float32Array.from(lum).sort();
-      const lo = sorted[Math.floor(sorted.length * 0.04)];
-      const hi = sorted[Math.floor(sorted.length * 0.96)];
-      const range = Math.max(0.05, hi - lo);
-      for (let i = 0; i < lum.length; i++) lum[i] = Math.min(1, Math.max(0, (lum[i] - lo) / range));
-
-      // боксовый блюр для локального контраста (unsharp): выделяет черты лица
-      const R = 5;
-      const blur = new Float32Array(W * H);
-      const tmp = new Float32Array(W * H);
-      for (let y = 0; y < H; y++) {
-        let acc = 0; let n = 0;
-        for (let x = -R; x <= R; x++) { if (x >= 0 && x < W) { acc += lum[y * W + x]; n++; } }
-        for (let x = 0; x < W; x++) {
-          tmp[y * W + x] = acc / n;
-          const addX = x + R + 1; const subX = x - R;
-          if (addX < W) { acc += lum[y * W + addX]; n++; }
-          if (subX >= 0) { acc -= lum[y * W + subX]; n--; }
-        }
-      }
-      for (let x = 0; x < W; x++) {
-        let acc = 0; let n = 0;
-        for (let y = -R; y <= R; y++) { if (y >= 0 && y < H) { acc += tmp[y * W + x]; n++; } }
-        for (let y = 0; y < H; y++) {
-          blur[y * W + x] = acc / n;
-          const addY = y + R + 1; const subY = y - R;
-          if (addY < H) { acc += tmp[addY * W + x]; n++; }
-          if (subY >= 0) { acc -= tmp[subY * W + x]; n--; }
-        }
-      }
-
-      const weight = new Float32Array(W * H);
-      let total = 0;
-      for (let i = 0; i < W * H; i++) {
-        const detail = lum[i] + 1.1 * (lum[i] - blur[i]);
-        // виньетка: центр (лицо) важнее краёв/фона
-        const vx = ((i % W) / W - 0.5) / 0.5; const vy = (Math.floor(i / W) / H - 0.45) / 0.55;
-        const vd = Math.sqrt(vx * vx + vy * vy);
-        const vign = 1 - smooth((vd - 0.55) / 0.5);
-        const v = Math.pow(Math.min(1, Math.max(0, detail)), 1.35) * (0.12 + 0.88 * vign);
-        weight[i] = v;
-        total += v + 0.0001;
-        lum[i] = v;
-      }
-      // кумулятивное распределение для взвешенного выбора пикселя
-      const cdf = new Float32Array(W * H);
-      let run = 0;
-      for (let i = 0; i < W * H; i++) { run += weight[i] + 0.0001; cdf[i] = run / (total + W * H * 0.0001); }
-
-      const particles = particlesRef.current;
-      for (const p of particles) {
-        const u = rand();
-        let a = 0; let b = cdf.length - 1;
-        while (a < b) { const m = (a + b) >> 1; if (cdf[m] < u) a = m + 1; else b = m; }
-        const x = a % W; const y = Math.floor(a / W);
-        p.px = (x + rand()) / W;
-        p.py = (y + rand()) / H;
-        p.pLum = lum[a];
-        p.hasSpot = true;
-      }
-      setPhotoReady(true);
+      photoRef.current = analysePhoto(img);
+      layoutRef.current = null; layoutKeyRef.current = '';
+      setPhotoReady(!!photoRef.current);
     };
     img.src = photoUrl;
     return () => { cancelled = true; };
   }, [photoUrl]);
 
+  // --- раскладка портрета: слова строками, яркость из фото ------------------
+  function buildLayout(width, height) {
+    const photo = photoRef.current;
+    const sprites = spritesRef.current;
+    if (!photo || !sprites) return null;
+
+    const boxW = width * 0.94;
+    const boxH = height * 0.66;
+    const aspect = photo.H / photo.W;
+    let pw = boxW; let ph = pw * aspect;
+    if (ph > boxH) { ph = boxH; pw = ph / aspect; }
+    const ox = (width - pw) / 2;
+    const oy = height * 0.38 - ph / 2;
+
+    const fontPx = Math.max(2.5, Math.min(4.4, pw / 100));
+    const lineH = fontPx * 1.06;
+    const rows = Math.max(1, Math.floor(ph / lineH));
+    const gap = fontPx * 0.5;
+    const row0 = sprites[1];
+
+    const slots = [];
+    for (let row = 0; row < rows; row++) {
+      const y = oy + (row + 0.5) * lineH;
+      const ny = (y - oy) / ph;
+      const py = Math.min(photo.H - 1, Math.max(0, Math.floor(ny * photo.H)));
+      let x = ox + r1() * fontPx * 3;
+      let guard = 0;
+      while (x < ox + pw && guard++ < 400) {
+        const wi = Math.floor(r1() * row0.length);
+        const sw = row0[wi].width * (fontPx / SPRITE_FONT);
+        const cxp = x + sw / 2;
+        if (cxp > ox + pw) break;
+        // средняя яркость под словом
+        let acc = 0; let n = 0;
+        for (let s = 0; s <= 4; s++) {
+          const nx = (x + (sw * s) / 4 - ox) / pw;
+          const px = Math.min(photo.W - 1, Math.max(0, Math.floor(nx * photo.W)));
+          acc += photo.lum[py * photo.W + px]; n++;
+        }
+        let b = acc / n;
+        // мягкая овальная виньетка, чтобы прямоугольник растворялся в космосе
+        const dx = (cxp - ox) / pw - 0.5;
+        const dy = ny - 0.47;
+        const d = Math.hypot(dx / 0.5, dy / 0.53);
+        b *= 1 - smooth((d - 0.74) / 0.46);
+        b = smooth((b - 0.1) / 0.8);            // S-кривая: тени гаснут, света плотнеют
+        if (b > 0.14) slots.push({ x: cxp, y, b: Math.min(1, b), w: wi });
+        x += sw + gap;
+      }
+    }
+    // перемешиваем, чтобы частицы не летели полосами
+    for (let i = slots.length - 1; i > 0; i--) {
+      const j = Math.floor(r1() * (i + 1));
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+    }
+    const list = particlesRef.current;
+    for (let i = 0; i < list.length; i++) list[i].slot = i < slots.length ? slots[i] : null;
+    return { slots, fontPx };
+  }
+
   useImperativeHandle(ref, () => ({
-    animateTo(target, duration = 1600) {
+    animateTo(target, duration = 2200) {
       const start = progressRef.current;
       const t0 = performance.now();
       function step(now) {
         const t = Math.min(1, (now - t0) / duration);
-        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-        progressRef.current = start + (target - start) * eased;
+        const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        progressRef.current = start + (target - start) * e;
         if (t < 1) requestAnimationFrame(step);
         else onProgressSettle?.(target);
       }
@@ -240,7 +286,7 @@ const TextParticleField = forwardRef(function TextParticleField(
     getProgress() { return progressRef.current; },
   }));
 
-  // 3. Рендер
+  // --- рендер --------------------------------------------------------------
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
@@ -248,119 +294,126 @@ const TextParticleField = forwardRef(function TextParticleField(
     let raf; let width = 0; let height = 0;
 
     function resize() {
-      // clientWidth, а не getBoundingClientRect: последний искажается scale-анимацией перехода
-      width = canvas.parentElement.clientWidth; height = canvas.parentElement.clientHeight;
+      const p = canvas.parentElement;
+      const w = p.clientWidth; const h = p.clientHeight;
+      if (!w || !h) return;
+      width = w; height = h;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = width * dpr; canvas.height = height * dpr;
-      canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      layoutKeyRef.current = '';
     }
 
     let time = 0;
-    const cosT = Math.cos(TILT); const sinT = Math.sin(TILT);
-
     function tick() {
       time += 0.016;
       ctx.clearRect(0, 0, width, height);
-      const progress = progressRef.current;
       const sprites = spritesRef.current;
-      const glow = glowRef.current;
-      if (!sprites) { raf = requestAnimationFrame(tick); return; }
+      const list = particlesRef.current;
+      if (!sprites || !list.length) { raf = requestAnimationFrame(tick); return; }
 
-      if (!draggingRef.current && progress < 0.03) {
-        rotationRef.current += spinRef.current;
+      const p = progressRef.current;
+
+      // раскладка портрета считается один раз на размер канваса
+      const key = `${Math.round(width)}x${Math.round(height)}`;
+      if (photoRef.current && layoutKeyRef.current !== key) {
+        layoutRef.current = buildLayout(width, height);
+        layoutKeyRef.current = key;
       }
+      const layout = layoutRef.current;
+
+      if (!dragRef.current && p < 0.02) rotationRef.current += 0.0007;
 
       const cx = width / 2;
-      const galaxyCy = height * 0.42;
-      const R = Math.min(width * 0.47, height * 0.33); // радиус галактики в px
-
-      // рамка портрета: по аспекту фото, максимум по ширине/высоте
-      const aspect = portraitAspectRef.current;
-      const maxW = width * 0.88;
-      const maxH = height * 0.62;
-      let pW = maxW; let pH = pW * aspect;
-      if (pH > maxH) { pH = maxH; pW = pH / aspect; }
-      const pOx = cx - pW / 2;
-      const pOy = height * 0.4 - pH / 2;
+      const cy = height * 0.42;
+      // при сборке портрета камера "подлетает": диск разворачивается к нам и растёт
+      const open = smooth(p * 1.7);
+      const cosI = COS_INC + (1 - COS_INC) * open;
+      const sinI = SIN_INC * (1 - open);
+      const R = Math.min(width * 0.78, height * 0.5) * (1 + open * 0.35);
 
       ctx.globalCompositeOperation = 'lighter';
 
-      // мягкое свечение ядра и диска
-      const coreA = 1 - progress;
+      // ядро и общее свечение диска
+      const coreA = 1 - smooth(p * 1.4);
       if (coreA > 0.01) {
-        ctx.globalAlpha = 0.5 * coreA;
-        const cs = R * 0.85;
         ctx.save();
-        ctx.translate(cx, galaxyCy);
-        ctx.scale(1, cosT * 0.9 + 0.1);
-        const g1 = ctx.createRadialGradient(0, 0, 0, 0, 0, cs);
-        g1.addColorStop(0, 'rgba(255,240,215,0.95)');
-        g1.addColorStop(0.18, 'rgba(255,205,160,0.38)');
-        g1.addColorStop(0.5, 'rgba(150,120,255,0.14)');
-        g1.addColorStop(1, 'rgba(90,70,200,0)');
-        ctx.fillStyle = g1;
-        ctx.fillRect(-cs, -cs, cs * 2, cs * 2);
+        ctx.translate(cx, cy);
+        ctx.scale(1, cosI);
+        const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.95);
+        halo.addColorStop(0, `rgba(255,246,224,${0.3 * coreA})`);
+        halo.addColorStop(0.12, `rgba(255,224,178,${0.15 * coreA})`);
+        halo.addColorStop(0.42, `rgba(150,140,245,${0.08 * coreA})`);
+        halo.addColorStop(1, 'rgba(80,70,190,0)');
+        ctx.fillStyle = halo;
+        ctx.fillRect(-R, -R, R * 2, R * 2);
+        const core = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.1);
+        core.addColorStop(0, `rgba(255,252,240,${0.95 * coreA})`);
+        core.addColorStop(0.4, `rgba(255,233,195,${0.3 * coreA})`);
+        core.addColorStop(1, 'rgba(255,210,150,0)');
+        ctx.fillStyle = core;
+        ctx.fillRect(-R, -R, R * 2, R * 2);
         ctx.restore();
       }
 
       const rot = rotationRef.current;
-      const list = particlesRef.current;
+      const glow = glowRef.current;
+      const fontP = layout ? layout.fontPx : 3;
+
       for (let i = 0; i < list.length; i++) {
-        const p = list[i];
-        // диск вращается дифференциально: центр быстрее
-        const a = p.ang + rot * (1.6 - Math.min(1.4, p.r) * 0.9);
-        const gx3 = Math.cos(a) * p.r;
-        const gy3 = Math.sin(a) * p.r;
-        // наклон вокруг оси X + перспектива
-        const yy = gy3 * cosT - p.z * sinT;
-        const zz = gy3 * sinT + p.z * cosT;
-        const persp = 1 / (1 - zz * 0.35);
-        const gx = cx + gx3 * R * persp;
-        const gy = galaxyCy + yy * R * persp;
+        const q = list[i];
+        // дифференциальное вращение: центр быстрее краёв
+        const a = q.ang + rot * (1.8 - Math.min(1, q.r));
+        const dx = Math.cos(a) * q.r;
+        const dy = Math.sin(a) * q.r;
+        const gx = cx + dx * R;
+        const gy = cy + (dy * cosI - q.z * sinI) * R;
 
         let x = gx; let y = gy;
-        let sizeMul = persp;
-        let alphaBase = p.bright;
-        // мерцание
-        const tw = 0.7 + 0.3 * Math.sin(time * p.twSpeed + p.tw);
-
+        let alpha = q.bright;
+        let size = (q.big ? 5.5 + q.size : 1.9 + q.size * 1.5);
+        let ci = q.ci;
         let pp = 0;
-        if (p.hasSpot && progress > 0) {
-          // индивидуальная задержка — частицы слетаются волной
-          pp = smooth(progress * 1.5 - p.seed * 0.5);
-          const tx = pOx + p.px * pW;
-          const ty = pOy + p.py * pH;
-          x = gx + (tx - gx) * pp;
-          y = gy + (ty - gy) * pp;
-          if (pp > 0 && pp < 1) {
-            // лёгкая дуга при перелёте
-            const arc = Math.sin(pp * Math.PI) * 18 * (p.seed - 0.5);
-            x += arc; y -= Math.abs(arc) * 0.6;
+
+        if (p > 0) {
+          pp = smooth(p * 1.45 - q.seed * 0.42);
+          if (pp > 0) {
+            if (q.slot) {
+              x = gx + (q.slot.x - gx) * pp;
+              y = gy + (q.slot.y - gy) * pp;
+              if (pp < 1) {
+                const arc = Math.sin(pp * Math.PI) * 22 * (q.seed - 0.5);
+                x += arc; y -= Math.abs(arc) * 0.5;
+              }
+              alpha = alpha + (0.12 + q.slot.b * 1.05 - alpha) * pp;
+              size = size + (fontP - size) * pp;
+              if (pp > 0.55) ci = 1;
+            } else {
+              // лишние частицы растворяются, чтобы портрет был чистым
+              alpha *= 1 - pp;
+              x = gx + (gx - cx) * pp * 0.5;
+              y = gy + (gy - cy) * pp * 0.5;
+            }
           }
-          // в портрете яркость = яркость пикселя, тёмные участки гаснут
-          const portraitAlpha = 0.06 + p.pLum * 0.8;
-          alphaBase = alphaBase + (portraitAlpha - alphaBase) * pp;
-          sizeMul = persp + (0.95 - persp) * pp;
         }
 
-        const al = Math.min(1, (p.r < 0.3 && pp < 1 ? 0.6 : 1) * alphaBase * tw * (0.3 + 0.55 * pp));
-        if (al < 0.03) continue;
-        ctx.globalAlpha = al * (pp < 1 ? 0.8 : 1);
+        const tw = 0.72 + 0.28 * Math.sin(time * q.ts + q.tw);
+        const al = Math.min(1, alpha * tw * (0.55 + 0.45 * pp));
+        if (al < 0.025) continue;
 
-        // цвет: в портрете светлее и теплее
-        const ci = pp > 0.6 ? 1 : p.colorIdx;
-        const sp = sprites[ci][p.word];
-        const fs = (pp > 0.5 ? 2.6 + p.pLum * 1.6 : 1.9 + p.size * 1.3) * sizeMul;
-        const k = fs / SPRITE_FONT;
-        const dw = sp.width * k; const dh = sp.height * k;
-        ctx.drawImage(sp, x - dw / 2, y - dh / 2, dw, dh);
+        const sp = sprites[ci][q.w];
+        const k = size / SPRITE_FONT;
+        const w = sp.width * k; const h = sp.height * k;
+        ctx.globalAlpha = al;
+        ctx.drawImage(sp, x - w / 2, y - h / 2, w, h);
 
-        // редкие яркие звёзды получают ореол
-        if (p.size > 2.05 && pp < 0.5 && glow) {
-          ctx.globalAlpha = al * 0.55 * (1 - pp * 2);
-          const gs = 9 * sizeMul;
-          ctx.drawImage(glow, x - gs, y - gs, gs * 2, gs * 2);
+        if (glow && q.size > 1.25 && p < 0.6 && !q.big) {
+          ctx.globalAlpha = al * 0.22 * (1 - p * 1.6);
+          const g = 5 + q.size * 2;
+          ctx.drawImage(glow, x - g, y - g, g * 2, g * 2);
         }
       }
 
@@ -376,35 +429,34 @@ const TextParticleField = forwardRef(function TextParticleField(
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   }, []);
 
-  function handlePointerDown(e) {
+  // --- жесты ---------------------------------------------------------------
+  function down(e) {
     if (!interactive) return;
-    draggingRef.current = true;
-    dragStartRef.current = { x: e.clientX, progress: progressRef.current };
+    dragRef.current = { x: e.clientX, p: progressRef.current };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
-  function handlePointerMove(e) {
-    if (!interactive || !draggingRef.current || !containerRef.current) return;
+  function move(e) {
+    const d = dragRef.current;
+    if (!interactive || !d || !containerRef.current) return;
     const w = containerRef.current.clientWidth;
-    const dx = e.clientX - dragStartRef.current.x;
+    const dx = e.clientX - d.x;
     if (photoReady && progressRef.current > 0.02) {
-      const delta = dx / (w * 0.8);
-      progressRef.current = Math.min(1, Math.max(0, dragStartRef.current.progress - delta));
+      progressRef.current = Math.min(1, Math.max(0, d.p - dx / (w * 0.8)));
     } else {
-      rotationRef.current += dx * 0.004;
-      dragStartRef.current.x = e.clientX;
+      rotationRef.current += dx * 0.005;
+      d.x = e.clientX;
     }
   }
-  function handlePointerUp() {
-    if (!interactive || !draggingRef.current) return;
-    draggingRef.current = false;
-    if (photoReady && progressRef.current > 0.02) {
+  function up() {
+    if (!interactive || !dragRef.current) return;
+    dragRef.current = null;
+    if (photoReady && progressRef.current > 0.02 && progressRef.current < 1) {
       const target = progressRef.current > 0.5 ? 1 : 0;
       const start = progressRef.current;
       const t0 = performance.now();
       function step(now) {
-        const t = Math.min(1, (now - t0) / 500);
-        const eased = 1 - Math.pow(1 - t, 3);
-        progressRef.current = start + (target - start) * eased;
+        const t = Math.min(1, (now - t0) / 600);
+        progressRef.current = start + (target - start) * (1 - Math.pow(1 - t, 3));
         if (t < 1) requestAnimationFrame(step);
         else onProgressSettle?.(target);
       }
@@ -415,10 +467,10 @@ const TextParticleField = forwardRef(function TextParticleField(
   return (
     <div
       ref={containerRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerLeave={up}
       style={{ position: 'absolute', inset: 0, touchAction: 'none', cursor: interactive ? 'grab' : 'default' }}
     >
       <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />

@@ -17,7 +17,6 @@
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Starfield from './Starfield.jsx';
-import FloatingLovePhrases from './FloatingLovePhrases.jsx';
 import TextParticleField from './TextParticleField.jsx';
 import EnvelopeScene from './EnvelopeScene.jsx';
 import LetterScene from './LetterScene.jsx';
@@ -92,9 +91,9 @@ export default function GalaxyLetterScene({
   return (
     <div style={{
       position: 'relative', width: '100%', height: '100%', overflow: 'hidden',
-      background: 'radial-gradient(ellipse at 50% 20%, #241a44 0%, #140f28 55%, #0b0818 100%)',
+      background: '#080a1c',
     }}>
-      <Starfield density={stage === 'cosmos' ? 90 : 140} nebula />
+      <Starfield density={stage === 'cosmos' ? 0.75 : 1} nebula />
 
       <AnimatePresence mode="wait">
         {stage === 'envelope' && (
@@ -127,8 +126,6 @@ export default function GalaxyLetterScene({
               interactive
               onProgressSettle={(p) => setCosmosPhase(p >= 1 ? 'portrait' : 'galaxy')}
             />
-
-            {cosmosPhase === 'galaxy' && <FloatingLovePhrases count={8} opacity={0.22} />}
 
             <AnimatePresence>
               {cosmosPhase === 'galaxy' && (
