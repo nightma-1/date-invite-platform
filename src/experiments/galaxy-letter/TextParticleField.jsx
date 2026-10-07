@@ -181,11 +181,15 @@ const TextParticleField = forwardRef(function TextParticleField(
       } else if (kind < 0.93) {
         const arm = i % ARMS;
         r = R_INNER + Math.pow(r1(), 0.62) * (1 - R_INNER);
-        ang = (arm / ARMS) * Math.PI * 2 + k * Math.log(r / R_INNER) + gauss() * (0.13 + r * 0.3);
+        const off = gauss();
+        ang = (arm / ARMS) * Math.PI * 2 + k * Math.log(r / R_INNER) + off * (0.13 + r * 0.3);
         r = Math.max(0.03, r * (1 + gauss() * 0.14));
         z = gauss() * 0.028 * (1.2 - r * 0.7);
         ci = r < 0.26 ? 1 : (r1() < 0.12 ? 4 : (r1() < 0.55 ? 2 : 3));
         size = 0.45 + r1() * 0.9; bright = 0.17 + r1() * 0.4;
+        // пылевая прожилка по внутреннему краю рукава: там света меньше
+        const lane = Math.exp(-Math.pow((off + 0.62) / 0.3, 2));
+        bright *= 1 - 0.62 * lane;
       } else {
         r = 0.5 + r1() * 0.7;
         ang = r1() * Math.PI * 2;
@@ -404,6 +408,8 @@ const TextParticleField = forwardRef(function TextParticleField(
         v.vYaw *= 0.94; v.vTilt *= 0.94;
         if (Math.abs(v.vYaw) < 0.00025) v.vYaw = 0;
         if (Math.abs(v.vTilt) < 0.00025) v.vTilt = 0;
+        // медленный собственный поворот: сразу видно, что объект живой и объёмный
+        if (p < 0.02 && !v.vYaw && !v.vTilt) v.yaw += 0.0011;
       }
       if (p < 0.02) spinRef.current += 0.0007;
 
@@ -528,7 +534,7 @@ const TextParticleField = forwardRef(function TextParticleField(
 
   // --- жесты ---------------------------------------------------------------
   function down(e) {
-    if (!interactive) return;
+    if (!interactive || e.isPrimary === false) return;
     dragRef.current = { x: e.clientX, y: e.clientY, p: progressRef.current, moved: 0 };
     viewRef.current.vYaw = 0; viewRef.current.vTilt = 0;
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -574,8 +580,16 @@ const TextParticleField = forwardRef(function TextParticleField(
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}
-      onPointerLeave={up}
-      style={{ position: 'absolute', inset: 0, touchAction: 'none', cursor: interactive ? 'grab' : 'default' }}
+      // НЕ onPointerLeave: при setPointerCapture мобильные браузеры шлют
+      // pointerleave сразу после касания и жест обрывался на первом же кадре.
+      onPointerCancel={up}
+      onLostPointerCapture={up}
+      style={{
+        position: 'absolute', inset: 0, zIndex: 1,
+        touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+        WebkitTapHighlightColor: 'transparent', WebkitTouchCallout: 'none',
+        cursor: interactive ? 'grab' : 'default',
+      }}
     >
       <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
     </div>
