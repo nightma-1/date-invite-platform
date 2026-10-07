@@ -30,6 +30,12 @@ const TURNS = 2.15;          // обороты рукава — отсюда "к
 const R_INNER = 0.07;
 const TILT0 = 1.08;          // стартовый наклон диска, рад (~62°)
 
+// Доля родных языков (uz/ru/en). Они — якорь узнавания, но не фон: смысл
+// сцены в том, что это говорит ВЕСЬ мир. Больше четверти — и текст начинает
+// выглядеть однообразно.
+const NATIVE_SHARE_PORTRAIT = 0.25;
+const NATIVE_SHARE_BIG = 0.7;   // крупные читаемые слова — их всего десятки
+
 const r1 = () => Math.random();
 const gauss = () => (r1() + r1() + r1() + r1() - 2) / 2;
 const smooth = (t) => { const x = Math.max(0, Math.min(1, t)); return x * x * (3 - 2 * x); };
@@ -192,7 +198,7 @@ const TextParticleField = forwardRef(function TextParticleField(
       const prim = primaryRef.current;
       list[i] = {
         r, ang, z, ci, size, bright, big,
-        w: big ? prim[Math.floor(r1() * prim.length)] : Math.floor(r1() * words.length),
+        w: (big && r1() < NATIVE_SHARE_BIG) ? prim[Math.floor(r1() * prim.length)] : Math.floor(r1() * words.length),
         seed: r1(), tw: r1() * Math.PI * 2, ts: 0.5 + r1() * 1.5,
         slot: null,
       };
@@ -242,11 +248,11 @@ const TextParticleField = forwardRef(function TextParticleField(
     g.font = `${fontPx}px "Manrope", sans-serif`;
     const tint = pal.arms[1];
 
-    // в портрете родные языки встречаются чаще — их читают вблизи
+    // в портрете родные языки — заметная доля, но не большинство
     const all = wordsRef.current;
     const prim = all.filter((w) => PRIMARY_LANGS.includes(w.lang)).map((w) => w.text);
     const other = all.filter((w) => !PRIMARY_LANGS.includes(w.lang)).map((w) => w.text);
-    const pickPhrase = () => (r1() < 0.55 && prim.length
+    const pickPhrase = () => (r1() < NATIVE_SHARE_PORTRAIT && prim.length
       ? prim[Math.floor(r1() * prim.length)]
       : other[Math.floor(r1() * other.length)] || prim[0]);
     const lineH = fontPx * 1.05;
