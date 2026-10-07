@@ -4,7 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { clickProvider, isClickConfigured } from '../../src/lib/clickProvider.js';
+import { clickProvider, isClickConfigured, PAYMENT_METHOD } from '../../src/lib/clickProvider.js';
 import { rateLimit, clientIp } from '../_lib/rateLimit.js';
 
 const INVITATION_PRICE = 19000; // сум, см. ТЗ раздел 3 (цена задаётся только здесь, клиент её не передаёт)
@@ -63,6 +63,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'invitationId обязателен' });
   }
 
+  // Какая из двух кнопок оплаты — "через CLICK" или "картой". Белый список,
+  // а не что угодно от клиента: это пишется в payments.method (constraint
+  // в БД всё равно отбракует мусор, но лучше 400, чем 500 от констрейнта).
+  const method = req.body?.method === PAYMENT_METHOD.CARD ? PAYMENT_METHOD.CARD : PAYMENT_METHOD.INVOICE;
+
   const { data: invitation, error: invitationError } = await supabase
     .from('invitations')
     .select('id, status, user_id')
@@ -97,6 +102,7 @@ export default async function handler(req, res) {
       invitation_id: invitationId,
       amount: INVITATION_PRICE,
       status: 'pending',
+      method,
     })
     .select()
     .single();
@@ -110,6 +116,7 @@ export default async function handler(req, res) {
     invitationId,
     amount: INVITATION_PRICE,
     returnUrl: `${process.env.PUBLIC_APP_URL || 'https://senti.uz'}/payment/${invitationId}`,
+    method,
   });
 
   return res.status(200).json({ paymentUrl, paymentId: payment.id });

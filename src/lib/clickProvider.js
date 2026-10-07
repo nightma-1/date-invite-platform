@@ -98,8 +98,27 @@ export function buildCompleteResponse({ click_trans_id, merchant_trans_id, merch
   return { click_trans_id, merchant_trans_id, merchant_confirm_id, error, error_note };
 }
 
+export const PAYMENT_METHOD = { INVOICE: 'invoice', CARD: 'card' };
+
+/**
+ * У Click две отдельные страницы в документации — click-button ("оплата
+ * через CLICK", есть оплата и без регистрации на той же странице) и
+ * click-pay-by-card ("оплата с любой карты" — номер + срок, без аккаунта
+ * Click вообще). У обеих совпадает весь набор обязательных параметров
+ * (service_id/merchant_id/amount/transaction_param), и у click-pay-by-card
+ * по документации на дату написания нет отдельного публичного URL — Click
+ * либо выдаёт готовый <script> в личном кабинете мерчанта, либо это та же
+ * страница my.click.uz/services/pay, просто с другим входом в интерфейс.
+ *
+ * Пока нет подтверждённого отдельного виджета, обе кнопки ведут на один и
+ * тот же checkout — это рабочее решение (Click сам предлагает выбор способа
+ * оплаты на этой странице), но ПЕРЕД продакшеном сверь с личным кабинетом:
+ * если там есть отдельный JS-виджет (createPaymentRequest()) для
+ * click-pay-by-card, замени ветку CARD на него — тогда карта будет
+ * вводиться во встроенном окне, не уходя с сайта.
+ */
 export const clickProvider = {
-  async createPayment({ invitationId, amount, returnUrl }) {
+  async createPayment({ invitationId, amount, returnUrl, method = PAYMENT_METHOD.INVOICE }) {
     if (!isClickConfigured()) throw new Error('Click is not configured');
     const params = new URLSearchParams({
       service_id: SERVICE_ID,
@@ -108,6 +127,8 @@ export const clickProvider = {
       transaction_param: invitationId, // приходит обратно как merchant_trans_id
       return_url: returnUrl,
     });
-    return { paymentUrl: `https://my.click.uz/services/pay?${params.toString()}` };
+    // TODO(click-pay-by-card): если Click выдал отдельный виджет в кабинете
+    // мерчанта — подставить его здесь вместо редиректа на ту же страницу.
+    return { paymentUrl: `https://my.click.uz/services/pay?${params.toString()}`, method };
   },
 };

@@ -65,7 +65,7 @@ export default function PaymentStatus() {
     return () => { cancelled = true; };
   }, [invitationId]);
 
-  async function retryPayment() {
+  async function retryPayment(method = 'invoice') {
     setRetrying(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -73,7 +73,7 @@ export default function PaymentStatus() {
       const res = await fetch('/api/click/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ invitationId }),
+        body: JSON.stringify({ invitationId, method }),
       });
       const data = await res.json();
       if (res.ok && data.paymentUrl) {
@@ -185,15 +185,27 @@ export default function PaymentStatus() {
             </p>
             <button
               type="button"
-              onClick={retryPayment}
+              onClick={() => retryPayment('invoice')}
               disabled={retrying}
               style={{
-                background: T.pink, color: '#fff', padding: '12px 28px', borderRadius: 100,
+                display: 'block', width: '100%', background: T.pink, color: '#fff', padding: '12px 28px', borderRadius: 100,
                 fontFamily: T.font, fontWeight: 700, fontSize: 15, border: 'none',
+                cursor: retrying ? 'default' : 'pointer', opacity: retrying ? 0.7 : 1, marginBottom: 10,
+              }}
+            >
+              {retrying ? t('payment.retrying') : t('payment.retryButtonClick')}
+            </button>
+            <button
+              type="button"
+              onClick={() => retryPayment('card')}
+              disabled={retrying}
+              style={{
+                display: 'block', width: '100%', background: 'white', color: T.dark, padding: '12px 28px', borderRadius: 100,
+                fontFamily: T.font, fontWeight: 700, fontSize: 15, border: `1.5px solid ${T.pinkBorder}`,
                 cursor: retrying ? 'default' : 'pointer', opacity: retrying ? 0.7 : 1, marginBottom: 12,
               }}
             >
-              {retrying ? t('payment.retrying') : t('payment.retryButton')}
+              {retrying ? t('payment.retrying') : t('payment.retryButtonCard')}
             </button>
             <Link to="/dashboard" style={{ display: 'block', fontFamily: T.font, fontSize: 13, color: T.muted, textDecoration: 'underline' }}>
               {t('builder.goToDashboard')}

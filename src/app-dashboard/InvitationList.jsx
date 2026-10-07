@@ -58,7 +58,7 @@ export default function InvitationList() {
   // заплатили: человек мог закрыть вкладку Click на полпути. Публикует его
   // вебхук Click после оплаты, поэтому отсюда просто заново создаём платёж
   // и уводим на оплату — ничего не публикуем сами.
-  async function payForInvitation(inv) {
+  async function payForInvitation(inv, method = 'invoice') {
     setPayingId(inv.id);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -66,7 +66,7 @@ export default function InvitationList() {
       const res = await fetch('/api/click/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ invitationId: inv.id }),
+        body: JSON.stringify({ invitationId: inv.id, method }),
       });
       const data = await res.json();
       if (res.ok && data.paymentUrl) {
@@ -298,19 +298,34 @@ export default function InvitationList() {
 
                   <div className="mt-2 flex flex-wrap gap-2">
                     {inv.status === 'draft' && (
-                      <button
-                        type="button"
-                        onClick={() => payForInvitation(inv)}
-                        disabled={payingId === inv.id}
-                        className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
-                        style={{
-                          background: t.berry, color: '#fff', border: 'none', fontFamily: t.fontUI,
-                          cursor: payingId === inv.id ? 'not-allowed' : 'pointer',
-                          opacity: payingId === inv.id ? 0.7 : 1,
-                        }}
-                      >
-                        {payingId === inv.id ? tr('dashboard.paying') : tr('dashboard.payAndPublish')}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => payForInvitation(inv, 'invoice')}
+                          disabled={payingId === inv.id}
+                          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
+                          style={{
+                            background: t.berry, color: '#fff', border: 'none', fontFamily: t.fontUI,
+                            cursor: payingId === inv.id ? 'not-allowed' : 'pointer',
+                            opacity: payingId === inv.id ? 0.7 : 1,
+                          }}
+                        >
+                          {payingId === inv.id ? tr('dashboard.paying') : tr('dashboard.payWithClick')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => payForInvitation(inv, 'card')}
+                          disabled={payingId === inv.id}
+                          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
+                          style={{
+                            background: 'white', color: t.berry, border: `1.5px solid ${t.berry}`, fontFamily: t.fontUI,
+                            cursor: payingId === inv.id ? 'not-allowed' : 'pointer',
+                            opacity: payingId === inv.id ? 0.7 : 1,
+                          }}
+                        >
+                          {payingId === inv.id ? tr('dashboard.paying') : tr('dashboard.payWithCard')}
+                        </button>
+                      </>
                     )}
                     <Link
                       to={`/builder/edit/${inv.id}`}
