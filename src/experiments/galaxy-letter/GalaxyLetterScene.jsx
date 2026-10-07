@@ -17,6 +17,7 @@
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Starfield from './Starfield.jsx';
+import { getPalette } from './palettes.js';
 import TextParticleField from './TextParticleField.jsx';
 import EnvelopeScene from './EnvelopeScene.jsx';
 import LetterScene from './LetterScene.jsx';
@@ -39,8 +40,13 @@ export default function GalaxyLetterScene({
   photoUrl,
   finalCaption,
   finalSubcaption,
+  paletteId = 'amethyst',
+  cropZoom,
+  cropX,
+  cropY,
   onRestartRequest,
 }) {
+  const pal = getPalette(paletteId);
   const [stageIndex, setStageIndex] = useState(0);
   const [cosmosPhase, setCosmosPhase] = useState('galaxy'); // galaxy | assembling | portrait
   const fieldRef = useRef(null);
@@ -91,9 +97,9 @@ export default function GalaxyLetterScene({
   return (
     <div style={{
       position: 'relative', width: '100%', height: '100%', overflow: 'hidden',
-      background: '#080a1c',
+      background: pal.sky[2],
     }}>
-      <Starfield density={stage === 'cosmos' ? 0.75 : 1} nebula />
+      <Starfield paletteId={paletteId} density={stage === 'cosmos' ? 0.75 : 1} nebula />
 
       <AnimatePresence mode="wait">
         {stage === 'envelope' && (
@@ -123,6 +129,10 @@ export default function GalaxyLetterScene({
             <TextParticleField
               ref={fieldRef}
               photoUrl={photoUrl}
+              paletteId={paletteId}
+              cropZoom={cropZoom}
+              cropX={cropX}
+              cropY={cropY}
               interactive
               onProgressSettle={(p) => setCosmosPhase(p >= 1 ? 'portrait' : 'galaxy')}
             />
@@ -140,8 +150,8 @@ export default function GalaxyLetterScene({
                     pointerEvents: 'none',
                   }}
                 >
-                  <div style={{ fontFamily: '"Manrope", sans-serif', color: '#cfc9ff', fontSize: 12, opacity: 0.75 }}>
-                    покрути галактику
+                  <div style={{ fontFamily: '"Manrope", sans-serif', color: pal.soft, fontSize: 12, opacity: 0.75 }}>
+                    покрути галактику в любую сторону
                   </div>
                   <motion.button
                     type="button"
@@ -149,9 +159,9 @@ export default function GalaxyLetterScene({
                     whileTap={{ scale: 0.95 }}
                     style={{
                       pointerEvents: 'auto', border: 'none', borderRadius: 999,
-                      padding: '12px 28px', background: '#f5c768', color: '#2a2440',
+                      padding: '12px 28px', background: pal.accent.bg, color: pal.accent.fg,
                       fontFamily: '"Manrope", sans-serif', fontWeight: 700, fontSize: 14,
-                      cursor: 'pointer', boxShadow: '0 10px 24px -6px rgba(245,199,104,0.5)',
+                      cursor: 'pointer', boxShadow: `0 10px 30px -6px ${pal.accent.glow}`,
                     }}
                   >
                     Нажми!
@@ -174,16 +184,16 @@ export default function GalaxyLetterScene({
                 >
                   <div>
                     {finalCaption && (
-                      <div style={{ fontFamily: '"Caveat", cursive', fontSize: 30, color: '#fff', textShadow: '0 0 20px rgba(150,140,255,0.6)' }}>
+                      <div style={{ fontFamily: '"Caveat", cursive', fontSize: 30, color: '#fff', textShadow: `0 0 22px ${pal.accent.glow}` }}>
                         {finalCaption}
                       </div>
                     )}
                     {finalSubcaption && (
-                      <div style={{ fontFamily: '"Caveat", cursive', fontSize: 18, color: '#cfc9ff', opacity: 0.85, marginTop: 2 }}>
+                      <div style={{ fontFamily: '"Caveat", cursive', fontSize: 18, color: pal.soft, opacity: 0.9, marginTop: 2 }}>
                         {finalSubcaption}
                       </div>
                     )}
-                    <div style={{ fontFamily: '"Manrope", sans-serif', fontSize: 10.5, color: '#9b92d9', opacity: 0.6, marginTop: 10 }}>
+                    <div style={{ fontFamily: '"Manrope", sans-serif', fontSize: 10.5, color: pal.soft, opacity: 0.45, marginTop: 10 }}>
                       проведи пальцем вбок, и она снова станет галактикой
                     </div>
                   </div>
@@ -193,9 +203,9 @@ export default function GalaxyLetterScene({
                       onClick={handleShare}
                       style={{
                         flex: 1, border: 'none', borderRadius: 999, padding: '12px 16px',
-                        background: '#f5c768', color: '#2a2440', fontFamily: '"Manrope", sans-serif',
+                        background: pal.accent.bg, color: pal.accent.fg, fontFamily: '"Manrope", sans-serif',
                         fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                        boxShadow: '0 10px 24px -8px rgba(245,199,104,0.5)',
+                        boxShadow: `0 10px 28px -8px ${pal.accent.glow}`,
                       }}
                     >
                       Поделиться

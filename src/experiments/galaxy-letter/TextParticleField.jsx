@@ -1,48 +1,43 @@
 /**
  * © 2026 Senti.
  * Ядро эффекта: одна система частиц-слов ("люблю" на разных языках),
- * которая живёт как наклонённая спиральная галактика и по команде
- * перестраивается в портрет с фото.
+ * которая живёт как спиральная галактика и перестраивается в портрет.
  *
- * Две вещи, которые делают картинку похожей на настоящую:
+ * Что здесь важного:
  *
- * 1) Галактика — логарифмическая спираль с несколькими оборотами,
- *    наклонённая к зрителю (диск виден под углом, а не плашмя), с
- *    плотным тёплым ядром и аддитивным смешиванием: плотные места
- *    светятся, редкие читаются как отдельные звёзды-слова.
+ * 1) Галактика настоящая 3D: диск лежит в плоскости XY, затем
+ *    наклоняется (tilt) и поворачивается вокруг вертикальной оси экрана
+ *    (yaw). Поэтому её можно покрутить на все 360° в обе стороны, а не
+ *    только провернуть в её же плоскости — с инерцией, как глобус.
  *
- * 2) Портрет — слова выкладываются СТРОКАМИ, как напечатанный текст,
- *    а яркость каждого слова берётся из фотографии. Именно построчная
- *    сетка (а не случайная россыпь) даёт читаемое лицо.
+ * 2) Портрет выкладывается СТРОКАМИ текста, как напечатанная страница,
+ *    а яркость каждого слова берётся из фото. Перед этим фото само
+ *    кадрируется по лицу (по тону кожи), иначе на селфи в полный рост
+ *    лицо занимает пару десятков строк и не читается.
+ *
+ * 3) Цвета берутся из палитры (palettes.js) — космос может быть в тоне
+ *    нашего бренда, а не обязательно тёмно-синим.
  *
  * progress: 0 = галактика, 1 = портрет.
  */
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { pickLoveWords } from './loveWords.js';
+import { getPalette } from './palettes.js';
 
 const SPRITE_FONT = 28;
 const ARMS = 2;
-const TURNS = 2.15;        // сколько оборотов делает рукав — отсюда "кольца"
+const TURNS = 2.15;          // обороты рукава — отсюда "кольца"
 const R_INNER = 0.07;
-const COS_INC = 0.47;      // наклон диска: во столько раз он сжат по вертикали
-const SIN_INC = Math.sqrt(1 - COS_INC * COS_INC);
-
-const PALETTE = [
-  [255, 241, 214], // ядро, тёплый
-  [232, 238, 255], // внутренние рукава
-  [186, 203, 255],
-  [146, 170, 240],
-  [226, 186, 255], // редкие сиреневые
-];
+const TILT0 = 1.08;          // стартовый наклон диска, рад (~62°)
 
 const r1 = () => Math.random();
 const gauss = () => (r1() + r1() + r1() + r1() - 2) / 2;
 const smooth = (t) => { const x = Math.max(0, Math.min(1, t)); return x * x * (3 - 2 * x); };
 
-function buildSprites(words) {
+function buildSprites(words, arms) {
   const m = document.createElement('canvas').getContext('2d');
   m.font = `${SPRITE_FONT}px "Manrope", sans-serif`;
-  return PALETTE.map((c) => words.map((w) => {
+  return arms.map((c) => words.map((w) => {
     const wpx = Math.ceil(m.measureText(w.text).width) + 8;
     const cv = document.createElement('canvas');
     cv.width = wpx; cv.height = SPRITE_FONT + 10;
@@ -67,14 +62,33 @@ function buildGlow() {
   return cv;
 }
 
-/** Фото → нормализованная по контрасту карта яркости */
-function analysePhoto(img) {
-  const W = 180;
-  const H = Math.max(40, Math.min(300, Math.round((img.height / img.width) * W)));
+/**
+ * Кадр для портрета. Автоопределение лица на домашних снимках ненадёжно
+ * (стена телесного тона читается как кожа), поэтому кадр задаётся явно:
+ * zoom + точка центра. Это же станет рамкой кадрирования в конструкторе.
+ */
+function cropBox(img, zoom, cx, cy) {
+  const z = Math.max(1, Math.min(4, zoom || 1));
+  const w = img.width / z;
+  const h = Math.min(img.height, w * 1.25);
+  const x = Math.max(0, Math.min(img.width - w, cx * img.width - w / 2));
+  const y = Math.max(0, Math.min(img.height - h, cy * img.height - h / 2));
+  return { x, y, w, h };
+}
+
+/** Фото → нормализованная по контрасту карта яркости выбранного кадра */
+function analysePhoto(img, crop) {
+  const W = 200;
+  const srcX = crop ? crop.x : 0;
+  const srcY = crop ? crop.y : 0;
+  const srcW = crop ? crop.w : img.width;
+  const srcH = crop ? crop.h : img.height;
+  const H = Math.max(40, Math.min(340, Math.round((srcH / srcW) * W)));
+
   const off = document.createElement('canvas');
   off.width = W; off.height = H;
   const g = off.getContext('2d');
-  g.drawImage(img, 0, 0, W, H);
+  g.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, W, H);
   let data;
   try { data = g.getImageData(0, 0, W, H).data; } catch { return null; }
 
@@ -82,7 +96,6 @@ function analysePhoto(img) {
   for (let i = 0; i < W * H; i++) {
     lum[i] = (0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]) / 255;
   }
-  // автоконтраст по перцентилям
   const s = Float32Array.from(lum).sort();
   const lo = s[Math.floor(s.length * 0.03)];
   const hi = s[Math.floor(s.length * 0.97)];
@@ -90,7 +103,7 @@ function analysePhoto(img) {
   for (let i = 0; i < lum.length; i++) lum[i] = Math.min(1, Math.max(0, (lum[i] - lo) / rg));
 
   // боксовый блюр → unsharp: вытягивает черты лица
-  const R = 6;
+  const R = 7;
   const tmp = new Float32Array(W * H);
   const blur = new Float32Array(W * H);
   for (let y = 0; y < H; y++) {
@@ -113,33 +126,37 @@ function analysePhoto(img) {
   }
   const out = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) {
-    const d = lum[i] + 0.85 * (lum[i] - blur[i]);
-    out[i] = Math.pow(Math.min(1, Math.max(0, d)), 1.25);
+    const v = lum[i] + 1.15 * (lum[i] - blur[i]);   // сильный local contrast
+    out[i] = Math.pow(Math.min(1, Math.max(0, v)), 1.15);
   }
   return { W, H, lum: out };
 }
 
 const TextParticleField = forwardRef(function TextParticleField(
-  { photoUrl, count, interactive = true, onProgressSettle },
+  { photoUrl, paletteId = 'amethyst', cropZoom = 1, cropX = 0.5, cropY = 0.42, count, interactive = true, onProgressSettle },
   ref
 ) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const particlesRef = useRef([]);
   const spritesRef = useRef(null);
+  const wordsRef = useRef([]);
   const glowRef = useRef(null);
   const photoRef = useRef(null);
   const layoutRef = useRef(null);
   const layoutKeyRef = useRef('');
   const progressRef = useRef(0);
-  const rotationRef = useRef(0);
+  const spinRef = useRef(0);
+  const viewRef = useRef({ yaw: 0, tilt: TILT0, vYaw: 0, vTilt: 0 });
   const dragRef = useRef(null);
   const [photoReady, setPhotoReady] = useState(false);
+  const pal = getPalette(paletteId);
 
-  // --- пул частиц: спираль в координатах диска -----------------------------
+  // --- пул частиц ---------------------------------------------------------
   useEffect(() => {
     const words = pickLoveWords(40);
-    spritesRef.current = buildSprites(words);
+    wordsRef.current = words;
+    spritesRef.current = buildSprites(words, pal.arms);
     glowRef.current = buildGlow();
 
     const N = count || (window.innerWidth < 480 ? 7000 : 9500);
@@ -149,24 +166,19 @@ const TextParticleField = forwardRef(function TextParticleField(
       const kind = r1();
       let r; let ang; let z; let ci; let size; let bright; let big = false;
       if (kind < 0.13) {
-        // балдж
         r = R_INNER + Math.abs(gauss()) * 0.1;
         ang = r1() * Math.PI * 2;
         z = gauss() * 0.05;
         ci = 0; size = 0.6 + r1() * 0.7; bright = 0.3 + r1() * 0.35;
       } else if (kind < 0.93) {
-        // рукава
         const arm = i % ARMS;
         r = R_INNER + Math.pow(r1(), 0.62) * (1 - R_INNER);
-        ang = (arm / ARMS) * Math.PI * 2 + k * Math.log(r / R_INNER)
-            + gauss() * (0.13 + r * 0.3);
-        // радиальное рассыпание — без него рукав выглядит гладким «проводом»
+        ang = (arm / ARMS) * Math.PI * 2 + k * Math.log(r / R_INNER) + gauss() * (0.13 + r * 0.3);
         r = Math.max(0.03, r * (1 + gauss() * 0.14));
         z = gauss() * 0.028 * (1.2 - r * 0.7);
         ci = r < 0.26 ? 1 : (r1() < 0.12 ? 4 : (r1() < 0.55 ? 2 : 3));
         size = 0.45 + r1() * 0.9; bright = 0.17 + r1() * 0.4;
       } else {
-        // разреженное гало + редкие крупные читаемые слова
         r = 0.5 + r1() * 0.7;
         ang = r1() * Math.PI * 2;
         z = gauss() * 0.22;
@@ -178,16 +190,13 @@ const TextParticleField = forwardRef(function TextParticleField(
       list[i] = {
         r, ang, z, ci, size, bright, big,
         w: Math.floor(r1() * words.length),
-        seed: r1(),
-        tw: r1() * Math.PI * 2,
-        ts: 0.5 + r1() * 1.5,
+        seed: r1(), tw: r1() * Math.PI * 2, ts: 0.5 + r1() * 1.5,
         slot: null,
       };
     }
     particlesRef.current = list;
-    layoutRef.current = null;
-    layoutKeyRef.current = '';
-  }, [count]);
+    layoutRef.current = null; layoutKeyRef.current = '';
+  }, [count, paletteId]);
 
   // --- фото ---------------------------------------------------------------
   useEffect(() => {
@@ -202,32 +211,86 @@ const TextParticleField = forwardRef(function TextParticleField(
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       if (cancelled) return;
-      photoRef.current = analysePhoto(img);
+      photoRef.current = analysePhoto(img, cropBox(img, cropZoom, cropX, cropY));
       layoutRef.current = null; layoutKeyRef.current = '';
       setPhotoReady(!!photoRef.current);
     };
     img.src = photoUrl;
     return () => { cancelled = true; };
-  }, [photoUrl]);
+  }, [photoUrl, cropZoom, cropX, cropY]);
 
-  // --- раскладка портрета: слова строками, яркость из фото ------------------
+  /**
+   * Готовый портрет рисуется ОДИН раз в offscreen-канвас — посимвольно.
+   * Слово целиком слишком широкое: лицо размазывается по горизонтали.
+   * Отдельная буква ≈ 2px, и этого хватает, чтобы читались глаза и губы.
+   * Яркость пикселя управляет не только прозрачностью, но и ПЛОТНОСТЬЮ:
+   * в тенях буквы просто не ставятся, и силуэт вырезается пустотой.
+   */
+  function buildPortraitBitmap(pw, ph, fontPx) {
+    const photo = photoRef.current;
+    if (!photo) return null;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(pw * dpr));
+    cv.height = Math.max(1, Math.round(ph * dpr));
+    const g = cv.getContext('2d');
+    g.scale(dpr, dpr);
+    g.textBaseline = 'middle';
+    g.font = `${fontPx}px "Manrope", sans-serif`;
+    const tint = pal.arms[1];
+
+    const phrases = wordsRef.current.map((w) => w.text);
+    const lineH = fontPx * 1.05;
+    const rows = Math.max(1, Math.floor(ph / lineH));
+    for (let row = 0; row < rows; row++) {
+      const y = (row + 0.5) * lineH;
+      const ny = y / ph;
+      const py = Math.min(photo.H - 1, Math.max(0, Math.floor(ny * photo.H)));
+      let x = r1() * fontPx * 2;
+      let phrase = phrases[Math.floor(r1() * phrases.length)];
+      let pi = 0;
+      let guard = 0;
+      while (x < pw && guard++ < 4000) {
+        const ch = phrase[pi];
+        pi += 1;
+        if (pi >= phrase.length) { phrase = phrases[Math.floor(r1() * phrases.length)]; pi = 0; }
+        const cw = g.measureText(ch).width || fontPx * 0.3;
+        const nx = (x + cw / 2) / pw;
+        const px = Math.min(photo.W - 1, Math.max(0, Math.floor(nx * photo.W)));
+        let b = photo.lum[py * photo.W + px];
+        const dx = nx - 0.5; const dy = ny - 0.47;
+        b *= 1 - smooth((Math.hypot(dx / 0.5, dy / 0.54) - 0.74) / 0.38);
+        const keep = (b - 0.17) / 0.45;
+        if (ch !== ' ' && r1() < keep) {
+          const a = 0.3 + 0.7 * Math.min(1, b);
+          g.fillStyle = `rgba(${tint[0]},${tint[1]},${tint[2]},${a.toFixed(3)})`;
+          g.fillText(ch, x, y);
+        }
+        x += cw;
+      }
+    }
+    return cv;
+  }
+
+  // --- раскладка портрета: слова строками ----------------------------------
   function buildLayout(width, height) {
     const photo = photoRef.current;
     const sprites = spritesRef.current;
     if (!photo || !sprites) return null;
 
     const boxW = width * 0.94;
-    const boxH = height * 0.66;
+    const boxH = height * 0.68;
     const aspect = photo.H / photo.W;
     let pw = boxW; let ph = pw * aspect;
     if (ph > boxH) { ph = boxH; pw = ph / aspect; }
     const ox = (width - pw) / 2;
     const oy = height * 0.38 - ph / 2;
 
-    const fontPx = Math.max(2.5, Math.min(4.4, pw / 100));
-    const lineH = fontPx * 1.06;
+    // мельче шрифт = больше строк = выше "разрешение" лица
+    const fontPx = Math.max(2.1, Math.min(3.4, pw / 145));
+    const lineH = fontPx * 1.05;
     const rows = Math.max(1, Math.floor(ph / lineH));
-    const gap = fontPx * 0.5;
+    const gap = fontPx * 0.42;
     const row0 = sprites[1];
 
     const slots = [];
@@ -237,37 +300,34 @@ const TextParticleField = forwardRef(function TextParticleField(
       const py = Math.min(photo.H - 1, Math.max(0, Math.floor(ny * photo.H)));
       let x = ox + r1() * fontPx * 3;
       let guard = 0;
-      while (x < ox + pw && guard++ < 400) {
+      while (x < ox + pw && guard++ < 600) {
         const wi = Math.floor(r1() * row0.length);
         const sw = row0[wi].width * (fontPx / SPRITE_FONT);
         const cxp = x + sw / 2;
         if (cxp > ox + pw) break;
-        // средняя яркость под словом
-        let acc = 0; let n = 0;
+        let acc = 0;
         for (let s = 0; s <= 4; s++) {
           const nx = (x + (sw * s) / 4 - ox) / pw;
           const px = Math.min(photo.W - 1, Math.max(0, Math.floor(nx * photo.W)));
-          acc += photo.lum[py * photo.W + px]; n++;
+          acc += photo.lum[py * photo.W + px];
         }
-        let b = acc / n;
-        // мягкая овальная виньетка, чтобы прямоугольник растворялся в космосе
+        let b = acc / 5;
+        // мягкая овальная виньетка — прямоугольник растворяется в космосе
         const dx = (cxp - ox) / pw - 0.5;
         const dy = ny - 0.47;
-        const d = Math.hypot(dx / 0.5, dy / 0.53);
-        b *= 1 - smooth((d - 0.74) / 0.46);
-        b = smooth((b - 0.1) / 0.8);            // S-кривая: тени гаснут, света плотнеют
-        if (b > 0.14) slots.push({ x: cxp, y, b: Math.min(1, b), w: wi });
+        b *= 1 - smooth((Math.hypot(dx / 0.5, dy / 0.54) - 0.78) / 0.42);
+        b = smooth((b - 0.08) / 0.82);
+        if (b > 0.12 && r1() < (b - 0.1) / 0.5) slots.push({ x: cxp, y, b: Math.min(1, b), w: wi });
         x += sw + gap;
       }
     }
-    // перемешиваем, чтобы частицы не летели полосами
     for (let i = slots.length - 1; i > 0; i--) {
       const j = Math.floor(r1() * (i + 1));
       [slots[i], slots[j]] = [slots[j], slots[i]];
     }
     const list = particlesRef.current;
     for (let i = 0; i < list.length; i++) list[i].slot = i < slots.length ? slots[i] : null;
-    return { slots, fontPx };
+    return { slots, fontPx, bmp: buildPortraitBitmap(pw, ph, fontPx), ox, oy, pw, ph };
   }
 
   useImperativeHandle(ref, () => ({
@@ -295,9 +355,8 @@ const TextParticleField = forwardRef(function TextParticleField(
 
     function resize() {
       const p = canvas.parentElement;
-      const w = p.clientWidth; const h = p.clientHeight;
-      if (!w || !h) return;
-      width = w; height = h;
+      if (!p || !p.clientWidth || !p.clientHeight) return;
+      width = p.clientWidth; height = p.clientHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
@@ -316,65 +375,82 @@ const TextParticleField = forwardRef(function TextParticleField(
       if (!sprites || !list.length) { raf = requestAnimationFrame(tick); return; }
 
       const p = progressRef.current;
-
-      // раскладка портрета считается один раз на размер канваса
       const key = `${Math.round(width)}x${Math.round(height)}`;
       if (photoRef.current && layoutKeyRef.current !== key) {
         layoutRef.current = buildLayout(width, height);
         layoutKeyRef.current = key;
       }
       const layout = layoutRef.current;
+      const v = viewRef.current;
 
-      if (!dragRef.current && p < 0.02) rotationRef.current += 0.0007;
+      // инерция вращения + медленный собственный оборот звёзд
+      if (!dragRef.current) {
+        v.yaw += v.vYaw; v.tilt += v.vTilt;
+        v.vYaw *= 0.94; v.vTilt *= 0.94;
+        if (Math.abs(v.vYaw) < 0.00025) v.vYaw = 0;
+        if (Math.abs(v.vTilt) < 0.00025) v.vTilt = 0;
+      }
+      if (p < 0.02) spinRef.current += 0.0007;
 
       const cx = width / 2;
       const cy = height * 0.42;
-      // при сборке портрета камера "подлетает": диск разворачивается к нам и растёт
-      const open = smooth(p * 1.7);
-      const cosI = COS_INC + (1 - COS_INC) * open;
-      const sinI = SIN_INC * (1 - open);
+      const open = smooth(p * 1.7);                 // к портрету — разворот к зрителю
+      const tilt = v.tilt * (1 - open);
+      const yaw = v.yaw * (1 - open);
+      const ct = Math.cos(tilt); const st = Math.sin(tilt);
+      const cyw = Math.cos(yaw); const syw = Math.sin(yaw);
       const R = Math.min(width * 0.78, height * 0.5) * (1 + open * 0.35);
 
       ctx.globalCompositeOperation = 'lighter';
 
-      // ядро и общее свечение диска
+      // свечение диска: точная проекция круга при текущем наклоне/повороте
       const coreA = 1 - smooth(p * 1.4);
       if (coreA > 0.01) {
         ctx.save();
         ctx.translate(cx, cy);
-        ctx.scale(1, cosI);
+        ctx.transform(cyw, 0, st * syw, ct, 0, 0);
         const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.95);
-        halo.addColorStop(0, `rgba(255,246,224,${0.3 * coreA})`);
-        halo.addColorStop(0.12, `rgba(255,224,178,${0.15 * coreA})`);
-        halo.addColorStop(0.42, `rgba(150,140,245,${0.08 * coreA})`);
-        halo.addColorStop(1, 'rgba(80,70,190,0)');
+        halo.addColorStop(0, `rgba(${pal.core[0]},${0.3 * coreA})`);
+        halo.addColorStop(0.12, `rgba(${pal.core[1]},${0.15 * coreA})`);
+        halo.addColorStop(0.42, `rgba(${pal.core[2]},${0.08 * coreA})`);
+        halo.addColorStop(1, `rgba(${pal.core[2]},0)`);
         ctx.fillStyle = halo;
         ctx.fillRect(-R, -R, R * 2, R * 2);
-        const core = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.1);
-        core.addColorStop(0, `rgba(255,252,240,${0.95 * coreA})`);
-        core.addColorStop(0.4, `rgba(255,233,195,${0.3 * coreA})`);
-        core.addColorStop(1, 'rgba(255,210,150,0)');
-        ctx.fillStyle = core;
-        ctx.fillRect(-R, -R, R * 2, R * 2);
         ctx.restore();
+        // ядро — почти шар, рисуем кругом
+        const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.1);
+        core.addColorStop(0, `rgba(${pal.core[0]},${0.95 * coreA})`);
+        core.addColorStop(0.4, `rgba(${pal.core[1]},${0.3 * coreA})`);
+        core.addColorStop(1, `rgba(${pal.core[1]},0)`);
+        ctx.fillStyle = core;
+        ctx.fillRect(cx - R * 0.3, cy - R * 0.3, R * 0.6, R * 0.6);
       }
 
-      const rot = rotationRef.current;
+      const spin = spinRef.current;
       const glow = glowRef.current;
       const fontP = layout ? layout.fontPx : 3;
+      const bmpA = smooth((p - 0.62) / 0.33);
 
       for (let i = 0; i < list.length; i++) {
         const q = list[i];
-        // дифференциальное вращение: центр быстрее краёв
-        const a = q.ang + rot * (1.8 - Math.min(1, q.r));
-        const dx = Math.cos(a) * q.r;
-        const dy = Math.sin(a) * q.r;
-        const gx = cx + dx * R;
-        const gy = cy + (dy * cosI - q.z * sinI) * R;
+        const a = q.ang + spin * (1.8 - Math.min(1, q.r));
+        // диск в плоскости XY, толщина по Z
+        const X = Math.cos(a) * q.r;
+        const Y = Math.sin(a) * q.r;
+        const Z = q.z;
+        // наклон вокруг горизонтальной оси
+        const Y1 = Y * ct - Z * st;
+        const Z1 = Y * st + Z * ct;
+        // поворот вокруг вертикальной оси экрана → полные 360°
+        const X2 = X * cyw + Z1 * syw;
+        const Z2 = -X * syw + Z1 * cyw;
+        const persp = 1 / (1 - Z2 * 0.3);
+        const gx = cx + X2 * R * persp;
+        const gy = cy + Y1 * R * persp;
 
         let x = gx; let y = gy;
-        let alpha = q.bright;
-        let size = (q.big ? 5.5 + q.size : 1.9 + q.size * 1.5);
+        let alpha = q.bright * (0.78 + 0.34 * (0.5 - Z2));  // дальняя сторона тусклее
+        let size = (q.big ? 5.5 + q.size : 1.9 + q.size * 1.5) * persp;
         let ci = q.ci;
         let pp = 0;
 
@@ -388,11 +464,11 @@ const TextParticleField = forwardRef(function TextParticleField(
                 const arc = Math.sin(pp * Math.PI) * 22 * (q.seed - 0.5);
                 x += arc; y -= Math.abs(arc) * 0.5;
               }
-              alpha = alpha + (0.12 + q.slot.b * 1.05 - alpha) * pp;
-              size = size + (fontP - size) * pp;
+              alpha += (0.12 + q.slot.b * 1.05 - alpha) * pp;
+              alpha *= 1 - bmpA * 0.92;   // растворяемся в готовом портрете
+              size += (fontP - size) * pp;
               if (pp > 0.55) ci = 1;
             } else {
-              // лишние частицы растворяются, чтобы портрет был чистым
               alpha *= 1 - pp;
               x = gx + (gx - cx) * pp * 0.5;
               y = gy + (gy - cy) * pp * 0.5;
@@ -417,6 +493,12 @@ const TextParticleField = forwardRef(function TextParticleField(
         }
       }
 
+      // готовый портрет проявляется, когда частицы уже почти долетели
+      if (layout && layout.bmp && bmpA > 0.01) {
+        ctx.globalAlpha = bmpA * (0.93 + 0.07 * Math.sin(time * 0.8));
+        ctx.drawImage(layout.bmp, layout.ox, layout.oy, layout.pw, layout.ph);
+      }
+
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
       raf = requestAnimationFrame(tick);
@@ -427,12 +509,13 @@ const TextParticleField = forwardRef(function TextParticleField(
     const ro = new ResizeObserver(resize);
     ro.observe(canvas.parentElement);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, []);
+  }, [paletteId]);
 
   // --- жесты ---------------------------------------------------------------
   function down(e) {
     if (!interactive) return;
-    dragRef.current = { x: e.clientX, p: progressRef.current };
+    dragRef.current = { x: e.clientX, y: e.clientY, p: progressRef.current, moved: 0 };
+    viewRef.current.vYaw = 0; viewRef.current.vTilt = 0;
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
   function move(e) {
@@ -440,12 +523,18 @@ const TextParticleField = forwardRef(function TextParticleField(
     if (!interactive || !d || !containerRef.current) return;
     const w = containerRef.current.clientWidth;
     const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    d.moved += Math.abs(dx) + Math.abs(dy);
     if (photoReady && progressRef.current > 0.02) {
-      progressRef.current = Math.min(1, Math.max(0, d.p - dx / (w * 0.8)));
-    } else {
-      rotationRef.current += dx * 0.005;
-      d.x = e.clientX;
+      // на портрете горизонтальный свайп возвращает в галактику
+      progressRef.current = Math.min(1, Math.max(0, d.p - (e.clientX - d.x) / (w * 0.8)));
+      return;
     }
+    const v = viewRef.current;
+    v.yaw += dx * 0.009;
+    v.tilt += dy * 0.006;
+    v.vYaw = dx * 0.009; v.vTilt = dy * 0.006;
+    d.x = e.clientX; d.y = e.clientY;
   }
   function up() {
     if (!interactive || !dragRef.current) return;

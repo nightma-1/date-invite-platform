@@ -7,6 +7,7 @@
  */
 import { useState } from 'react';
 import GalaxyLetterScene from './GalaxyLetterScene.jsx';
+import { PALETTE_LIST } from './palettes.js';
 
 const DEFAULT_PARAGRAPHS = [
   'Я много раз пытался сказать тебе это красиво. Писал, стирал, снова писал.',
@@ -22,6 +23,10 @@ export default function GalaxyLetterLabPage() {
   const [finalCaption, setFinalCaption] = useState('Амира');
   const [finalSubcaption, setFinalSubcaption] = useState('я люблю тебя очень очень сильно');
   const [photoUrl, setPhotoUrl] = useState(null);
+  const [paletteId, setPaletteId] = useState('amethyst');
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropX, setCropX] = useState(0.5);
+  const [cropY, setCropY] = useState(0.42);
   const [runKey, setRunKey] = useState(0);
 
   function handleFile(e) {
@@ -65,6 +70,23 @@ export default function GalaxyLetterLabPage() {
             style={inputStyle}
           />
         </Field>
+        <Field label={`Кадр: приближение ${cropZoom.toFixed(2)}x`}>
+          <input type="range" min="1" max="3" step="0.05" value={cropZoom}
+            onChange={(e) => setCropZoom(+e.target.value)} style={{ width: '100%' }} />
+        </Field>
+        <Field label={`Кадр: по горизонтали ${cropX.toFixed(2)}`}>
+          <input type="range" min="0" max="1" step="0.01" value={cropX}
+            onChange={(e) => setCropX(+e.target.value)} style={{ width: '100%' }} />
+        </Field>
+        <Field label={`Кадр: по вертикали ${cropY.toFixed(2)}`}>
+          <input type="range" min="0" max="1" step="0.01" value={cropY}
+            onChange={(e) => setCropY(+e.target.value)} style={{ width: '100%' }} />
+        </Field>
+        <Field label="Палитра космоса">
+          <select value={paletteId} onChange={(e) => setPaletteId(e.target.value)} style={inputStyle}>
+            {PALETTE_LIST.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+          </select>
+        </Field>
         <Field label="Подпись на портрете">
           <input value={finalCaption} onChange={(e) => setFinalCaption(e.target.value)} style={inputStyle} />
         </Field>
@@ -104,6 +126,10 @@ export default function GalaxyLetterLabPage() {
           photoUrl={photoUrl}
           finalCaption={finalCaption}
           finalSubcaption={finalSubcaption}
+          paletteId={paletteId}
+          cropZoom={cropZoom}
+          cropX={cropX}
+          cropY={cropY}
           onRestartRequest={() => setRunKey((k) => k + 1)}
         />
       </div>

@@ -1,33 +1,36 @@
 /**
  * © 2026 Senti.
  * Фон сцены: глубокое небо + полоса Млечного Пути + звёзды с лучиками.
+ * Цвета берутся из палитры (см. palettes.js), поэтому космос может быть
+ * не только синим, а в тоне нашего бренда или настроения приглашения.
  *
- * Млечный Путь и звёзды рисуются ОДИН раз в offscreen-канвас (они
- * статичны), а каждый кадр мы только подмешиваем мерцание ярких звёзд.
- * Так фон получается плотным и "фотографичным", но не ест кадры.
+ * Полоса и мелкие звёзды рисуются ОДИН раз в offscreen-канвас, каждый
+ * кадр поверх подмешивается только мерцание ярких звёзд.
  */
 import { useEffect, useRef } from 'react';
+import { getPalette } from './palettes.js';
 
-function rnd(seedObj) {
-  // детерминированный ГПСЧ, чтобы фон не прыгал при ресайзе
-  seedObj.s = (seedObj.s * 1664525 + 1013904223) >>> 0;
-  return seedObj.s / 4294967296;
+function rnd(s) {
+  s.v = (s.v * 1664525 + 1013904223) >>> 0;
+  return s.v / 4294967296;
 }
 
-export default function Starfield({ nebula = true, density = 1 }) {
+export default function Starfield({ paletteId = 'amethyst', density = 1, nebula = true }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const ctx = canvas.getContext('2d');
+    const pal = getPalette(paletteId);
     let raf; let width = 0; let height = 0; let dpr = 1;
-    let back = null;          // статичный слой: млечный путь + мелкие звёзды
-    let twinklers = [];       // яркие звёзды, которые мерцают поверх
+    let back = null;
+    let twinklers = [];
+
+    const bandColor = (i, a) => pal.band[i].replace('A', String(a));
 
     function drawBand(g, w, h, seed) {
-      // Полоса Млечного Пути: много мягких пятен вдоль наклонной оси
-      const ang = -Math.PI / 3.1;          // наклон полосы
+      const ang = -Math.PI / 3.1;
       const ca = Math.cos(ang); const sa = Math.sin(ang);
       const len = Math.hypot(w, h) * 1.2;
       const cx = w * 0.62; const cy = h * 0.42;
@@ -35,20 +38,21 @@ export default function Starfield({ nebula = true, density = 1 }) {
       for (let i = 0; i < 220; i++) {
         const t = (rnd(seed) - 0.5) * len;
         const off = (rnd(seed) - 0.5) * 2;
-        const spread = Math.exp(-off * off * 2.2);           // гауссов профиль поперёк полосы
+        const spread = Math.exp(-off * off * 2.2);
         const d = off * w * 0.42;
         const x = cx + ca * t - sa * d;
         const y = cy + sa * t + ca * d;
         const r = (0.09 + rnd(seed) * 0.22) * w;
         const a = 0.1 * spread * (0.4 + rnd(seed) * 0.6);
+        const c0 = rnd(seed);
         const grad = g.createRadialGradient(x, y, 0, x, y, r);
-        grad.addColorStop(0, `rgba(205,210,240,${a})`);
-        grad.addColorStop(0.5, `rgba(150,155,205,${a * 0.45})`);
-        grad.addColorStop(1, 'rgba(90,95,160,0)');
+        grad.addColorStop(0, bandColor(c0 < 0.5 ? 0 : 1, a.toFixed(3)));
+        grad.addColorStop(0.5, bandColor(2, (a * 0.45).toFixed(3)));
+        grad.addColorStop(1, bandColor(2, '0'));
         g.fillStyle = grad;
         g.fillRect(x - r, y - r, r * 2, r * 2);
       }
-      // тёмные пылевые прожилки поверх полосы
+      // пылевые прожилки — тёмные полосы внутри полосы
       g.globalCompositeOperation = 'source-over';
       for (let i = 0; i < 18; i++) {
         const t = (rnd(seed) - 0.5) * len * 0.85;
@@ -58,88 +62,81 @@ export default function Starfield({ nebula = true, density = 1 }) {
         const y = cy + sa * t + ca * d;
         const r = (0.04 + rnd(seed) * 0.1) * w;
         const grad = g.createRadialGradient(x, y, 0, x, y, r);
-        grad.addColorStop(0, 'rgba(9,10,28,0.4)');
-        grad.addColorStop(1, 'rgba(9,10,28,0)');
+        grad.addColorStop(0, `rgba(${pal.dust},0.4)`);
+        grad.addColorStop(1, `rgba(${pal.dust},0)`);
         g.fillStyle = grad;
         g.fillRect(x - r, y - r, r * 2, r * 2);
       }
     }
 
     function spike(g, x, y, r, a) {
-      // крестообразный "луч" у ярких звёзд — то, что делает небо фотографичным
-      const grad = g.createLinearGradient(x - r, y, x + r, y);
-      grad.addColorStop(0, 'rgba(255,255,255,0)');
-      grad.addColorStop(0.5, `rgba(255,255,255,${a})`);
-      grad.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grad;
+      const h = g.createLinearGradient(x - r, y, x + r, y);
+      h.addColorStop(0, 'rgba(255,255,255,0)');
+      h.addColorStop(0.5, `rgba(255,255,255,${a})`);
+      h.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = h;
       g.fillRect(x - r, y - 0.45, r * 2, 0.9);
-      const grad2 = g.createLinearGradient(x, y - r, x, y + r);
-      grad2.addColorStop(0, 'rgba(255,255,255,0)');
-      grad2.addColorStop(0.5, `rgba(255,255,255,${a})`);
-      grad2.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grad2;
+      const v = g.createLinearGradient(x, y - r, x, y + r);
+      v.addColorStop(0, 'rgba(255,255,255,0)');
+      v.addColorStop(0.5, `rgba(255,255,255,${a})`);
+      v.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = v;
       g.fillRect(x - 0.45, y - r, 0.9, r * 2);
     }
 
-    function star(g, x, y, r, a, warm) {
+    function star(g, x, y, r, a, tint) {
       const grad = g.createRadialGradient(x, y, 0, x, y, r);
       grad.addColorStop(0, `rgba(255,255,255,${a})`);
-      grad.addColorStop(0.35, warm ? `rgba(255,236,205,${a * 0.55})` : `rgba(200,215,255,${a * 0.5})`);
+      grad.addColorStop(0.35, `rgba(${tint},${a * 0.5})`);
       grad.addColorStop(1, 'rgba(255,255,255,0)');
       g.fillStyle = grad;
       g.fillRect(x - r, y - r, r * 2, r * 2);
     }
 
     function build() {
-      const seed = { s: 20260207 };
+      const seed = { v: 20260207 };
       back = document.createElement('canvas');
       back.width = Math.max(1, Math.round(width * dpr));
       back.height = Math.max(1, Math.round(height * dpr));
       const g = back.getContext('2d');
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // базовое небо
       const sky = g.createLinearGradient(0, 0, width * 0.4, height);
-      sky.addColorStop(0, '#111535');
-      sky.addColorStop(0.45, '#0c1029');
-      sky.addColorStop(1, '#080a1c');
+      sky.addColorStop(0, pal.sky[0]);
+      sky.addColorStop(0.45, pal.sky[1]);
+      sky.addColorStop(1, pal.sky[2]);
       g.fillStyle = sky;
       g.fillRect(0, 0, width, height);
 
       if (nebula) drawBand(g, width, height, seed);
 
-      // мелкие звёзды
       g.globalCompositeOperation = 'lighter';
+      const warm = pal.core[1];
+      const cool = pal.arms[3].join(',');
       const count = Math.round((width * height) / 1700 * density);
       for (let i = 0; i < count; i++) {
-        const x = rnd(seed) * width;
-        const y = rnd(seed) * height;
         const m = rnd(seed);
-        const r = 0.5 + m * m * 2.2;
-        const a = 0.25 + rnd(seed) * 0.55;
-        star(g, x, y, r, a, rnd(seed) < 0.22);
+        star(g, rnd(seed) * width, rnd(seed) * height, 0.5 + m * m * 2.2,
+          0.25 + rnd(seed) * 0.55, rnd(seed) < 0.22 ? warm : cool);
       }
-      // яркие звёзды с лучиками
       twinklers = [];
       const bright = Math.round((width * height) / 26000 * density) + 6;
       for (let i = 0; i < bright; i++) {
-        const x = rnd(seed) * width;
-        const y = rnd(seed) * height;
+        const x = rnd(seed) * width; const y = rnd(seed) * height;
         const r = 2.4 + rnd(seed) * 3.2;
         const a = 0.55 + rnd(seed) * 0.4;
-        const warm = rnd(seed) < 0.3;
-        star(g, x, y, r * 1.6, a * 0.8, warm);
+        const tint = rnd(seed) < 0.3 ? warm : cool;
+        star(g, x, y, r * 1.6, a * 0.8, tint);
         spike(g, x, y, r * 3.4, a * 0.5);
-        twinklers.push({ x, y, r, a, warm, ph: rnd(seed) * Math.PI * 2, sp: 0.5 + rnd(seed) * 1.4 });
+        twinklers.push({ x, y, r, a, tint, ph: rnd(seed) * Math.PI * 2, sp: 0.5 + rnd(seed) * 1.4 });
       }
       g.globalCompositeOperation = 'source-over';
     }
 
     function resize() {
-      const parent = canvas.parentElement;
-      const w = parent.clientWidth; const h = parent.clientHeight;
-      if (!w || !h) return;
-      width = w; height = h;
+      const p = canvas.parentElement;
+      if (!p || !p.clientWidth || !p.clientHeight) return;
+      width = p.clientWidth; height = p.clientHeight;
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
@@ -159,8 +156,7 @@ export default function Starfield({ nebula = true, density = 1 }) {
         ctx.globalCompositeOperation = 'lighter';
         for (const s of twinklers) {
           const k = 0.5 + 0.5 * Math.sin(t * s.sp + s.ph);
-          if (k < 0.15) continue;
-          star(ctx, s.x, s.y, s.r * (1 + k * 0.5), s.a * k * 0.55, s.warm);
+          if (k > 0.15) star(ctx, s.x, s.y, s.r * (1 + k * 0.5), s.a * k * 0.55, s.tint);
         }
         ctx.globalCompositeOperation = 'source-over';
       }
@@ -172,7 +168,7 @@ export default function Starfield({ nebula = true, density = 1 }) {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas.parentElement);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, [nebula, density]);
+  }, [paletteId, density, nebula]);
 
   return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />;
 }
