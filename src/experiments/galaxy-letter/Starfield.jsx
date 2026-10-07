@@ -15,8 +15,14 @@ function rnd(s) {
   return s.v / 4294967296;
 }
 
-export default function Starfield({ paletteId = 'senti', density = 1, nebula = true }) {
+// Фон рисуется с запасом по краям, чтобы его можно было сдвигать при
+// наклоне телефона и не оголять углы.
+const MARGIN = 30;
+
+export default function Starfield({ paletteId = 'senti', density = 1, nebula = true, parallaxX = 0, parallaxY = 0 }) {
   const canvasRef = useRef(null);
+  const parRef = useRef({ x: 0, y: 0 });
+  parRef.current = { x: parallaxX, y: parallaxY };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -96,10 +102,10 @@ export default function Starfield({ paletteId = 'senti', density = 1, nebula = t
     function build() {
       const seed = { v: 20260207 };
       back = document.createElement('canvas');
-      back.width = Math.max(1, Math.round(width * dpr));
-      back.height = Math.max(1, Math.round(height * dpr));
+      back.width = Math.max(1, Math.round((width + MARGIN * 2) * dpr));
+      back.height = Math.max(1, Math.round((height + MARGIN * 2) * dpr));
       const g = back.getContext('2d');
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.setTransform(dpr, 0, 0, dpr, MARGIN * dpr, MARGIN * dpr);
 
       const sky = g.createLinearGradient(0, 0, width * 0.4, height);
       sky.addColorStop(0, pal.sky[0]);
@@ -150,13 +156,15 @@ export default function Starfield({ paletteId = 'senti', density = 1, nebula = t
     function tick() {
       t += 0.016;
       if (back) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.drawImage(back, 0, 0);
+        // фон — самый дальний план, поэтому сдвигается меньше галактики
+        const ox = -MARGIN + parRef.current.x * MARGIN * 0.6;
+        const oy = -MARGIN + parRef.current.y * MARGIN * 0.6;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.drawImage(back, ox, oy, width + MARGIN * 2, height + MARGIN * 2);
         ctx.globalCompositeOperation = 'lighter';
         for (const s of twinklers) {
           const k = 0.5 + 0.5 * Math.sin(t * s.sp + s.ph);
-          if (k > 0.15) star(ctx, s.x, s.y, s.r * (1 + k * 0.5), s.a * k * 0.55, s.tint);
+          if (k > 0.15) star(ctx, s.x + ox + MARGIN, s.y + oy + MARGIN, s.r * (1 + k * 0.5), s.a * k * 0.55, s.tint);
         }
         ctx.globalCompositeOperation = 'source-over';
       }

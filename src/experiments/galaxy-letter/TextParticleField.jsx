@@ -139,7 +139,8 @@ function analysePhoto(img, crop) {
 }
 
 const TextParticleField = forwardRef(function TextParticleField(
-  { photoUrl, paletteId = 'senti', cropZoom = 1, cropX = 0.5, cropY = 0.42, count, interactive = true, onProgressSettle },
+  { photoUrl, paletteId = 'senti', cropZoom = 1, cropX = 0.5, cropY = 0.42,
+    parallaxX = 0, parallaxY = 0, count, interactive = true, onProgressSettle },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -158,50 +159,110 @@ const TextParticleField = forwardRef(function TextParticleField(
   const dragRef = useRef(null);
   const [photoReady, setPhotoReady] = useState(false);
   const pal = getPalette(paletteId);
+  const parallaxRef = useRef({ x: 0, y: 0 });
+
+  parallaxRef.current = { x: parallaxX, y: parallaxY };
 
   // --- пул частиц ---------------------------------------------------------
   useEffect(() => {
     const words = pickLoveWords(40);
     wordsRef.current = words;
     primaryRef.current = primaryIndices(words);
-    spritesRef.current = buildSprites(words, pal.arms);
+    spritesRef.current = buildSprites(words, [...pal.arms, pal.young]);
     glowRef.current = buildGlow();
 
     const N = count || (window.innerWidth < 480 ? 7000 : 9500);
-    const k = TURNS * Math.PI * 2 / Math.log(1 / R_INNER);
+    // Галактика с перемычкой: рукава начинаются не из точки, а с концов бара.
+    // Два главных рукава намеренно НЕ одинаковы и расположены не строго
+    // напротив, плюс есть третий обрывочный спур — симметрия выдаёт
+    // компьютерную генерацию, настоящие галактики всегда кривоваты.
+    const BAR = 0.52;                 // угол перемычки
+    const R_BAR = 0.3;                // где кончается бар и начинаются рукава
+    const WIND = 6.4;                 // закрутка рукава
+    const armAngle = (r, armA) => (armA ? BAR : BAR + Math.PI + 0.22) + WIND * Math.log(r / R_BAR);
+    // Узлы звездообразования — яркие розоватые сгустки на рукавах. На любом
+    // снимке настоящей галактики они первыми бросаются в глаза, и у нас они
+    // к тому же попадают в фирменный розовый.
+    const KNOTS = Array.from({ length: 18 }, () => {
+      const armA = r1() < 0.5;
+      const r = R_BAR + Math.pow(r1(), 0.55) * (1 - R_BAR);
+      return { r, ang: armAngle(r, armA), s: 0.025 + r1() * 0.035 };
+    });
     const list = new Array(N);
     for (let i = 0; i < N; i++) {
       const kind = r1();
-      let r; let ang; let z; let ci; let size; let bright; let big = false;
-      if (kind < 0.13) {
-        r = R_INNER + Math.abs(gauss()) * 0.1;
+      let r; let ang; let z; let ci = 2; let size; let bright; let big = false;
+      let young = false; let knot = false;
+
+      if (kind < 0.11) {
+        // балдж — плотное тёплое ядро
+        r = Math.abs(gauss()) * 0.085;
         ang = r1() * Math.PI * 2;
         z = gauss() * 0.05;
         ci = 0; size = 0.6 + r1() * 0.7; bright = 0.3 + r1() * 0.35;
-      } else if (kind < 0.93) {
-        const arm = i % ARMS;
-        r = R_INNER + Math.pow(r1(), 0.62) * (1 - R_INNER);
+      } else if (kind < 0.2) {
+        // перемычка через ядро
+        const t = (r1() * 2 - 1) * R_BAR;
+        const across = gauss() * 0.05;
+        const x = t * Math.cos(BAR) - across * Math.sin(BAR);
+        const y = t * Math.sin(BAR) + across * Math.cos(BAR);
+        r = Math.hypot(x, y); ang = Math.atan2(y, x);
+        z = gauss() * 0.035;
+        ci = r < 0.14 ? 0 : 1;
+        size = 0.5 + r1() * 0.7; bright = 0.22 + r1() * 0.3;
+      } else if (kind < 0.875) {
+        // два главных рукава: A плотнее и ярче B, и они не строго напротив
+        const armA = kind < 0.6;
+        r = R_BAR + Math.pow(r1(), 0.6) * (1 - R_BAR);
         const off = gauss();
-        ang = (arm / ARMS) * Math.PI * 2 + k * Math.log(r / R_INNER) + off * (0.13 + r * 0.3);
-        r = Math.max(0.03, r * (1 + gauss() * 0.14));
-        z = gauss() * 0.028 * (1.2 - r * 0.7);
-        ci = r < 0.26 ? 1 : (r1() < 0.12 ? 4 : (r1() < 0.55 ? 2 : 3));
-        size = 0.45 + r1() * 0.9; bright = 0.17 + r1() * 0.4;
-        // пылевая прожилка по внутреннему краю рукава: там света меньше
-        const lane = Math.exp(-Math.pow((off + 0.62) / 0.3, 2));
-        bright *= 1 - 0.62 * lane;
+        ang = armAngle(r, armA) + off * (0.12 + r * 0.26);
+        r = Math.max(0.05, r * (1 + gauss() * 0.13));
+        z = gauss() * 0.026 * (1.2 - r * 0.7);
+        size = 0.45 + r1() * 0.9;
+        bright = (0.17 + r1() * 0.4) * (armA ? 1.1 : 0.85);
+        // пылевая прожилка по внутреннему краю рукава
+        bright *= 1 - 0.62 * Math.exp(-Math.pow((off + 0.62) / 0.3, 2));
+      } else if (kind < 0.905) {
+        // узел звездообразования
+        const kn = KNOTS[Math.floor(r1() * KNOTS.length)];
+        const kx = Math.cos(kn.ang) * kn.r + gauss() * kn.s;
+        const ky = Math.sin(kn.ang) * kn.r + gauss() * kn.s;
+        r = Math.hypot(kx, ky); ang = Math.atan2(ky, kx);
+        z = gauss() * 0.02;
+        ci = 4; size = 0.5 + r1() * 0.7; bright = 0.2 + r1() * 0.22;
+        knot = true;
+      } else if (kind < 0.965) {
+        // обрывочный спур — короткий рукав-ответвление
+        const base = BAR + 2.35;
+        r = 0.46 + Math.pow(r1(), 0.8) * 0.46;
+        ang = base + WIND * 0.82 * Math.log(r / R_BAR) + gauss() * 0.3;
+        z = gauss() * 0.045;
+        size = 0.4 + r1() * 0.7; bright = 0.12 + r1() * 0.26;
       } else {
+        // гало и редкие крупные читаемые слова
         r = 0.5 + r1() * 0.7;
         ang = r1() * Math.PI * 2;
         z = gauss() * 0.22;
-        ci = r1() < 0.4 ? 4 : 2;
         big = r1() < 0.05;
         size = big ? 3.2 + r1() * 1.6 : 0.6 + r1() * 0.7;
         bright = big ? 0.22 + r1() * 0.18 : 0.16 + r1() * 0.26;
+        ci = r1() < 0.4 ? 4 : 2;
       }
+
+      // Цвет по радиусу: тёплый центр → холодные края. Снаружи попадаются
+      // молодые скопления — они холоднее и ярче всего остального.
+      if (!big && !knot && kind >= 0.11 && kind < 0.965) {
+        if (r < 0.18) ci = 0;
+        else if (r < 0.34) ci = 1;
+        else if (r < 0.58) ci = 2;
+        else if (r1() < 0.1) ci = 4;
+        else ci = 3;
+        if (r > 0.62 && r1() < 0.16) { young = true; ci = 5; bright *= 1.25; size *= 1.15; }
+      }
+
       const prim = primaryRef.current;
       list[i] = {
-        r, ang, z, ci, size, bright, big,
+        r, ang, z, ci, size, bright, big, young, knot,
         w: (big && r1() < NATIVE_SHARE_BIG) ? prim[Math.floor(r1() * prim.length)] : Math.floor(r1() * words.length),
         seed: r1(), tw: r1() * Math.PI * 2, ts: 0.5 + r1() * 1.5,
         slot: null,
@@ -413,25 +474,28 @@ const TextParticleField = forwardRef(function TextParticleField(
       }
       if (p < 0.02) spinRef.current += 0.0007;
 
-      const cx = width / 2;
-      const cy = height * 0.42;
+      // параллакс: галактика — передний план, смещается заметнее фона
+      const par = parallaxRef.current;
+      const cx = width / 2 + par.x * 22;
+      const cy = height * 0.42 + par.y * 16;
       const open = smooth(p * 1.7);                 // к портрету — разворот к зрителю
-      const tilt = v.tilt * (1 - open);
-      const yaw = v.yaw * (1 - open);
+      const tilt = (v.tilt + par.y * 0.1) * (1 - open);
+      const yaw = (v.yaw + par.x * 0.14) * (1 - open);
       const ct = Math.cos(tilt); const st = Math.sin(tilt);
       const cyw = Math.cos(yaw); const syw = Math.sin(yaw);
-      const R = Math.min(width * 0.78, height * 0.5) * (1 + open * 0.35);
+      const R = Math.min(width * 0.5, height * 0.33) * (1 + open * 0.45);
+      v.R = R; v.cx = cx; v.cy = cy;
 
       ctx.globalCompositeOperation = 'lighter';
 
       // свечение диска: точная проекция круга при текущем наклоне/повороте
-      const coreA = 1 - smooth(p * 1.4);
+      const coreA = (1 - smooth(p * 1.4)) * (1 + 0.08 * Math.sin(time * 0.55));
       if (coreA > 0.01) {
         ctx.save();
         ctx.translate(cx, cy);
         ctx.transform(cyw, 0, st * syw, ct, 0, 0);
         const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.95);
-        halo.addColorStop(0, `rgba(${pal.core[0]},${0.3 * coreA})`);
+        halo.addColorStop(0, `rgba(${pal.core[0]},${0.22 * coreA})`);
         halo.addColorStop(0.12, `rgba(${pal.core[1]},${0.15 * coreA})`);
         halo.addColorStop(0.42, `rgba(${pal.core[2]},${0.08 * coreA})`);
         halo.addColorStop(1, `rgba(${pal.core[2]},0)`);
@@ -440,11 +504,25 @@ const TextParticleField = forwardRef(function TextParticleField(
         ctx.restore();
         // ядро — почти шар, рисуем кругом
         const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.1);
-        core.addColorStop(0, `rgba(${pal.core[0]},${0.95 * coreA})`);
+        core.addColorStop(0, `rgba(${pal.core[0]},${0.8 * coreA})`);
         core.addColorStop(0.4, `rgba(${pal.core[1]},${0.3 * coreA})`);
         core.addColorStop(1, `rgba(${pal.core[1]},0)`);
         ctx.fillStyle = core;
         ctx.fillRect(cx - R * 0.3, cy - R * 0.3, R * 0.6, R * 0.6);
+
+        // дифракционный крест — как у очень яркой звезды в объективе
+        const sp = R * (0.42 + 0.03 * Math.sin(time * 0.9));
+        const ray = (x0, y0, x1, y1, thick) => {
+          const g = ctx.createLinearGradient(x0, y0, x1, y1);
+          g.addColorStop(0, `rgba(${pal.core[0]},0)`);
+          g.addColorStop(0.5, `rgba(${pal.core[0]},${0.2 * coreA})`);
+          g.addColorStop(1, `rgba(${pal.core[0]},0)`);
+          ctx.fillStyle = g;
+          if (x0 === x1) ctx.fillRect(cx - thick / 2, y0, thick, y1 - y0);
+          else ctx.fillRect(x0, cy - thick / 2, x1 - x0, thick);
+        };
+        ray(cx - sp, cy, cx + sp, cy, 1.6);
+        ray(cx, cy - sp * 0.62, cx, cy + sp * 0.62, 1.4);
       }
 
       const spin = spinRef.current;
@@ -507,9 +585,11 @@ const TextParticleField = forwardRef(function TextParticleField(
         ctx.globalAlpha = al;
         ctx.drawImage(sp, x - w / 2, y - h / 2, w, h);
 
-        if (glow && q.size > 1.25 && p < 0.6 && !q.big) {
-          ctx.globalAlpha = al * 0.22 * (1 - p * 1.6);
-          const g = 5 + q.size * 2;
+        if (glow && p < 0.6 && !q.big && (q.knot || q.young || q.size > 1.25)) {
+          // узлы и молодые скопления светятся заметно сильнее обычных звёзд
+          const k2 = q.knot ? 0.16 : (q.young ? 0.2 : 0.18);
+          ctx.globalAlpha = al * k2 * (1 - p * 1.6);
+          const g = (q.knot ? 7 : 5) + q.size * 2;
           ctx.drawImage(glow, x - g, y - g, g * 2, g * 2);
         }
       }
@@ -552,9 +632,19 @@ const TextParticleField = forwardRef(function TextParticleField(
       return;
     }
     const v = viewRef.current;
-    v.yaw += dx * 0.009;
-    v.tilt += dy * 0.006;
-    v.vYaw = dx * 0.009; v.vTilt = dy * 0.006;
+    // Чувствительность считается от радиуса галактики, а не от пикселей:
+    // протянуть палец на один радиус = повернуть примерно на 100°. Поэтому
+    // жест одинаково ощущается на любом экране и «идёт от центра» объекта.
+    const k = (Math.PI * 0.58) / (v.R || Math.min(w * 0.78, 250));
+    // Когда диск перевёрнут (смотрим на него снизу), поворот вокруг
+    // вертикальной оси выглядит зеркально — компенсируем, чтобы галактика
+    // всегда шла ЗА пальцем, а не против него.
+    const flip = Math.cos(v.tilt) < 0 ? -1 : 1;
+    const dYaw = dx * k * flip;
+    // вниз = наклоняем диск к себе (ближний край идёт вниз), как у трекбола
+    const dTilt = -dy * k;
+    v.yaw += dYaw; v.tilt += dTilt;
+    v.vYaw = dYaw; v.vTilt = dTilt;
     d.x = e.clientX; d.y = e.clientY;
   }
   function up() {
