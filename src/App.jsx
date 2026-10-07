@@ -12,6 +12,7 @@ import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
+import GalaxyLetterLabPage from './experiments/galaxy-letter/GalaxyLetterLabPage.jsx';
 
 // Адрес админки нарочно не угадываемый и не в публичных ссылках сайта —
 // /admin слишком легко найти перебором ботов. Поменять адрес, если он
@@ -63,6 +64,11 @@ export default function App() {
         <Route path="/dashboard" element={<InvitationList />} />
         <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />
         <Route path={ADMIN_PATH} element={<AdminPanel />} />
+        {/* Экспериментальная фича (galaxy-letter), ещё не готова к показу
+            пользователям senti.uz — маршрут нарочно нигде не упоминается
+            (ни в лендинге, ни в дашборде, ни в sitemap). Убрать перед тем,
+            как фича станет частью обычного флоу конструктора. */}
+        <Route path="/lab/galaxy-letter" element={<GalaxyLetterLabPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
