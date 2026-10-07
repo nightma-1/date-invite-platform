@@ -18,6 +18,7 @@ export default function GalaxyLetterLabPage() {
   const [recipientName, setRecipientName] = useState('Амира');
   const [letterHeading, setLetterHeading] = useState('Амира, это тебе');
   const [paragraphText, setParagraphText] = useState(DEFAULT_PARAGRAPHS.join('\n'));
+  const [senderName, setSenderName] = useState('Данияр');
   const [finalCaption, setFinalCaption] = useState('Амира');
   const [finalSubcaption, setFinalSubcaption] = useState('я люблю тебя очень очень сильно');
   const [photoUrl, setPhotoUrl] = useState(null);
@@ -48,6 +49,9 @@ export default function GalaxyLetterLabPage() {
         </Field>
         <Field label="Текст письма (строка = абзац)">
           <textarea value={paragraphText} onChange={(e) => setParagraphText(e.target.value)} rows={6} style={{ ...inputStyle, resize: 'vertical' }} />
+        </Field>
+        <Field label="Подпись отправителя">
+          <input value={senderName} onChange={(e) => setSenderName(e.target.value)} style={inputStyle} />
         </Field>
         <Field label="Фото для портрета-из-частиц">
           <input type="file" accept="image/*" onChange={handleFile} style={{ fontSize: 12, color: '#cfc9ff' }} />
@@ -87,6 +91,7 @@ export default function GalaxyLetterLabPage() {
           recipientName={recipientName}
           letterHeading={letterHeading}
           letterParagraphs={paragraphs}
+          senderName={senderName}
           photoUrl={photoUrl}
           finalCaption={finalCaption}
           finalSubcaption={finalSubcaption}

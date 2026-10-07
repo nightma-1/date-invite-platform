@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
-export default function LetterScene({ heading, paragraphs, buttonText = 'нажми, там сюрприз', onContinue }) {
+export default function LetterScene({ heading, paragraphs, signature, buttonText = 'нажми, там сюрприз', onContinue }) {
   const lines = paragraphs && paragraphs.length > 0 ? paragraphs : [
     'Я много раз пытался сказать тебе это красиво.',
     'Поэтому я собрал его на всех языках мира.',
@@ -35,12 +35,12 @@ export default function LetterScene({ heading, paragraphs, buttonText = 'наж�
         transition={{ duration: 0.5 }}
         style={{
           width: '100%', maxWidth: 320, background: '#fdfcff', borderRadius: 4,
-          boxShadow: '0 30px 70px -20px rgba(40,20,100,0.5)', padding: '28px 24px',
-          fontFamily: '"Cormorant Garamond", "PT Serif", serif', color: '#2a2440',
+          boxShadow: '0 30px 70px -20px rgba(40,20,100,0.5)', padding: '30px 26px',
+          fontFamily: '"Caveat", cursive', color: '#2a2440',
         }}
       >
         {heading && (
-          <div style={{ fontSize: 15, color: '#8a7fd1', marginBottom: 14, fontStyle: 'italic' }}>{heading}</div>
+          <div style={{ fontSize: 20, color: '#8a7fd1', marginBottom: 14 }}>{heading}</div>
         )}
         {lines.slice(0, visibleCount).map((line, i) => (
           <motion.p
@@ -48,11 +48,20 @@ export default function LetterScene({ heading, paragraphs, buttonText = 'наж�
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45 }}
-            style={{ fontSize: 17, lineHeight: 1.6, margin: '0 0 12px' }}
+            style={{ fontSize: 22, lineHeight: 1.45, margin: '0 0 14px' }}
           >
             {line}
           </motion.p>
         ))}
+        {showButton && signature && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            style={{ textAlign: 'right', fontSize: 22, color: '#4a3f82', margin: '4px 0 16px' }}
+          >
+            {signature}
+          </motion.div>
+        )}
         {showButton && (
           <motion.button
             type="button"

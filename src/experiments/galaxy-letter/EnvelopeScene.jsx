@@ -32,7 +32,7 @@ export default function EnvelopeScene({ recipientName, onOpen }) {
           <polygon points="220,150 130,70 220,10" fill="#ece8ff" />
         </svg>
         <div style={{
-          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+          position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%,-50%)',
           width: 46, height: 46, borderRadius: '50%',
           background: 'radial-gradient(circle at 35% 30%, #b79dff, #6c4fc9)',
           boxShadow: '0 6px 14px rgba(70,40,160,0.4)',
@@ -41,14 +41,23 @@ export default function EnvelopeScene({ recipientName, onOpen }) {
         }}>
           {(recipientName || '?').trim().charAt(0).toUpperCase()}
         </div>
+        {recipientName && (
+          <div style={{
+            position: 'absolute', top: '70%', left: '50%', transform: 'translate(-50%, 0)',
+            fontFamily: '"Caveat", cursive', fontSize: 22, color: '#4a3f82',
+            paddingBottom: 2, borderBottom: '1px solid #c9bdf5',
+          }}>
+            {recipientName}
+          </div>
+        )}
       </motion.button>
       <div style={{
-        marginTop: 28, fontFamily: '"Manrope", sans-serif', fontSize: 13,
-        color: '#cfc9ff', opacity: 0.8, letterSpacing: 0.3,
+        marginTop: 28, fontFamily: '"Caveat", cursive', fontSize: 24,
+        color: '#e8e4ff', opacity: 0.9,
       }}>
         {recipientName ? `${recipientName}, тебе письмо` : 'тебе письмо'}
       </div>
-      <div style={{ marginTop: 6, fontSize: 11, color: '#9b92d9', opacity: 0.7 }}>нажми, чтобы открыть</div>
+      <div style={{ marginTop: 2, fontSize: 15, fontFamily: '"Caveat", cursive', color: '#a89cf0', opacity: 0.8 }}>открой это</div>
     </motion.div>
   );
 }

@@ -1,11 +1,20 @@
 /**
  * © 2026 Senti.
- * Фоновое звёздное небо — лёгкий canvas, мерцающие точки + редкие "падающие"
- * звёзды. Используется подложкой под все сцены galaxy-letter.
+ * Фоновое звёздное небо — canvas с мягкими облаками туманности (несколько
+ * размытых радиальных пятен, процедурно, без картинки-ассета) + мерцающие
+ * точки-звёзды + редкие "падающие" звёзды. Подложка под все сцены
+ * galaxy-letter — именно разница между плоским фоном и "глубиной" даёт
+ * львиную долю ощущения настоящего космоса.
  */
 import { useEffect, useRef } from 'react';
 
-export default function Starfield({ density = 140, shootingStars = true }) {
+const NEBULA_PALETTE = [
+  'rgba(130,100,220,0.16)',
+  'rgba(90,70,190,0.14)',
+  'rgba(200,140,220,0.10)',
+];
+
+export default function Starfield({ density = 140, shootingStars = true, nebula = true }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -19,6 +28,7 @@ export default function Starfield({ density = 140, shootingStars = true }) {
 
     let stars = [];
     let shooters = [];
+    let clouds = [];
 
     function resize() {
       const rect = canvas.parentElement.getBoundingClientRect();
@@ -37,6 +47,15 @@ export default function Starfield({ density = 140, shootingStars = true }) {
         r: Math.random() * 1.4 + 0.3,
         phase: Math.random() * Math.PI * 2,
         speed: 0.6 + Math.random() * 1.2,
+      }));
+      clouds = Array.from({ length: 4 }).map((_, i) => ({
+        x: width * (0.15 + Math.random() * 0.7),
+        y: height * (0.1 + Math.random() * 0.6),
+        r: Math.max(width, height) * (0.35 + Math.random() * 0.25),
+        color: NEBULA_PALETTE[i % NEBULA_PALETTE.length],
+        driftX: (Math.random() - 0.5) * 6,
+        driftY: (Math.random() - 0.5) * 6,
+        phase: Math.random() * Math.PI * 2,
       }));
     }
 
@@ -58,6 +77,21 @@ export default function Starfield({ density = 140, shootingStars = true }) {
     function tick() {
       t += 0.016;
       ctx.clearRect(0, 0, width, height);
+
+      if (nebula) {
+        for (const c of clouds) {
+          const ox = Math.sin(t * 0.05 + c.phase) * c.driftX;
+          const oy = Math.cos(t * 0.04 + c.phase) * c.driftY;
+          const grad = ctx.createRadialGradient(c.x + ox, c.y + oy, 0, c.x + ox, c.y + oy, c.r);
+          grad.addColorStop(0, c.color);
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(c.x + ox, c.y + oy, c.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
       for (const s of stars) {
         const tw = 0.5 + 0.5 * Math.sin(t * s.speed + s.phase);
         ctx.globalAlpha = 0.25 + tw * 0.65;
@@ -96,7 +130,7 @@ export default function Starfield({ density = 140, shootingStars = true }) {
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [density, shootingStars]);
+  }, [density, shootingStars, nebula]);
 
   return (
     <canvas
