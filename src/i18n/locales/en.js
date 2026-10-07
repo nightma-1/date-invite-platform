@@ -108,7 +108,7 @@ export default {
     continue: 'Continue',
     saving: 'Saving…',
     saveChanges: 'Save changes 💾',
-    publish: 'Publish 💌',
+    publish: 'Pay and publish 💌',
     publishedTitle: 'Done! Invitation published',
     editedTitle: 'Changes saved',
     publishedSubtitle: 'Copy the link and send it to the person you want to invite',
@@ -118,6 +118,17 @@ export default {
     openAsRecipient: 'Open it and see how the recipient sees it →',
     goToDashboard: 'Go to "My invitations" →',
     publishGenericError: "Couldn't save the invitation",
+  },
+
+  payment: {
+    checkingTitle: 'Checking your payment…',
+    checkingSubtitle: "This usually takes a couple seconds — don't close this page",
+    timeoutTitle: "We don't see the payment yet",
+    timeoutSubtitle: "If you already paid, wait a bit and refresh — the money may have been charged while confirmation is still catching up. If the payment didn't go through, try again.",
+    retryButton: 'Try paying again',
+    retrying: 'Heading to payment…',
+    notfoundTitle: "Couldn't check the payment",
+    notfoundSubtitle: 'Looks like your session expired. Check "My invitations" — if the payment went through, it will already be published there.',
   },
 
   builderUI: {
@@ -244,6 +255,9 @@ export default {
     noAnswerYet: 'No answer yet',
     viewResponse: '💌 View answer →',
     openRecipientLink: "Open the recipient's link →",
+    payAndPublish: '💳 Pay and publish',
+    paying: 'Heading to payment…',
+    payFailed: "Couldn't start the payment, try again",
     edit: '✏️ Edit',
     copyLink: '🔗 Copy link',
     copied: 'Copied ✓',

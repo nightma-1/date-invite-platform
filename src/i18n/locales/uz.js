@@ -108,7 +108,7 @@ export default {
     continue: 'Davom etish',
     saving: 'Saqlanmoqda…',
     saveChanges: "O'zgarishlarni saqlash 💾",
-    publish: "Chop etish 💌",
+    publish: "To'lash va chop etish 💌",
     publishedTitle: 'Tayyor! Taklifnoma chop etildi',
     editedTitle: "O'zgarishlar saqlandi",
     publishedSubtitle: "Havolani nusxalab, taklif qilayotgan kishingizga yuboring",
@@ -118,6 +118,17 @@ export default {
     openAsRecipient: "Ochib, qabul qiluvchi qanday ko'rishini tekshiring →",
     goToDashboard: "«Mening taklifnomalarim»ga o'tish →",
     publishGenericError: "Taklifnomani saqlab bo'lmadi",
+  },
+
+  payment: {
+    checkingTitle: "To'lov tekshirilmoqda…",
+    checkingSubtitle: "Odatda bu bir necha soniya vaqt oladi — sahifani yopmang",
+    timeoutTitle: "To'lov hali ko'rinmayapti",
+    timeoutSubtitle: "Agar allaqachon to'lagan bo'lsangiz — biroz kuting va sahifani yangilang, pul yechilgan bo'lishi mumkin, tasdiqlash esa kechikmoqda. Agar to'lov o'tmagan bo'lsa — qayta urinib ko'ring.",
+    retryButton: "Qayta to'lashga urinish",
+    retrying: "To'lovga o'tilmoqda…",
+    notfoundTitle: "To'lovni tekshirib bo'lmadi",
+    notfoundSubtitle: "Sessiya muddati tugagan ko'rinadi. «Mening taklifnomalarim»ga o'ting — agar to'lov o'tgan bo'lsa, taklifnoma allaqachon u yerda chop etilgan bo'ladi.",
   },
 
   builderUI: {
@@ -244,6 +255,9 @@ export default {
     noAnswerYet: 'Hali javob yo\'q',
     viewResponse: "💌 Javobni ko'rish →",
     openRecipientLink: "Qabul qiluvchi havolasini ochish →",
+    payAndPublish: "💳 To'lash va chop etish",
+    paying: "To'lovga o'tilmoqda…",
+    payFailed: "To'lovga o'tib bo'lmadi, qayta urinib ko'ring",
     edit: "✏️ O'zgartirish",
     copyLink: '🔗 Havolani nusxalash',
     copied: 'Nusxalandi ✓',

@@ -106,22 +106,11 @@ export async function publishDraft(state, userId) {
     if (stepError) throw stepError;
   }
 
-  // ВРЕМЕННО: мерчант-аккаунт Click ещё не подключён (нет CLICK_SERVICE_ID/
-  // CLICK_MERCHANT_ID/CLICK_SECRET_KEY в Vercel), поэтому обычная оплата
-  // физически не может пройти. Пока публикуем сразу бесплатно — отдельным
-  // UPDATE, а не insert со status:'published', чтобы сработал триггер
-  // trg_invitations_publish (он висит на BEFORE UPDATE) и проставил
-  // published_at/edit_until/expires_at так же, как это делает /api/click/webhook.js
-  // после настоящей оплаты.
-  //
-  // Когда подключишь Click — удали этот блок, и приглашения снова будут
-  // публиковаться только через оплату (см. BuilderShell.jsx: runPublish).
-  const { error: publishError } = await supabase
-    .from('invitations')
-    .update({ status: 'published' })
-    .eq('id', invitation.id);
-  if (publishError) throw publishError;
-
+  // Приглашение остаётся в статусе 'draft' — публикует его вебхук Click
+  // (/api/click/webhook.js, handleComplete) после реальной оплаты, тем же
+  // UPDATE, который срабатывает на триггере trg_invitations_publish и
+  // проставляет published_at/edit_until/expires_at. Здесь мы только
+  // готовим черновик и уходим на оплату (см. BuilderShell.jsx: runPublish).
   clearPendingMedia();
   return { invitationId: invitation.id, slug };
 }
