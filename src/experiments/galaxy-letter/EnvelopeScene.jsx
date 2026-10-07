@@ -4,7 +4,8 @@
  */
 import { motion } from 'framer-motion';
 
-export default function EnvelopeScene({ recipientName, onOpen }) {
+export default function EnvelopeScene({ recipientName, palette, onOpen }) {
+  const pal = palette;
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -34,8 +35,8 @@ export default function EnvelopeScene({ recipientName, onOpen }) {
         <div style={{
           position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%,-50%)',
           width: 46, height: 46, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 30%, #b79dff, #6c4fc9)',
-          boxShadow: '0 6px 14px rgba(70,40,160,0.4)',
+          background: `radial-gradient(circle at 35% 30%, #ff9ebd, ${'#d4466f'})`,
+          boxShadow: '0 6px 16px rgba(190,60,100,0.45)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontFamily: '"Cormorant Garamond", serif', fontSize: 20,
         }}>
@@ -44,8 +45,8 @@ export default function EnvelopeScene({ recipientName, onOpen }) {
         {recipientName && (
           <div style={{
             position: 'absolute', top: '70%', left: '50%', transform: 'translate(-50%, 0)',
-            fontFamily: '"Caveat", cursive', fontSize: 22, color: '#4a3f82',
-            paddingBottom: 2, borderBottom: '1px solid #c9bdf5',
+            fontFamily: '"Caveat", cursive', fontSize: 22, color: '#4a2a3a',
+            paddingBottom: 2, borderBottom: '1px solid #f0bfd0',
           }}>
             {recipientName}
           </div>
@@ -53,11 +54,11 @@ export default function EnvelopeScene({ recipientName, onOpen }) {
       </motion.button>
       <div style={{
         marginTop: 28, fontFamily: '"Caveat", cursive', fontSize: 24,
-        color: '#e8e4ff', opacity: 0.9,
+        color: '#ffeef5', opacity: 0.92,
       }}>
         {recipientName ? `${recipientName}, тебе письмо` : 'тебе письмо'}
       </div>
-      <div style={{ marginTop: 2, fontSize: 15, fontFamily: '"Caveat", cursive', color: '#a89cf0', opacity: 0.8 }}>открой это</div>
+      <div style={{ marginTop: 2, fontSize: 15, fontFamily: '"Caveat", cursive', color: pal?.soft || '#ffd9e5', opacity: 0.75 }}>открой это</div>
     </motion.div>
   );
 }

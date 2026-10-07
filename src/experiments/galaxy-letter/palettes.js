@@ -13,6 +13,19 @@
  * accent — основная кнопка (фон, текст, свечение)
  */
 export const PALETTES = {
+  senti: {
+    id: 'senti',
+    title: 'Senti — нежный розовый (по сайту)',
+    // ночь не синяя, а чернильно-сливовая — это тёмная версия #2A1F2B с senti.uz
+    sky: ['#2b1926', '#1a1018', '#0d070c'],
+    band: ['rgba(255,198,216,A)', 'rgba(255,224,202,A)', 'rgba(212,148,178,A)'],
+    dust: '18,10,16',
+    core: ['255,242,234', '255,200,208', '236,152,182'],
+    arms: [[255, 245, 239], [255, 229, 236], [251, 202, 219], [233, 164, 192], [255, 216, 192]],
+    // та же кнопка, что на сайте: розовый #F85589 с белым текстом
+    accent: { bg: 'linear-gradient(135deg,#ff7faa,#f85589)', fg: '#ffffff', glow: 'rgba(248,85,137,0.5)' },
+    soft: '#ffd9e5',
+  },
   amethyst: {
     id: 'amethyst',
     title: 'Аметист — фирменный Senti',
@@ -60,4 +73,4 @@ export const PALETTES = {
 };
 
 export const PALETTE_LIST = Object.values(PALETTES);
-export const getPalette = (id) => PALETTES[id] || PALETTES.amethyst;
+export const getPalette = (id) => PALETTES[id] || PALETTES.senti;

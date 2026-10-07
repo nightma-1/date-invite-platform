@@ -15,7 +15,7 @@ function rnd(s) {
   return s.v / 4294967296;
 }
 
-export default function Starfield({ paletteId = 'amethyst', density = 1, nebula = true }) {
+export default function Starfield({ paletteId = 'senti', density = 1, nebula = true }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -35,15 +35,15 @@ export default function Starfield({ paletteId = 'amethyst', density = 1, nebula 
       const len = Math.hypot(w, h) * 1.2;
       const cx = w * 0.62; const cy = h * 0.42;
       g.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 220; i++) {
+      for (let i = 0; i < 190; i++) {
         const t = (rnd(seed) - 0.5) * len;
         const off = (rnd(seed) - 0.5) * 2;
         const spread = Math.exp(-off * off * 2.2);
         const d = off * w * 0.42;
         const x = cx + ca * t - sa * d;
         const y = cy + sa * t + ca * d;
-        const r = (0.09 + rnd(seed) * 0.22) * w;
-        const a = 0.1 * spread * (0.4 + rnd(seed) * 0.6);
+        const r = (0.07 + rnd(seed) * 0.17) * w;
+        const a = 0.07 * spread * (0.4 + rnd(seed) * 0.6);
         const c0 = rnd(seed);
         const grad = g.createRadialGradient(x, y, 0, x, y, r);
         grad.addColorStop(0, bandColor(c0 < 0.5 ? 0 : 1, a.toFixed(3)));

@@ -40,7 +40,7 @@ export default function GalaxyLetterScene({
   photoUrl,
   finalCaption,
   finalSubcaption,
-  paletteId = 'amethyst',
+  paletteId = 'senti',
   cropZoom,
   cropX,
   cropY,
@@ -104,7 +104,7 @@ export default function GalaxyLetterScene({
       <AnimatePresence mode="wait">
         {stage === 'envelope' && (
           <motion.div key="envelope" {...flyVariants} style={{ position: 'absolute', inset: 0 }}>
-            <EnvelopeScene recipientName={recipientName} onOpen={next} />
+            <EnvelopeScene recipientName={recipientName} palette={pal} onOpen={next} />
           </motion.div>
         )}
 
@@ -114,6 +114,7 @@ export default function GalaxyLetterScene({
               heading={letterHeading}
               paragraphs={letterParagraphs}
               signature={senderName}
+              palette={pal}
               onContinue={next}
             />
           </motion.div>

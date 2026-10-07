@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
-export default function LetterScene({ heading, paragraphs, signature, buttonText = 'нажми, там сюрприз', onContinue }) {
+export default function LetterScene({ heading, paragraphs, signature, palette, buttonText = 'нажми, там сюрприз 🤍', onContinue }) {
   const lines = paragraphs && paragraphs.length > 0 ? paragraphs : [
     'Я много раз пытался сказать тебе это красиво.',
     'Поэтому я собрал его на всех языках мира.',
@@ -35,12 +35,12 @@ export default function LetterScene({ heading, paragraphs, signature, buttonText
         transition={{ duration: 0.5 }}
         style={{
           width: '100%', maxWidth: 320, background: '#fdfcff', borderRadius: 4,
-          boxShadow: '0 30px 70px -20px rgba(40,20,100,0.5)', padding: '30px 26px',
-          fontFamily: '"Caveat", cursive', color: '#2a2440',
+          boxShadow: '0 30px 70px -20px rgba(60,20,45,0.5)', padding: '30px 26px',
+          fontFamily: '"Caveat", cursive', color: '#2a1f2b',
         }}
       >
         {heading && (
-          <div style={{ fontSize: 20, color: '#8a7fd1', marginBottom: 14 }}>{heading}</div>
+          <div style={{ fontSize: 20, color: '#c23b62', marginBottom: 14 }}>{heading}</div>
         )}
         {lines.slice(0, visibleCount).map((line, i) => (
           <motion.p
@@ -57,7 +57,7 @@ export default function LetterScene({ heading, paragraphs, signature, buttonText
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            style={{ textAlign: 'right', fontSize: 22, color: '#4a3f82', margin: '4px 0 16px' }}
+            style={{ textAlign: 'right', fontSize: 22, color: '#6b4d5a', margin: '4px 0 16px' }}
           >
             {signature}
           </motion.div>
@@ -71,9 +71,9 @@ export default function LetterScene({ heading, paragraphs, signature, buttonText
             whileTap={{ scale: 0.97 }}
             style={{
               marginTop: 8, width: '100%', border: 'none', borderRadius: 999,
-              padding: '12px 18px', background: 'linear-gradient(135deg, #8a6fe8, #5a3fc0)',
-              color: '#fff', fontFamily: '"Manrope", sans-serif', fontSize: 14,
-              fontWeight: 600, cursor: 'pointer', boxShadow: '0 10px 24px -8px rgba(90,63,192,0.6)',
+              padding: '12px 18px', background: palette?.accent?.bg || 'linear-gradient(135deg,#ff7faa,#f85589)',
+              color: palette?.accent?.fg || '#fff', fontFamily: '"Manrope", sans-serif', fontSize: 14,
+              fontWeight: 600, cursor: 'pointer', boxShadow: `0 12px 26px -8px ${palette?.accent?.glow || 'rgba(248,85,137,0.5)'}`,
             }}
           >
             {buttonText}

@@ -21,7 +21,7 @@
  * progress: 0 = галактика, 1 = портрет.
  */
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
-import { pickLoveWords } from './loveWords.js';
+import { pickLoveWords, primaryIndices, PRIMARY_LANGS } from './loveWords.js';
 import { getPalette } from './palettes.js';
 
 const SPRITE_FONT = 28;
@@ -133,7 +133,7 @@ function analysePhoto(img, crop) {
 }
 
 const TextParticleField = forwardRef(function TextParticleField(
-  { photoUrl, paletteId = 'amethyst', cropZoom = 1, cropX = 0.5, cropY = 0.42, count, interactive = true, onProgressSettle },
+  { photoUrl, paletteId = 'senti', cropZoom = 1, cropX = 0.5, cropY = 0.42, count, interactive = true, onProgressSettle },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -141,6 +141,7 @@ const TextParticleField = forwardRef(function TextParticleField(
   const particlesRef = useRef([]);
   const spritesRef = useRef(null);
   const wordsRef = useRef([]);
+  const primaryRef = useRef([]);
   const glowRef = useRef(null);
   const photoRef = useRef(null);
   const layoutRef = useRef(null);
@@ -156,6 +157,7 @@ const TextParticleField = forwardRef(function TextParticleField(
   useEffect(() => {
     const words = pickLoveWords(40);
     wordsRef.current = words;
+    primaryRef.current = primaryIndices(words);
     spritesRef.current = buildSprites(words, pal.arms);
     glowRef.current = buildGlow();
 
@@ -187,9 +189,10 @@ const TextParticleField = forwardRef(function TextParticleField(
         size = big ? 3.2 + r1() * 1.6 : 0.6 + r1() * 0.7;
         bright = big ? 0.22 + r1() * 0.18 : 0.16 + r1() * 0.26;
       }
+      const prim = primaryRef.current;
       list[i] = {
         r, ang, z, ci, size, bright, big,
-        w: Math.floor(r1() * words.length),
+        w: big ? prim[Math.floor(r1() * prim.length)] : Math.floor(r1() * words.length),
         seed: r1(), tw: r1() * Math.PI * 2, ts: 0.5 + r1() * 1.5,
         slot: null,
       };
@@ -239,7 +242,13 @@ const TextParticleField = forwardRef(function TextParticleField(
     g.font = `${fontPx}px "Manrope", sans-serif`;
     const tint = pal.arms[1];
 
-    const phrases = wordsRef.current.map((w) => w.text);
+    // в портрете родные языки встречаются чаще — их читают вблизи
+    const all = wordsRef.current;
+    const prim = all.filter((w) => PRIMARY_LANGS.includes(w.lang)).map((w) => w.text);
+    const other = all.filter((w) => !PRIMARY_LANGS.includes(w.lang)).map((w) => w.text);
+    const pickPhrase = () => (r1() < 0.55 && prim.length
+      ? prim[Math.floor(r1() * prim.length)]
+      : other[Math.floor(r1() * other.length)] || prim[0]);
     const lineH = fontPx * 1.05;
     const rows = Math.max(1, Math.floor(ph / lineH));
     for (let row = 0; row < rows; row++) {
@@ -247,13 +256,13 @@ const TextParticleField = forwardRef(function TextParticleField(
       const ny = y / ph;
       const py = Math.min(photo.H - 1, Math.max(0, Math.floor(ny * photo.H)));
       let x = r1() * fontPx * 2;
-      let phrase = phrases[Math.floor(r1() * phrases.length)];
+      let phrase = pickPhrase();
       let pi = 0;
       let guard = 0;
       while (x < pw && guard++ < 4000) {
         const ch = phrase[pi];
         pi += 1;
-        if (pi >= phrase.length) { phrase = phrases[Math.floor(r1() * phrases.length)]; pi = 0; }
+        if (pi >= phrase.length) { phrase = pickPhrase(); pi = 0; }
         const cw = g.measureText(ch).width || fontPx * 0.3;
         const nx = (x + cw / 2) / pw;
         const px = Math.min(photo.W - 1, Math.max(0, Math.floor(nx * photo.W)));

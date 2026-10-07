@@ -23,7 +23,7 @@ export default function GalaxyLetterLabPage() {
   const [finalCaption, setFinalCaption] = useState('Амира');
   const [finalSubcaption, setFinalSubcaption] = useState('я люблю тебя очень очень сильно');
   const [photoUrl, setPhotoUrl] = useState(null);
-  const [paletteId, setPaletteId] = useState('amethyst');
+  const [paletteId, setPaletteId] = useState('senti');
   const [cropZoom, setCropZoom] = useState(1);
   const [cropX, setCropX] = useState(0.5);
   const [cropY, setCropY] = useState(0.42);
