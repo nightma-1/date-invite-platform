@@ -424,6 +424,10 @@ const TextParticleField = forwardRef(function TextParticleField(
       requestAnimationFrame(step);
     },
     getProgress() { return progressRef.current; },
+    /** Мгновенно поставить сцену в нужную фазу — нужно для записи ролика и
+     *  для снимка галактики, когда на экране уже собран портрет. */
+    setProgress(p) { progressRef.current = Math.max(0, Math.min(1, p)); },
+    resetView() { viewRef.current.yaw = 0; viewRef.current.tilt = TILT0; viewRef.current.vYaw = 0; viewRef.current.vTilt = 0; },
   }));
 
   // --- рендер --------------------------------------------------------------

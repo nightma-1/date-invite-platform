@@ -20,6 +20,7 @@ import TextParticleField from './TextParticleField.jsx';
 import EnvelopeScene from './EnvelopeScene.jsx';
 import LetterScene from './LetterScene.jsx';
 import { getPalette } from './palettes.js';
+import { composeStory, recordStory, pickVideoType, FRAMES } from './storyExport.js';
 import useParallax from './useParallax.js';
 import useAmbientSound from './useAmbientSound.js';
 
@@ -50,7 +51,11 @@ export default function GalaxyLetterScene({
   const pal = getPalette(paletteId);
   const [stageIndex, setStageIndex] = useState(0);
   const [cosmosPhase, setCosmosPhase] = useState('galaxy');
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(null);
+  const [picker, setPicker] = useState(false);
+  // по умолчанию галактика, а не портрет: публиковать чужое лицо — осознанный выбор
+  const [frame, setFrame] = useState('galaxy');
+  const [videoFailed, setVideoFailed] = useState(false);
   const fieldRef = useRef(null);
   const rootRef = useRef(null);
   const stage = STAGES[stageIndex];
@@ -74,78 +79,78 @@ export default function GalaxyLetterScene({
     if (phase === 'portrait' && sound) audio.chime();
   }
 
+  /** Живые слои сцены: звёздный фон и поле частиц. */
+  const sceneCanvases = useCallback(
+    () => Array.from(rootRef.current?.querySelectorAll('canvas') || []),
+    [],
+  );
+
   /**
-   * Картинка 9:16 для сторис: фон, космос, имя и подпись — всё, что нужно,
-   * чтобы её можно было выложить сразу, без обрезки. Каждая сохранённая
-   * картинка со ссылкой внизу — это ещё и бесплатный канал для Senti.
+   * Снимок сцены в нужной фазе. Чтобы отдать «галактику», когда на экране
+   * уже собран портрет, откатываем систему частиц назад, ждём отрисовки и
+   * возвращаем как было — человек этого почти не замечает.
    */
-  const buildStoryImage = useCallback(async () => {
-    const root = rootRef.current;
-    if (!root) return null;
-    const W = 1080; const H = 1920;
-    const out = document.createElement('canvas');
-    out.width = W; out.height = H;
-    const g = out.getContext('2d');
-
-    const sky = g.createLinearGradient(0, 0, W * 0.4, H);
-    sky.addColorStop(0, pal.sky[0]);
-    sky.addColorStop(0.45, pal.sky[1]);
-    sky.addColorStop(1, pal.sky[2]);
-    g.fillStyle = sky;
-    g.fillRect(0, 0, W, H);
-
-    // оба слоя сцены (фон и частицы) вписываем по принципу cover
-    root.querySelectorAll('canvas').forEach((c) => {
-      if (!c.width || !c.height) return;
-      const s = Math.max(W / c.width, (H * 0.82) / c.height);
-      const dw = c.width * s; const dh = c.height * s;
-      g.drawImage(c, (W - dw) / 2, H * 0.4 - dh / 2, dw, dh);
-    });
-
-    try { await document.fonts.ready; } catch { /* шрифты уже готовы или недоступны */ }
-
-    g.textAlign = 'center';
-    if (finalCaption) {
-      g.shadowColor = pal.accent.glow;
-      g.shadowBlur = 40;
-      g.fillStyle = '#ffffff';
-      g.font = '600 104px "Cormorant Garamond", serif';
-      g.fillText(finalCaption, W / 2, H * 0.845);
-      g.shadowBlur = 0;
+  const withPhase = useCallback(async (progress, fn) => {
+    const field = fieldRef.current;
+    const back = field?.getProgress?.() ?? 1;
+    if (field && Math.abs(back - progress) > 0.01) {
+      field.setProgress(progress);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     }
-    if (finalSubcaption) {
-      g.fillStyle = pal.soft;
-      g.font = '500 60px "Caveat", cursive';
-      g.fillText(finalSubcaption, W / 2, H * 0.895);
+    try { return await fn(); } finally {
+      if (field && Math.abs(back - progress) > 0.01) field.setProgress(back);
     }
-    g.fillStyle = 'rgba(255,255,255,0.42)';
-    g.font = '600 30px "Manrope", sans-serif';
-    g.fillText('senti.uz', W / 2, H * 0.955);
+  }, []);
 
-    return out;
-  }, [pal, finalCaption, finalSubcaption]);
+  const buildFrame = useCallback(async (id) => withPhase(id === 'portrait' ? 1 : 0, () => composeStory({
+    pal,
+    canvases: sceneCanvases(),
+    frame: id,
+    caption: finalCaption,
+    subcaption: finalSubcaption,
+    recipientName,
+  })), [pal, sceneCanvases, finalCaption, finalSubcaption, recipientName, withPhase]);
 
-  async function handleSave() {
-    setSaving(true);
+  function download(href, name) {
+    const a = document.createElement('a');
+    a.download = name; a.href = href; a.click();
+  }
+
+  const fileBase = (recipientName || 'senti').toLowerCase().replace(/\s+/g, '-');
+
+  async function saveFrame(id) {
+    setBusy(id);
     try {
-      const canvas = await buildStoryImage();
-      if (!canvas) return;
-      const name = `${(recipientName || 'senti').toLowerCase().replace(/\s+/g, '-')}-senti.png`;
-      const link = document.createElement('a');
-      link.download = name;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } finally {
-      setSaving(false);
-    }
+      const canvas = await buildFrame(id);
+      download(canvas.toDataURL('image/png'), `${fileBase}-senti.png`);
+      setPicker(false);
+    } finally { setBusy(null); }
+  }
+
+  async function saveVideo() {
+    setBusy('video');
+    try {
+      const res = await recordStory({
+        pal,
+        canvases: sceneCanvases(),
+        field: fieldRef.current,
+        caption: finalCaption,
+        subcaption: finalSubcaption,
+      });
+      if (!res) { setVideoFailed(true); return; }
+      const url = URL.createObjectURL(res.blob);
+      download(url, `${fileBase}-senti.${res.ext}`);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      setPicker(false);
+    } catch {
+      setVideoFailed(true);
+    } finally { setBusy(null); }
   }
 
   async function handleShare() {
     const url = window.location.href;
-    // если браузер умеет делиться файлами — отдаём саму картинку, её сразу
-    // можно выложить в сторис; иначе остаётся ссылка
     try {
-      const canvas = await buildStoryImage();
+      const canvas = await buildFrame(frame);
       const blob = canvas && await new Promise((res) => canvas.toBlob(res, 'image/png'));
       if (blob) {
         const file = new File([blob], 'senti.png', { type: 'image/png' });
@@ -154,7 +159,7 @@ export default function GalaxyLetterScene({
           return;
         }
       }
-    } catch { /* пользователь отменил или файлы не поддерживаются */ }
+    } catch { /* отменили или файлы не поддерживаются */ }
 
     if (navigator.share) {
       try { await navigator.share({ title: 'Senti — тебе письмо', text: finalSubcaption || 'Тебе письмо ✉️', url }); return; }
@@ -252,6 +257,8 @@ export default function GalaxyLetterScene({
                     padding: '0 24px', textAlign: 'center',
                   }}
                 >
+                  {/* пока открыт выбор кадра, подписи прячем — иначе они лежат на лице */}
+                  {!picker && (
                   <div>
                     {finalCaption && (
                       // имя собирается из россыпи — те же частицы, что и портрет
@@ -288,6 +295,73 @@ export default function GalaxyLetterScene({
                       проведи пальцем вбок, и она снова станет галактикой
                     </div>
                   </div>
+                  )}
+                  {/* Что именно уйдёт в сторис, решает отправитель. По
+                      умолчанию — галактика: она ничего не раскрывает. */}
+                  <AnimatePresence>
+                    {picker && (
+                      <motion.div
+                        key="picker"
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                        style={{
+                          width: '100%', maxWidth: 320, borderRadius: 18, padding: 12,
+                          background: 'rgba(20,10,18,0.82)', backdropFilter: 'blur(12px)',
+                          border: '1px solid rgba(255,255,255,0.14)', textAlign: 'left',
+                        }}
+                      >
+                        <div style={{ fontFamily: '"Manrope", sans-serif', fontSize: 11, color: pal.soft, opacity: 0.6, marginBottom: 8 }}>
+                          что выложить
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                          {FRAMES.map((f) => (
+                            <button
+                              key={f.id} type="button"
+                              onClick={() => setFrame(f.id)}
+                              style={{
+                                flex: 1, borderRadius: 12, padding: '8px 4px', cursor: 'pointer',
+                                border: `1px solid ${frame === f.id ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.14)'}`,
+                                background: frame === f.id ? 'rgba(255,255,255,0.14)' : 'transparent',
+                                color: '#fff', fontFamily: '"Manrope", sans-serif', fontSize: 11.5, fontWeight: 600,
+                              }}
+                            >
+                              {f.label}
+                              <div style={{ fontSize: 8.5, fontWeight: 400, opacity: 0.55, marginTop: 2 }}>{f.hint}</div>
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            type="button" onClick={saveVideo} disabled={!!busy || !pickVideoType()}
+                            style={{
+                              flex: 1, border: 'none', borderRadius: 999, padding: '11px 10px',
+                              background: pal.accent.bg, color: pal.accent.fg, fontWeight: 700,
+                              fontFamily: '"Manrope", sans-serif', fontSize: 12,
+                              cursor: busy ? 'default' : 'pointer', opacity: busy === 'video' ? 0.6 : 1,
+                            }}
+                          >
+                            {busy === 'video' ? 'пишу видео…' : '▶ Видео 6 сек'}
+                          </button>
+                          <button
+                            type="button" onClick={() => saveFrame(frame)} disabled={!!busy}
+                            style={{
+                              flex: 1, borderRadius: 999, padding: '11px 10px',
+                              border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.07)',
+                              color: '#fff', fontFamily: '"Manrope", sans-serif', fontSize: 12, fontWeight: 600,
+                              cursor: busy ? 'default' : 'pointer', opacity: busy === frame ? 0.6 : 1,
+                            }}
+                          >
+                            {busy === frame ? 'готовлю…' : 'Картинка'}
+                          </button>
+                        </div>
+                        {(videoFailed || !pickVideoType()) && (
+                          <div style={{ fontFamily: '"Manrope", sans-serif', fontSize: 10, color: pal.soft, opacity: 0.6, marginTop: 8 }}>
+                            Этот браузер не умеет записывать видео — сохрани картинку.
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 320 }}>
                     <button
                       type="button" onClick={handleShare}
@@ -301,15 +375,15 @@ export default function GalaxyLetterScene({
                       Поделиться
                     </button>
                     <button
-                      type="button" onClick={handleSave} disabled={saving}
+                      type="button" onClick={() => setPicker((v) => !v)}
                       style={{
                         flex: 1, border: '1px solid rgba(255,255,255,0.25)', borderRadius: 999,
                         padding: '13px 16px', background: 'rgba(255,255,255,0.07)', color: '#fff',
                         fontFamily: '"Manrope", sans-serif', fontWeight: 600, fontSize: 13,
-                        cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1,
+                        cursor: 'pointer',
                       }}
                     >
-                      {saving ? 'готовлю…' : 'Сохранить себе'}
+                      {picker ? 'Свернуть' : 'Сохранить себе'}
                     </button>
                   </div>
                 </motion.div>
