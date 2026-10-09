@@ -10,6 +10,7 @@ import { rateLimit, clientIp } from '../_lib/rateLimit.js';
 const INVITATION_PRICE = 19000; // сум, см. ТЗ раздел 3 (цена задаётся только здесь, клиент её не передаёт)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PENDING_PER_INVITATION = 5; // защита от спама строк в payments
+const PENDING_WINDOW_MS = 60 * 60_000; // за какой срок считаем незавершённые попытки
 
 let adminClient = null;
 function getAdmin() {
@@ -85,11 +86,22 @@ export default async function handler(req, res) {
 
   const admin = getAdmin();
 
+  // Считаем только свежие попытки. Без окна брошенные оплаты (пользователь
+  // ушёл на страницу Click и закрыл вкладку) копились бы вечно, и после пятой
+  // приглашение становилось бы неоплачиваемым НАВСЕГДА — «попробуйте позже»
+  // не помогало бы, спасала бы только ручная правка БД. Окно делает лимит тем,
+  // чем он задумывался: защитой от спама, а не пожизненной блокировкой.
+  //
+  // Сами строки при этом не трогаем: pending-платёж остаётся pending, и если
+  // Click всё-таки пришлёт по нему Prepare, тот его найдёт (handlePrepare
+  // ищет по status='pending').
+  const pendingSince = new Date(Date.now() - PENDING_WINDOW_MS).toISOString();
   const { count: pendingCount } = await admin
     .from('payments')
     .select('id', { count: 'exact', head: true })
     .eq('invitation_id', invitationId)
-    .eq('status', 'pending');
+    .eq('status', 'pending')
+    .gte('created_at', pendingSince);
   if ((pendingCount ?? 0) >= MAX_PENDING_PER_INVITATION) {
     return res.status(429).json({ error: 'слишком много неоплаченных попыток, попробуйте позже' });
   }
