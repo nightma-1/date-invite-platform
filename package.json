@@ -6,7 +6,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/register-telegram-webhook.mjs",
+    "build": "vite build && node scripts/register-telegram-webhook.mjs && node scripts/register-support-webhook.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
