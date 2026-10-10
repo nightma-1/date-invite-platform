@@ -6,10 +6,10 @@
  * с VITE_, иначе попадёт в браузер), а username бота — вещь публичная и
  * меняется примерно никогда.
  *
- * ⚠️ ПОМЕНЯТЬ НА РЕАЛЬНЫЙ USERNAME бота поддержки после его создания в
- * @BotFather. Это единственное место, где он задаётся.
+ * Если бота когда-нибудь переименуют — менять здесь, это единственное место,
+ * где задаётся username.
  */
-export const SUPPORT_BOT_USERNAME = 'senti_support_bot';
+export const SUPPORT_BOT_USERNAME = 'sentiuz_support_bot';
 
 export const SUPPORT_BOT_URL = `https://t.me/${SUPPORT_BOT_USERNAME}`;
 
