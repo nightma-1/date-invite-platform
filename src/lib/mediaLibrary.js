@@ -105,7 +105,7 @@ export async function setGifDefaultForStep(id, stepType, isDefault) {
 export async function addGifByUrl({ url, title, category }) {
   const { data, error } = await supabase
     .from('media_library')
-    .insert({ type: 'gif', url, title: title || null, category: category || 'custom', active: true })
+    .insert({ type: 'gif', url, title: title || null, category: category || 'invite', active: true })
     .select()
     .single();
   if (error) throw error;
@@ -221,7 +221,8 @@ export async function updateGifCategoryLabels(slug, labels) {
 
 /** Удаление категории. Гифки из неё не удаляем, а переносим в moveTo,
  *  иначе они пропали бы из конструктора вместе с категорией. */
-export async function deleteGifCategory(slug, moveTo = 'custom') {
+export async function deleteGifCategory(slug, moveTo) {
+  if (!moveTo) throw new Error('Не указано, куда переносить гифки.');
   if (slug === moveTo) throw new Error('Нельзя перенести категорию саму в себя.');
   const { error: moveError } = await supabase
     .from('media_library')
