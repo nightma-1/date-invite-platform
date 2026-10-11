@@ -133,11 +133,17 @@ export function SupportDialog({ open, onClose, defaultTopic = 'other' }) {
   // родителя: например, у подсказки в кабинете стоит opacity на абзаце, и
   // окно вместе с затемнением становилось полупрозрачным. Портал заодно
   // защищает от transform/filter у предков, которые ломают position: fixed.
+  //
+  // Прозрачность на входе НЕ анимируем (initial={false} у подложки, только
+  // y/scale у карточки). Такой анимацией управляет requestAnimationFrame, а он
+  // не тикает в фоновой вкладке: анимация не стартует, inline-стиль остаётся
+  // opacity: 0, и человек видит просвечивающее или пустое окно. Пусть лучше
+  // сбой анимации даёт видимое окно, чем невидимое.
   return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={false}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
@@ -150,8 +156,8 @@ export function SupportDialog({ open, onClose, defaultTopic = 'other' }) {
           className="sm:items-center sm:p-5"
         >
           <motion.div
-            initial={{ y: 40, opacity: 0, scale: 0.98 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
+            initial={{ y: 40, scale: 0.98 }}
+            animate={{ y: 0, scale: 1 }}
             exit={{ y: 20, opacity: 0, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 320, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
