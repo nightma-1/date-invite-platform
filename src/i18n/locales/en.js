@@ -274,6 +274,8 @@ export default {
     deleteFailed: "Couldn't delete: {{reason}}",
     deleteFailedFallback: 'try again',
     choiceFallbackTitle: 'Choice',
+    partnerBanner: '🤝 Partner dashboard · {{available}} UZS ready for payout',
+    partnerBannerAction: 'Open →',
   },
 
   responseView: {

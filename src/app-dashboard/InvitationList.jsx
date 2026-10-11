@@ -12,6 +12,7 @@ import { getTemplateTokens } from '../templates/registry.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
+import { loadPartnerStats } from '../lib/referral.js';
 
 const t = getTemplateTokens('romantic');
 
@@ -54,6 +55,9 @@ export default function InvitationList() {
   const [deletingId, setDeletingId] = useState(null);
   const [telegramLinked, setTelegramLinked] = useState(null); // null = ещё не знаем
   const [payingId, setPayingId] = useState(null);
+  // Партнёрский кабинет показываем только тем, кто реально партнёр, —
+  // обычному автору приглашений эта ссылка ничего не говорит.
+  const [partner, setPartner] = useState(null);
 
   // Черновик (status: 'draft') — это приглашение, за которое ещё не
   // заплатили: человек мог закрыть вкладку Click на полпути. Публикует его
@@ -183,8 +187,18 @@ export default function InvitationList() {
       if (!cancelled) setTelegramLinked(!!data?.telegram_chat_id);
     }
 
+    async function loadPartner() {
+      try {
+        const stats = await loadPartnerStats();
+        if (!cancelled) setPartner(stats);
+      } catch {
+        // Не партнёр или RPC недоступна — просто не показываем блок.
+      }
+    }
+
     load();
     loadProfile();
+    loadPartner();
     return () => { cancelled = true; };
   }, [session]);
 
@@ -238,6 +252,21 @@ export default function InvitationList() {
           <p className="mb-8 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>
             {tr('dashboard.telegramConnected')}
           </p>
+        )}
+
+        {partner && (
+          <Link
+            to="/partner"
+            className="mb-8 flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3.5 no-underline"
+            style={{ background: '#FFF1F5', border: `1.5px solid ${T.pinkBorder}` }}
+          >
+            <span style={{ color: t.berry, fontFamily: t.fontUI, fontSize: 13.5, fontWeight: 600 }}>
+              {tr('dashboard.partnerBanner', { available: Number(partner.available).toLocaleString('ru-RU') })}
+            </span>
+            <span style={{ color: t.berry, fontFamily: t.fontUI, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+              {tr('dashboard.partnerBannerAction')}
+            </span>
+          </Link>
         )}
 
         {loading && <p className="text-sm opacity-60">{tr('dashboard.loading')}</p>}

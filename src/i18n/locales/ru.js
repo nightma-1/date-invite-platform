@@ -274,6 +274,8 @@ export default {
     deleteFailed: 'Не получилось удалить: {{reason}}',
     deleteFailedFallback: 'попробуй ещё раз',
     choiceFallbackTitle: 'Выбор',
+    partnerBanner: '🤝 Партнёрский кабинет · {{available}} сум к выплате',
+    partnerBannerAction: 'Открыть →',
   },
 
   responseView: {

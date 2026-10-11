@@ -274,6 +274,8 @@ export default {
     deleteFailed: "O'chirib bo'lmadi: {{reason}}",
     deleteFailedFallback: 'qayta urinib ko\'ring',
     choiceFallbackTitle: 'Tanlov',
+    partnerBanner: "🤝 Hamkor kabineti · {{available}} so'm to'lovga tayyor",
+    partnerBannerAction: 'Ochish →',
   },
 
   responseView: {
