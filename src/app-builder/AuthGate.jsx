@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
+import { track } from '../lib/analytics.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
 export default function AuthGate({ onAuthenticated }) {
@@ -29,6 +30,7 @@ export default function AuthGate({ onAuthenticated }) {
     setError(null);
     if (!email || !password) { setError(t('auth.fillFields')); return; }
     setLoading(true);
+    track('auth_start', { mode });
     try {
       const { data, error: authError } = mode === 'signin'
         ? await supabase.auth.signInWithPassword({ email, password })
@@ -52,8 +54,10 @@ export default function AuthGate({ onAuthenticated }) {
       if (!data.session) {
         throw new Error(t('auth.sessionError'));
       }
+      track('auth_success', { mode });
       onAuthenticated(data.session.user);
     } catch (err) {
+      track('auth_error', { mode });
       setError(err.message || t('auth.genericError'));
     } finally {
       setLoading(false);

@@ -16,6 +16,7 @@ import { T } from '../app-builder/BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { listDefaultGifs } from '../lib/mediaLibrary.js';
+import { track } from '../lib/analytics.js';
 
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
 // всему сценарию (вопрос → реакция → дата → выбор → финал) на примерных
@@ -59,6 +60,8 @@ function LandingPreviewDemo() {
     await new Promise((resolve) => setTimeout(resolve, 900));
     setSubmitting(false);
     setSubmitted(true);
+    // Человек прошёл демо до конца — самый «тёплый» посетитель лендинга
+    track('landing_demo_finish');
   }
 
   const placeOptions = t('landing.demo.placeOptions', { returnObjects: true });
@@ -100,7 +103,7 @@ function LandingPreviewDemo() {
               mediaUrl={stepMedia.question}
               cardShape="polaroid"
               tokens={tokens}
-              onYes={() => setStep(1)}
+              onYes={() => { setStep(1); track('landing_demo_start'); }}
             />
           )}
           {step === 1 && (
@@ -251,12 +254,12 @@ export default function Landing() {
                 {t('landing.heroSubtitle')}
               </p>
               <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
-                <Link to="/builder">
+                <Link to="/builder" onClick={() => track('landing_cta_click', { place: 'hero' })}>
                   <ShimmerButton whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>
                     {t('landing.createBtn')}
                   </ShimmerButton>
                 </Link>
-                <Link to="/dashboard">
+                <Link to="/dashboard" onClick={() => track('landing_dashboard_click', { place: 'hero' })}>
                   <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} style={ghostBtn}>
                     {t('landing.myInvitationsBtn')}
                   </motion.button>
@@ -303,7 +306,7 @@ export default function Landing() {
           <div style={{ color: '#fff', opacity: 0.8, fontSize: 14, marginBottom: 28, lineHeight: 2.2, fontFamily: T.font }}>
             {priceFeatures.map((f, i) => <p key={i}>{f}</p>)}
           </div>
-          <Link to="/builder">
+          <Link to="/builder" onClick={() => track('landing_cta_click', { place: 'price' })}>
             <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>
               {t('landing.createBtn')}
             </motion.button>

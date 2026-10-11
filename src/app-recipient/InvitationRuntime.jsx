@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
+import { track } from '../lib/analytics.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen, { DEFAULT_NO_PHRASES } from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
@@ -93,10 +94,12 @@ export default function InvitationRuntime() {
 
       if (invError || !inv) {
         setState({ status: 'not_found' });
+        track('invite_not_found', {}, { slug });
         return;
       }
       if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
         setState({ status: 'expired' });
+        track('invite_expired', {}, { slug });
         return;
       }
 
@@ -108,6 +111,11 @@ export default function InvitationRuntime() {
           .sort((a, b) => a.step_order - b.step_order)
       );
       setState({ status: 'ready' });
+
+      // Просмотр получателем — отдельное событие аналитики: в самой таблице
+      // invitations есть только first_viewed_at/last_viewed_at, по ним нельзя
+      // посчитать, сколько раз и сколько разных людей открывали ссылку.
+      track('invite_view', { template: inv.template_key }, { slug });
 
       // Не блокируем рендер результатом — это уведомление, а не критичный путь
       supabase.rpc('mark_invitation_viewed', { p_slug: slug }).then(({ error }) => {
@@ -126,6 +134,14 @@ export default function InvitationRuntime() {
   const cardShape = ['arch', 'envelope', 'polaroid', 'blob'].includes(cardShapeParam)
     ? cardShapeParam
     : (invitation?.card_shape || 'classic');
+
+  // По шагам получателя видно, где приглашения бросают, не досмотрев
+  useEffect(() => {
+    const step = steps[activeIndex];
+    if (state.status !== 'ready' || !step) return;
+    track('invite_step', { index: activeIndex, step: step.step_type }, { slug });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, state.status, steps.length]);
 
   function goNext() {
     setActiveIndex((i) => Math.min(i + 1, steps.length - 1));
@@ -174,6 +190,7 @@ export default function InvitationRuntime() {
         ({ error } = await supabase.from('responses').update(payload).eq('invitation_id', invitation.id));
       }
       if (error) { console.error('response submit failed', error); throw error; }
+      track('invite_submit', {}, { slug });
       setSubmitted(true);
     } finally {
       setSubmitting(false);

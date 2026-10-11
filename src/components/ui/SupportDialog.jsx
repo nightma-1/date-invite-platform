@@ -23,6 +23,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient.js';
+import { track } from '../../lib/analytics.js';
 import { T } from '../../app-builder/BuilderUI.jsx';
 import { SUPPORT_BOT_URL, supportTicketUrl } from '../../lib/support.js';
 
@@ -122,6 +123,7 @@ export function SupportDialog({ open, onClose, defaultTopic = 'other' }) {
         return;
       }
 
+      track('support_sent', { topic });
       setTicket(data.ticket);
     } catch {
       setError(t('support.errorNetwork'));
@@ -356,7 +358,7 @@ export function SupportTrigger({ variant = 'link', defaultTopic = 'other', label
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { track('support_open', { topic: defaultTopic }); setOpen(true); }}
         className={className}
         style={{ ...variants[variant], ...style }}
       >
