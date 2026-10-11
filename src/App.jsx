@@ -2,7 +2,9 @@
  * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  */
 
-import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
+import { trackPageView } from './lib/analytics.js';
 import { BuilderProvider } from './app-builder/builderStore.jsx';
 import BuilderShell from './app-builder/BuilderShell.jsx';
 import InvitationRuntime from './app-recipient/InvitationRuntime.jsx';
@@ -17,6 +19,19 @@ import PaymentStatus from './app-builder/PaymentStatus.jsx';
 // /admin слишком легко найти перебором ботов. Поменять адрес, если он
 // когда-нибудь «утечёт», можно только здесь.
 const ADMIN_PATH = '/xujayin';
+
+/**
+ * Один счётчик просмотров на всё приложение. Висит внутри роутера, поэтому
+ * ловит и первый заход, и любую навигацию по SPA (обычный счётчик страниц
+ * здесь бы не сработал: перезагрузки документа при переходах нет).
+ */
+function PageViewTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+  return null;
+}
 
 function newDraftId() {
   return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -51,6 +66,7 @@ function EditBuilderRoute() {
 export default function App() {
   return (
     <BrowserRouter>
+      <PageViewTracker />
       <Routes>
         <Route path="/" element={<Landing />} />
         {/* Каждый новый черновик получает свой id — иначе второе приглашение

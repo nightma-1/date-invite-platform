@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import NotFound from '../components/ui/NotFound.jsx';
-import TicketCard from '../components/ui/TicketCard.jsx';
+import AnalyticsSection from './AnalyticsSection.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep, setGifCategory, normalizeCategory } from '../lib/mediaLibrary.js';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
@@ -60,7 +60,7 @@ const DEFAULT_STEP_BADGES = [
 export default function AdminPanel() {
   const [session, setSession] = useState(undefined);
   const [isAdmin, setIsAdmin] = useState(null);
-  const [stats, setStats] = useState(null);
+  const [loaded, setLoaded] = useState(false);
   const [invitations, setInvitations] = useState([]);
 
   useEffect(() => {
@@ -82,23 +82,17 @@ export default function AdminPanel() {
       }
       setIsAdmin(true);
 
-      const [invRes, payRes, respRes] = await Promise.all([
-        supabase.from('invitations').select('id, slug, recipient_name, status, created_at').order('created_at', { ascending: false }).limit(50),
-        supabase.from('payments').select('amount, status'),
-        supabase.from('responses').select('answered_yes'),
-      ]);
+      // Счётчики переехали в AnalyticsSection — здесь остался только список
+      // последних приглашений.
+      const { data: invRows } = await supabase
+        .from('invitations')
+        .select('id, slug, recipient_name, status, created_at')
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (cancelled) return;
-
-      const paid = (payRes.data || []).filter((p) => p.status === 'paid');
-      setStats({
-        invitations: invRes.data?.length ?? 0,
-        responses: respRes.data?.length ?? 0,
-        yes: (respRes.data || []).filter((r) => r.answered_yes).length,
-        revenue: paid.reduce((sum, p) => sum + p.amount, 0),
-        paidCount: paid.length,
-      });
-      setInvitations(invRes.data || []);
+      setInvitations(invRows || []);
+      setLoaded(true);
     }
 
     load();
@@ -124,7 +118,7 @@ export default function AdminPanel() {
 
   if (isAdmin === false) return <NotFound />;
 
-  if (isAdmin === null || !stats) return wrap(<p className="text-sm opacity-60">Загрузка…</p>);
+  if (isAdmin === null || !loaded) return wrap(<p className="text-sm opacity-60">Загрузка…</p>);
 
   return wrap(
     <>
@@ -132,11 +126,10 @@ export default function AdminPanel() {
         Админ-панель
       </h1>
 
-      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Приглашений" value={stats.invitations} />
-        <StatCard label="Ответов" value={stats.responses} />
-        <StatCard label="Из них «Да»" value={stats.yes} />
-        <StatCard label="Выручка" value={`${stats.revenue.toLocaleString('ru-RU')} сум`} sub={`${stats.paidCount} оплат`} />
+      {/* Вся статистика — в своём разделе: он считает период целиком на
+          стороне базы, включая посещаемость и воронку. */}
+      <div className="mb-12">
+        <AnalyticsSection />
       </div>
 
       <h2 className="mb-3 text-base font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>Последние приглашения</h2>
@@ -400,14 +393,3 @@ function GifLibrarySection() {
   );
 }
 
-function StatCard({ label, value, sub }) {
-  return (
-    <TicketCard tokens={t}>
-      <div className="p-4">
-        <p className="text-xs" style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}>{label}</p>
-        <p className="text-xl" style={{ color: t.ink, fontFamily: t.fontDisplay, fontWeight: 700 }}>{value}</p>
-        {sub && <p className="text-xs" style={{ color: t.ink, opacity: 0.4, fontFamily: t.fontUI }}>{sub}</p>}
-      </div>
-    </TicketCard>
-  );
-}

@@ -2,7 +2,7 @@
  * © 2026 Senti. Все права защищены.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ import { getTemplateTokens } from '../templates/registry.js';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
+import { track, trackBeforeLeaving } from '../lib/analytics.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
@@ -146,6 +147,21 @@ export default function BuilderShell() {
   const [publishResult, setPublishResult] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Аналитика воронки. Хуки объявлены до ранних return'ов ниже — иначе
+  // React ругается на разное число хуков между рендерами.
+  useEffect(() => {
+    track('builder_start', { edit: Boolean(state.editInvitationId), template: state.templateId });
+    // Один раз на вход в конструктор, а не на каждую перерисовку
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // По этим событиям видно, на каком шаге люди бросают конструктор
+  useEffect(() => {
+    if (state.loading || !state.recipientGender || !activeStep) return;
+    track('builder_step', { index: state.activeStepIndex, step: activeStep.step_type });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.activeStepIndex, state.loading, state.recipientGender]);
+
   const canGoBack = state.activeStepIndex > 0;
   const canGoNext = state.activeStepIndex < orderedStepsForWizard.length - 1;
 
@@ -242,7 +258,10 @@ export default function BuilderShell() {
                 type="button"
                 whileHover={{ y: -3, borderColor: T.pink }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => dispatch({ type: 'SET_GENDER', gender: g.value })}
+                onClick={() => {
+                  track('builder_gender', { gender: g.value });
+                  dispatch({ type: 'SET_GENDER', gender: g.value });
+                }}
                 style={{
                   flex: 1,
                   background: 'white',
@@ -278,6 +297,7 @@ export default function BuilderShell() {
 
   async function handlePublish() {
     setPublishError(null);
+    track('builder_publish_click', { edit: Boolean(state.editInvitationId), template: state.templateId });
     // Редактирование опубликованного приглашения — платить повторно не
     // нужно, сразу сохраняем изменения, как и раньше.
     if (state.editInvitationId) {
@@ -295,6 +315,7 @@ export default function BuilderShell() {
   async function handleChoosePaymentMethod(method) {
     setShowPaymentChoice(false);
     setPublishError(null);
+    track('payment_method_choose', { method });
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) {
       setPendingPaymentMethod(method);
@@ -309,6 +330,7 @@ export default function BuilderShell() {
     try {
       if (state.editInvitationId) {
         const { invitationId, slug } = await updateInvitationDraft(state, userId, state.editInvitationId);
+        track('invitation_edited', {}, { slug });
         setPublishResult({ invitationId, slug, edited: true });
         return;
       }
@@ -317,6 +339,7 @@ export default function BuilderShell() {
       // происходит в /api/click/webhook.js после реального списания —
       // отсюда мы просто редиректим на страницу оплаты и ничего не ждём.
       const { invitationId } = await publishDraft(state, userId);
+      track('draft_created', { template: state.templateId, shape: state.cardShape || 'classic' });
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
       const res = await fetch('/api/click/create', {
@@ -328,8 +351,12 @@ export default function BuilderShell() {
       if (!res.ok || !data.paymentUrl) {
         throw new Error(data.error || t('builder.publishGenericError'));
       }
+      // Ждём отправку события: сразу после этой строки страница уходит на
+      // Click, и незавершённый запрос браузер просто отменил бы.
+      await trackBeforeLeaving('payment_redirect', { method });
       window.location.href = data.paymentUrl;
     } catch (err) {
+      track('publish_error', { message: String(err.message || '').slice(0, 120) });
       setPublishError(err.message || t('builder.publishGenericError'));
     } finally {
       setPublishing(false);
