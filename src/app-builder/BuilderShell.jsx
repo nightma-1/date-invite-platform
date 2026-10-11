@@ -14,6 +14,8 @@ import StepChoicePlaceAndFood from './steps/StepChoicePlaceAndFood.jsx';
 import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
 import { publishDraft } from './publishDraft.js';
+import { buildPreviewInvitation } from './previewInvitation.js';
+import PreviewOverlay from './PreviewOverlay.jsx';
 import { updateInvitationDraft } from './updateInvitation.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
@@ -146,6 +148,9 @@ export default function BuilderShell() {
   const [publishError, setPublishError] = useState(null);
   const [publishResult, setPublishResult] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  // Прогон приглашения целиком перед оплатой. Собираем объект в момент
+  // открытия, чтобы превью показывало текущее состояние черновика.
+  const [previewData, setPreviewData] = useState(null);
 
   // Аналитика воронки. Хуки объявлены до ранних return'ов ниже — иначе
   // React ругается на разное число хуков между рендерами.
@@ -686,6 +691,25 @@ export default function BuilderShell() {
         {/* Последний шаг — перед кнопкой оплаты. Намеренно тихая ссылка под
             контентом, а не кнопка рядом с «Оплатить»: заметный блок про
             проблемы у самой оплаты скорее посеет сомнение, чем поможет. */}
+        {/* Прогон перед оплатой: до него человек платил, ни разу не увидев
+            свою работу целиком — боковая превьюшка показывает по одному
+            экрану и без переходов. Кнопка намеренно не обязательный шаг
+            визарда: лишний экран в воронке стоит конверсии, поэтому уверенный
+            платит сразу, а сомневающийся сначала смотрит. */}
+        {isLastStep && (
+          <button
+            type="button"
+            onClick={() => setPreviewData(buildPreviewInvitation(state))}
+            style={{
+              marginTop: 20, width: '100%', height: 50, borderRadius: 100,
+              border: `1.5px solid ${T.pinkBorder}`, background: 'white', color: T.pink,
+              fontFamily: T.font, fontWeight: 700, fontSize: 15, cursor: 'pointer',
+            }}
+          >
+            {t('preview.openButton')}
+          </button>
+        )}
+
         {isLastStep && !publishError && (
           <p style={{ marginTop: 20, textAlign: 'center', fontSize: 12.5, color: T.muted, fontFamily: T.font }}>
             {t('support.beforePayPrompt')}{' '}
@@ -761,6 +785,19 @@ export default function BuilderShell() {
         </motion.button>
       </div>
       </div>
+
+      {previewData && (
+        <PreviewOverlay
+          previewData={previewData}
+          busy={publishing}
+          confirmLabel={state.editInvitationId ? t('builder.saveChanges') : t('builder.publish')}
+          onClose={() => setPreviewData(null)}
+          onConfirm={() => {
+            setPreviewData(null);
+            handlePublish();
+          }}
+        />
+      )}
     </div>
   );
 }

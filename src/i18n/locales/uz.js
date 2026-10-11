@@ -136,6 +136,11 @@ export default {
     notfoundSubtitle: "Sessiya muddati tugagan ko'rinadi. «Mening taklifnomalarim»ga o'ting — agar to'lov o'tgan bo'lsa, taklifnoma allaqachon u yerda chop etilgan bo'ladi.",
   },
 
+  preview: {
+    openButton: "👀 U qanday ko'rishini ko'ring",
+    title: "Taklifnoma qabul qiluvchiga shunday ko'rinadi",
+    fix: "To'g'rilash",
+  },
   builderUI: {
     cardShapes: {
       classic: 'Klassik',

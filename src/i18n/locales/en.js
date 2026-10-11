@@ -136,6 +136,11 @@ export default {
     notfoundSubtitle: 'Looks like your session expired. Check "My invitations" — if the payment went through, it will already be published there.',
   },
 
+  preview: {
+    openButton: '👀 See what they will see',
+    title: 'This is how your invitation looks to them',
+    fix: 'Edit',
+  },
   builderUI: {
     cardShapes: {
       classic: 'Classic',

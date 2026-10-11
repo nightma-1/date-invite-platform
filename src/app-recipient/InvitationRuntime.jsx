@@ -22,7 +22,16 @@ import FinalScreen from '../components/screens/FinalScreen.jsx';
 // категории, теперь два отдельных ('choice_place' + 'choice_food').
 const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'choice_block', 'choice_place', 'choice_food', 'final']);
 
-export default function InvitationRuntime() {
+/**
+ * previewData — режим превью для конструктора: вместо загрузки по slug рантайм
+ * получает уже готовое приглашение из черновика ({ invitation, content, steps },
+ * см. previewInvitation.js). Специально переиспользуем ЭТОТ компонент, а не
+ * пишем второй рендерер: отдельное превью через месяц разошлось бы с настоящим
+ * приглашением и начало бы врать автору. В этом режиме ничего не пишется в базу
+ * и не уходит в Telegram — автор смотрит, а не отвечает сам себе.
+ */
+export default function InvitationRuntime({ previewData = null }) {
+  const isPreview = Boolean(previewData);
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   // Форма карточки выбирается в конструкторе и хранится в invitations.card_shape.
@@ -82,6 +91,19 @@ export default function InvitationRuntime() {
   useEffect(() => {
     let cancelled = false;
 
+    // В превью всё уже есть на руках: ни запроса, ни отметки о просмотре.
+    if (previewData) {
+      setInvitation(previewData.invitation);
+      setContent(previewData.content);
+      setSteps(
+        [...previewData.steps]
+          .filter((s) => s.enabled && RENDERABLE_STEP_TYPES.has(s.step_type))
+          .sort((a, b) => a.step_order - b.step_order)
+      );
+      setState({ status: 'ready' });
+      return undefined;
+    }
+
     async function load() {
       const { data: inv, error: invError } = await supabase
         .from('invitations')
@@ -127,7 +149,7 @@ export default function InvitationRuntime() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, previewData]);
 
   const tokens = useMemo(() => getTemplateTokens(invitation?.template_key), [invitation]);
   const cardShapeParam = searchParams.get('card');
@@ -163,6 +185,12 @@ export default function InvitationRuntime() {
   }
 
   async function handleFinalSubmit() {
+    // В превью ответ никуда не отправляем: иначе автор сам себе пришлёт
+    // "она сказала да" в Telegram и испортит себе же сюрприз в дашборде.
+    if (isPreview) {
+      setSubmitted(true);
+      return;
+    }
     setSubmitting(true);
     try {
       // На invitation_id стоит unique-ограничение (один ответ на
@@ -217,7 +245,8 @@ export default function InvitationRuntime() {
     <div
       ref={sceneRef}
       style={{
-        minHeight: '100vh',
+        // В превью высоту задаёт рамка телефона вокруг, а не экран браузера.
+        minHeight: isPreview ? '100%' : '100vh',
         background: `linear-gradient(165deg, ${tokens.bg} 0%, ${tokens.bg} 55%, ${tokens.card === '#FFFFFF' ? '#ffeef5' : tokens.bgDark} 100%)`,
         position: 'relative',
         overflow: 'hidden',
@@ -268,7 +297,8 @@ export default function InvitationRuntime() {
           onClick={goPrev}
           aria-label="Назад"
           style={{
-            position: 'fixed', top: 18, left: 18, zIndex: 2,
+            // fixed прилип бы к окну браузера и уехал из рамки телефона
+            position: isPreview ? 'absolute' : 'fixed', top: 18, left: 18, zIndex: 2,
             width: 42, height: 42, borderRadius: '50%',
             border: `1px solid ${tokens.ink}20`,
             background: tokens.card, color: tokens.berry,
