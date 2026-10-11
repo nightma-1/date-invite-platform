@@ -2,7 +2,10 @@
  * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  */
 
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { supabase } from './lib/supabaseClient.js';
+import { attachReferralIfAny } from './lib/referral.js';
 import { BuilderProvider } from './app-builder/builderStore.jsx';
 import BuilderShell from './app-builder/BuilderShell.jsx';
 import InvitationRuntime from './app-recipient/InvitationRuntime.jsx';
@@ -12,6 +15,8 @@ import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
+import ReferralRedirect from './app-referral/ReferralRedirect.jsx';
+import PartnerPanel from './app-referral/PartnerPanel.jsx';
 
 // Адрес админки нарочно не угадываемый и не в публичных ссылках сайта —
 // /admin слишком легко найти перебором ботов. Поменять адрес, если он
@@ -48,7 +53,29 @@ function EditBuilderRoute() {
   );
 }
 
+/**
+ * Привязка реферала живёт здесь, а не в AuthGate, потому что залогиниться
+ * можно с нескольких экранов (дашборд, конструктор, админка), а привязать
+ * партнёра надо ровно один раз и независимо от того, через какой именно.
+ * RPC идемпотентна, так что лишний вызов на каждый SIGNED_IN безвреден.
+ */
+function useReferralAttachment() {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) attachReferralIfAny();
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+        attachReferralIfAny();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+}
+
 export default function App() {
+  useReferralAttachment();
+
   return (
     <BrowserRouter>
       <Routes>
@@ -60,6 +87,9 @@ export default function App() {
         <Route path="/builder/:draftId" element={<BuilderRoute />} />
         <Route path="/payment/:invitationId" element={<PaymentStatus />} />
         <Route path="/i/:slug" element={<InvitationRuntime />} />
+        {/* Реферальные ссылки инфлюенсеров: senti.uz/r/<код> */}
+        <Route path="/r/:code" element={<ReferralRedirect />} />
+        <Route path="/partner" element={<PartnerPanel />} />
         <Route path="/dashboard" element={<InvitationList />} />
         <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />
         <Route path={ADMIN_PATH} element={<AdminPanel />} />

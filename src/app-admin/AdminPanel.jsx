@@ -14,6 +14,7 @@ import { getTemplateTokens } from '../templates/registry.js';
 import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep } from '../lib/mediaLibrary.js';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 import SmartMedia from '../components/ui/SmartMedia.jsx';
+import PartnersSection from './PartnersSection.jsx';
 
 const t = getTemplateTokens('romantic');
 
@@ -120,6 +121,10 @@ export default function AdminPanel() {
         ))}
       </div>
       {invitations.length === 0 && <p className="text-sm opacity-60">Пока пусто.</p>}
+
+      <div className="mt-12">
+        <PartnersSection />
+      </div>
 
       <div className="mt-12">
         <GifLibrarySection />
