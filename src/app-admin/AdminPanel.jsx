@@ -11,38 +11,39 @@ import AuthGate from '../app-builder/AuthGate.jsx';
 import NotFound from '../components/ui/NotFound.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
-import { listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep, setGifCategory, normalizeCategory } from '../lib/mediaLibrary.js';
+import {
+  listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep,
+  setGifCategory, normalizeCategory, listGifCategories, createGifCategory,
+  updateGifCategoryLabels, deleteGifCategory, slugFromLabel, CATEGORY_LANGS,
+} from '../lib/mediaLibrary.js';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 import SmartMedia from '../components/ui/SmartMedia.jsx';
 
 const t = getTemplateTokens('romantic');
 
-// Базовые категории: у них в конструкторе есть красивые подписи с эмодзи
-// (i18n builderUI.gifCategories). Свои категории можно заводить прямо в
-// админке — они появляются в списке, как только в них попадает первая гифка,
-// и в конструкторе показываются своим названием как есть.
-const GIF_CATEGORIES = ['romantic', 'flirty', 'funny', 'cute', 'bold', 'custom'];
 const NEW_CATEGORY_OPTION = '__new__';
 
-/** Селект категории с пунктом «новая»: по нему спрашиваем название. */
-function CategorySelect({ value, categories, onChange, style, disabled, title }) {
-  const options = categories.includes(value) ? categories : [value, ...categories];
+/** Селект категории. Значение — slug, в списке показываем русскую подпись.
+ *  Пункт «новая» отдаёт управление наружу: там спросим подписи на 3 языках. */
+function CategorySelect({ value, categories, onChange, onCreate, style, disabled, title }) {
+  const known = categories.some((c) => c.slug === value);
   return (
     <select
       value={value}
       disabled={disabled}
       title={title}
       style={style}
-      onChange={(e) => {
+      onChange={async (e) => {
         if (e.target.value !== NEW_CATEGORY_OPTION) {
           onChange(e.target.value);
           return;
         }
-        const name = normalizeCategory(window.prompt('Название новой категории:', ''));
-        if (name) onChange(name);
+        const slug = await onCreate();
+        if (slug) onChange(slug);
       }}
     >
-      {options.map((c) => <option key={c} value={c}>{c}</option>)}
+      {!known && <option value={value}>{value}</option>}
+      {categories.map((c) => <option key={c.slug} value={c.slug}>{c.label_ru}</option>)}
       <option value={NEW_CATEGORY_OPTION}>+ новая категория…</option>
     </select>
   );
@@ -164,13 +165,90 @@ function GifLibrarySection() {
   const [fileForm, setFileForm] = useState({ title: '', category: 'romantic' });
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(null);
+  const [categories, setCategories] = useState([]);
   const fileInputRef = useRef(null);
 
   function reload() {
     listAllGifs().then(setGifs).catch(() => setError('Не получилось загрузить библиотеку гифок.'));
   }
 
-  useEffect(reload, []);
+  function reloadCategories() {
+    return listGifCategories()
+      .then(setCategories)
+      .catch(() => setError('Не получилось загрузить категории.'));
+  }
+
+  useEffect(() => {
+    reload();
+    reloadCategories();
+  }, []);
+
+  /** Спрашиваем подписи на трёх языках и заводим категорию. */
+  async function promptNewCategory() {
+    const labels = {};
+    for (const lang of CATEGORY_LANGS) {
+      const value = window.prompt(`Название категории — ${lang.name}:`, labels.ru || '');
+      if (value === null) return null;
+      if (!value.trim()) {
+        setError('Название категории не может быть пустым.');
+        return null;
+      }
+      labels[lang.code] = value.trim();
+    }
+    try {
+      const created = await createGifCategory({ slug: slugFromLabel(labels.ru), labels });
+      await reloadCategories();
+      return created.slug;
+    } catch (err) {
+      setError(err.message || 'Не получилось создать категорию.');
+      return null;
+    }
+  }
+
+  /** Переименование меняет только подписи — гифки привязаны к slug и остаются. */
+  async function renameCategory(category) {
+    const labels = {};
+    for (const lang of CATEGORY_LANGS) {
+      const value = window.prompt(`Название категории — ${lang.name}:`, category[lang.column]);
+      if (value === null) return;
+      labels[lang.code] = value;
+    }
+    try {
+      await updateGifCategoryLabels(category.slug, labels);
+      await reloadCategories();
+    } catch (err) {
+      setError(err.message || 'Не получилось переименовать категорию.');
+    }
+  }
+
+  async function removeCategory(category, count) {
+    const fallback = categories.find((c) => c.slug !== category.slug);
+    if (!fallback) {
+      setError('Это последняя категория — удалять нечего, иначе гифкам будет негде лежать.');
+      return;
+    }
+    const moveTo = count > 0
+      ? window.prompt(
+        `В категории «${category.label_ru}» ${count} гифок. Они не удаляются, а переедут.\n` +
+        `Куда перенести? Доступные: ${categories.filter((c) => c.slug !== category.slug).map((c) => c.slug).join(', ')}`,
+        fallback.slug,
+      )
+      : fallback.slug;
+    if (moveTo === null) return;
+    if (!categories.some((c) => c.slug === moveTo) || moveTo === category.slug) {
+      setError(`Нет такой категории: «${moveTo}».`);
+      return;
+    }
+    if (!window.confirm(`Удалить категорию «${category.label_ru}»?`)) return;
+    try {
+      await deleteGifCategory(category.slug, moveTo);
+      await Promise.all([reloadCategories(), reload()]);
+      setUrlForm((f) => (f.category === category.slug ? { ...f, category: moveTo } : f));
+      setFileForm((f) => (f.category === category.slug ? { ...f, category: moveTo } : f));
+    } catch (err) {
+      setError(err.message || 'Не получилось удалить категорию.');
+    }
+  }
 
   async function handleAddByUrl(e) {
     e.preventDefault();
@@ -278,15 +356,12 @@ function GifLibrarySection() {
     fontFamily: t.fontUI, fontSize: 13, color: t.ink, background: t.card,
   };
 
-  // Базовые категории + все, что уже заведены в библиотеке.
-  const allCategories = Array.from(
-    new Set([...GIF_CATEGORIES, ...(gifs || []).map((g) => g.category).filter(Boolean)]),
-  ).sort();
-
-  // Раскладываем гифки по категориям — так видно, где пусто, а где свалка.
-  const grouped = allCategories
-    .map((category) => ({ category, items: (gifs || []).filter((g) => g.category === category) }))
-    .filter((group) => group.items.length > 0);
+  // Показываем все категории из таблицы, даже пустые — иначе в пустую нечем
+  // было бы переносить гифки и её не было бы видно.
+  const grouped = categories.map((category) => ({
+    category,
+    items: (gifs || []).filter((g) => g.category === category.slug),
+  }));
 
   return (
     <div>
@@ -306,7 +381,8 @@ function GifLibrarySection() {
                  onChange={(e) => setUrlForm((f) => ({ ...f, url: e.target.value }))} style={inp} />
           <input type="text" placeholder="Название (необязательно)" value={urlForm.title}
                  onChange={(e) => setUrlForm((f) => ({ ...f, title: e.target.value }))} style={inp} />
-          <CategorySelect value={urlForm.category} categories={allCategories} style={inp}
+          <CategorySelect value={urlForm.category} categories={categories} style={inp}
+                          onCreate={promptNewCategory}
                           onChange={(c) => setUrlForm((f) => ({ ...f, category: c }))} />
           <button type="submit" disabled={saving}
                   style={{ ...inp, background: t.berry, color: '#fff', border: 'none', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
@@ -318,7 +394,8 @@ function GifLibrarySection() {
           <p className="text-xs font-semibold" style={{ color: t.ink }}>Загрузить свой файл</p>
           <input type="text" placeholder="Название (необязательно)" value={fileForm.title}
                  onChange={(e) => setFileForm((f) => ({ ...f, title: e.target.value }))} style={inp} />
-          <CategorySelect value={fileForm.category} categories={allCategories} style={inp} disabled={saving}
+          <CategorySelect value={fileForm.category} categories={categories} style={inp} disabled={saving}
+                          onCreate={promptNewCategory}
                           onChange={(c) => setFileForm((f) => ({ ...f, category: c }))} />
           <input ref={fileInputRef} type="file" multiple
                  accept="image/gif,image/webp,image/png,image/jpeg,video/webm,video/mp4,.tgs,application/x-tgsticker,application/gzip"
@@ -339,11 +416,26 @@ function GifLibrarySection() {
       {gifs?.length === 0 && <p className="text-sm opacity-60">В библиотеке пока нет гифок.</p>}
 
       {grouped.map((group) => (
-        <div key={group.category} className="mb-6">
-          <p className="mb-2 text-xs font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>
-            {group.category}
-            <span style={{ opacity: 0.45, fontWeight: 400 }}> · {group.items.length}</span>
-          </p>
+        <div key={group.category.slug} className="mb-6">
+          <div className="mb-2 flex items-center gap-2">
+            <p className="text-xs font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>
+              {group.category.label_ru}
+              <span style={{ opacity: 0.45, fontWeight: 400 }}> · {group.items.length}</span>
+            </p>
+            <button type="button" onClick={() => renameCategory(group.category)}
+                    title="Переименовать на всех трёх языках"
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11 }}>
+              ✏️
+            </button>
+            <button type="button" onClick={() => removeCategory(group.category, group.items.length)}
+                    title="Удалить категорию"
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11 }}>
+              🗑
+            </button>
+          </div>
+          {group.items.length === 0 && (
+            <p className="mb-2 text-xs" style={{ color: t.ink, opacity: 0.4 }}>Пусто — в конструкторе эта категория не показывается.</p>
+          )}
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
           {group.items.map((gif) => (
             <div key={gif.id} className="overflow-hidden rounded-lg border" style={{ borderColor: `${t.ink}20`, opacity: gif.active ? 1 : 0.4 }}>
@@ -356,7 +448,8 @@ function GifLibrarySection() {
                 </button>
                 <CategorySelect
                   value={gif.category}
-                  categories={allCategories}
+                  categories={categories}
+                  onCreate={promptNewCategory}
                   onChange={(c) => changeCategory(gif, c)}
                   title="Перенести в другую категорию"
                   style={{

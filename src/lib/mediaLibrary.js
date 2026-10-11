@@ -139,8 +139,101 @@ export async function addGifByFile({ file, title, category }) {
   return addGifByUrl({ url: pub.publicUrl, title, category });
 }
 
-/** Перенести гифку в другую категорию. Категория — обычная строка, поэтому
- *  новая появляется ровно в тот момент, когда в неё попадает первая гифка. */
+// ─── Категории ──────────────────────────────────────────────────────────
+// Живут в таблице gif_categories: slug (служебный ключ, лежит в
+// media_library.category) + подписи на трёх языках. Переименование меняет
+// только подписи, поэтому гифки трогать не нужно — они привязаны к slug.
+
+export const CATEGORY_LANGS = [
+  { code: 'ru', column: 'label_ru', name: 'Русский' },
+  { code: 'en', column: 'label_en', name: 'English' },
+  { code: 'uz', column: 'label_uz', name: "O'zbekcha" },
+];
+
+/** Все категории по порядку — и для админки, и для конструктора. */
+export async function listGifCategories() {
+  const { data, error } = await supabase
+    .from('gif_categories')
+    .select('slug, label_ru, label_en, label_uz, position')
+    .order('position')
+    .order('slug');
+  if (error) throw error;
+  return data;
+}
+
+// Конструктор рисует пикер гифок на каждом шаге, поэтому список категорий
+// держим в кэше: он один на сессию и меняется только из админки.
+let categoriesCache = null;
+
+export function loadGifCategoriesCached() {
+  if (!categoriesCache) {
+    categoriesCache = listGifCategories().catch((err) => {
+      categoriesCache = null;
+      throw err;
+    });
+  }
+  return categoriesCache;
+}
+
+/** Подпись категории на нужном языке с откатом на русскую и на сам slug. */
+export function categoryLabel(category, lang) {
+  if (!category) return '';
+  const column = CATEGORY_LANGS.find((l) => l.code === lang)?.column || 'label_ru';
+  return category[column] || category.label_ru || category.slug;
+}
+
+/** Служебный ключ из подписи: эмодзи и прочие украшения в него не идут. */
+export function slugFromLabel(label) {
+  return normalizeCategory((label || '').replace(/[^\p{L}\p{N}\s-]/gu, ''));
+}
+
+export async function createGifCategory({ slug, labels }) {
+  const clean = normalizeCategory(slug);
+  if (!clean) throw new Error('Название категории не может быть пустым.');
+  const { data, error } = await supabase
+    .from('gif_categories')
+    .insert({
+      slug: clean,
+      label_ru: labels.ru || clean,
+      label_en: labels.en || labels.ru || clean,
+      label_uz: labels.uz || labels.ru || clean,
+    })
+    .select()
+    .single();
+  if (error) {
+    if (error.code === '23505') throw new Error(`Категория «${clean}» уже есть.`);
+    throw error;
+  }
+  return data;
+}
+
+/** Переименование — это смена подписей. Slug остаётся прежним, поэтому
+ *  гифки никуда не переезжают, а название меняется сразу на всех языках. */
+export async function updateGifCategoryLabels(slug, labels) {
+  const patch = {};
+  for (const { code, column } of CATEGORY_LANGS) {
+    if (labels[code]?.trim()) patch[column] = labels[code].trim();
+  }
+  if (Object.keys(patch).length === 0) throw new Error('Нужна хотя бы одна подпись.');
+  const { error } = await supabase.from('gif_categories').update(patch).eq('slug', slug);
+  if (error) throw error;
+}
+
+/** Удаление категории. Гифки из неё не удаляем, а переносим в moveTo,
+ *  иначе они пропали бы из конструктора вместе с категорией. */
+export async function deleteGifCategory(slug, moveTo = 'custom') {
+  if (slug === moveTo) throw new Error('Нельзя перенести категорию саму в себя.');
+  const { error: moveError } = await supabase
+    .from('media_library')
+    .update({ category: moveTo })
+    .eq('category', slug);
+  if (moveError) throw moveError;
+
+  const { error } = await supabase.from('gif_categories').delete().eq('slug', slug);
+  if (error) throw error;
+}
+
+/** Перенести гифку в другую категорию. */
 export async function setGifCategory(id, category) {
   const clean = normalizeCategory(category);
   if (!clean) throw new Error('Название категории не может быть пустым.');

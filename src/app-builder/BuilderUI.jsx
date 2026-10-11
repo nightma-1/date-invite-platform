@@ -3,10 +3,11 @@
  * Shared design tokens and reusable UI components for the builder.
  */
 
-import { forwardRef, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import SmartMedia from '../components/ui/SmartMedia.jsx';
+import { loadGifCategoriesCached, categoryLabel } from '../lib/mediaLibrary.js';
 
 // Design tokens matching onlyteplo.ru design system
 export const T = {
@@ -255,12 +256,30 @@ export function GifImagePicker({
   onUploadClick,
   fileInputRef,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
+  // Названия категорий задаются в админке сразу на трёх языках и лежат в
+  // таблице gif_categories; i18n остаётся запасным вариантом для базовых.
+  const [categoryMeta, setCategoryMeta] = useState([]);
 
-  const categories = ['all', ...new Set((gifs || []).map((g) => g.category).filter(Boolean))];
+  useEffect(() => {
+    loadGifCategoriesCached().then(setCategoryMeta).catch(() => setCategoryMeta([]));
+  }, []);
+
   const CATEGORY_LABELS = t('builderUI.gifCategories', { returnObjects: true });
+  const lang = (i18n.language || 'ru').slice(0, 2);
+  const presentCategories = new Set((gifs || []).map((g) => g.category).filter(Boolean));
+  // Порядок берём из админки, а показываем только непустые категории.
+  const ordered = categoryMeta.filter((c) => presentCategories.has(c.slug)).map((c) => c.slug);
+  const orphans = [...presentCategories].filter((slug) => !categoryMeta.some((c) => c.slug === slug));
+  const categories = ['all', ...ordered, ...orphans];
+
+  function labelFor(slug) {
+    if (slug === 'all') return CATEGORY_LABELS.all || 'Все';
+    const meta = categoryMeta.find((c) => c.slug === slug);
+    return meta ? categoryLabel(meta, lang) : (CATEGORY_LABELS[slug] || slug);
+  }
   const visibleGifs = activeCategory === 'all' ? (gifs || []) : (gifs || []).filter((g) => g.category === activeCategory);
   const previewGifs = (gifs || []).slice(0, 3);
 
@@ -383,7 +402,7 @@ export function GifImagePicker({
                   fontFamily: T.font, cursor: 'pointer',
                 }}
               >
-                {CATEGORY_LABELS[cat] || cat}
+                {labelFor(cat)}
               </button>
             ))}
             <button
