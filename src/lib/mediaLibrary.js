@@ -15,10 +15,18 @@ export const MAX_GIF_SIZE = 20 * 1024 * 1024; // 20 МБ — совпадает 
 // Telegram-"гифки" часто на деле короткое видео без звука (webm/mp4), а не
 // настоящий gif/webp — поддерживаем оба вида.
 const ALLOWED_TYPES = ['image/gif', 'image/webp', 'image/png', 'image/jpeg', 'video/webm', 'video/mp4'];
+// Анимированные стикеры Telegram: gzip-нутый Lottie-JSON. У .tgs нет
+// зарегистрированного MIME-типа — браузер отдаёт file.type пустым, поэтому
+// такой файл узнаём по расширению, а в Storage кладём как gzip.
+export const TGS_MIME = 'application/gzip';
+
+export function isTgsFile(file) {
+  return /\.tgs$/i.test(file?.name || '');
+}
 
 export function validateGifFile(file) {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return 'Можно загрузить GIF, WebP, PNG, JPG, WebM или MP4.';
+  if (!isTgsFile(file) && !ALLOWED_TYPES.includes(file.type)) {
+    return 'Можно загрузить GIF, WebP, PNG, JPG, WebM, MP4 или TGS.';
   }
   if (file.size > MAX_GIF_SIZE) {
     return `Файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 20 МБ.`;
@@ -115,6 +123,9 @@ export async function addGifByFile({ file, title, category }) {
   const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
     cacheControl: '3600',
     upsert: false,
+    // У .tgs браузер не проставляет тип — без явного contentType бакет
+    // отклонит файл как application/octet-stream.
+    contentType: isTgsFile(file) ? TGS_MIME : file.type || undefined,
   });
   if (uploadError) throw uploadError;
 

@@ -249,9 +249,10 @@ function GifLibrarySection() {
           <select value={fileForm.category} onChange={(e) => setFileForm((f) => ({ ...f, category: e.target.value }))} style={inp}>
             {GIF_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input ref={fileInputRef} type="file" accept="image/gif,image/webp,image/png,image/jpeg,video/webm,video/mp4"
+          <input ref={fileInputRef} type="file"
+                 accept="image/gif,image/webp,image/png,image/jpeg,video/webm,video/mp4,.tgs,application/x-tgsticker,application/gzip"
                  onChange={handleAddByFile} disabled={saving} style={{ fontSize: 12 }} />
-          <p className="text-[11px]" style={{ color: t.ink, opacity: 0.5 }}>GIF, WebP, PNG или JPG — до 8 МБ.</p>
+          <p className="text-[11px]" style={{ color: t.ink, opacity: 0.5 }}>GIF, WebP, PNG, JPG, WebM, MP4 или TGS — до 20 МБ.</p>
         </div>
       </div>
 
