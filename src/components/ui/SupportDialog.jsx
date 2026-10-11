@@ -27,7 +27,7 @@ import { SUPPORT_BOT_URL, supportTicketUrl } from '../../lib/support.js';
 
 const MESSAGE_MAX = 2000;
 const MESSAGE_MIN = 10;
-const TOPICS = ['payment', 'invitation', 'account', 'other'];
+const TOPICS = ['payment', 'invitation', 'account', 'suggestion', 'other'];
 
 export function SupportDialog({ open, onClose, defaultTopic = 'other' }) {
   const { t, i18n } = useTranslation();
@@ -258,19 +258,25 @@ export function SupportDialog({ open, onClose, defaultTopic = 'other' }) {
                     {message.length}/{MESSAGE_MAX}
                   </p>
 
-                  <p style={{ fontSize: 13, color: T.muted, marginBottom: 6, fontFamily: T.font }}>
-                    {needsContact ? t('support.contactLabel') : t('support.contactLabelOptional')}
-                  </p>
-                  <input
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value.slice(0, 120))}
-                    placeholder={needsContact ? t('support.contactPlaceholder') : email}
-                    style={{
-                      background: '#ffffff', borderRadius: 12, border: '1px solid #e0e0e0',
-                      fontFamily: T.font, fontSize: 14, color: T.dark, padding: '12px 14px',
-                      width: '100%', boxSizing: 'border-box', outline: 'none',
-                    }}
-                  />
+                  {/* Поле контакта только для гостя: у авторизованного уже есть
+                      e-mail, и лишнее поле просто удлиняет форму. */}
+                  {needsContact && (
+                    <>
+                      <p style={{ fontSize: 13, color: T.muted, marginBottom: 6, fontFamily: T.font }}>
+                        {t('support.contactLabel')}
+                      </p>
+                      <input
+                        value={contact}
+                        onChange={(e) => setContact(e.target.value.slice(0, 120))}
+                        placeholder={t('support.contactPlaceholder')}
+                        style={{
+                          background: '#ffffff', borderRadius: 12, border: '1px solid #e0e0e0',
+                          fontFamily: T.font, fontSize: 14, color: T.dark, padding: '12px 14px',
+                          width: '100%', boxSizing: 'border-box', outline: 'none',
+                        }}
+                      />
+                    </>
+                  )}
 
                   {error && (
                     <p style={{ fontFamily: T.font, fontSize: 13, color: '#c0392b', marginTop: 12, lineHeight: 1.5 }}>

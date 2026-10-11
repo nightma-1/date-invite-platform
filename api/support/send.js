@@ -20,12 +20,13 @@ import { supportChatId, sendMessage, escapeHtml, clip } from '../_lib/supportBot
 const MESSAGE_MIN = 10;
 const MESSAGE_MAX = 2000;
 const CONTACT_MAX = 120;
-const TOPICS = ['payment', 'invitation', 'account', 'other'];
+const TOPICS = ['payment', 'invitation', 'account', 'suggestion', 'other'];
 
 const TOPIC_LABELS = {
   payment: '💳 Оплата',
   invitation: '💌 Приглашение',
   account: '🔑 Аккаунт и вход',
+  suggestion: '💡 Предложение',
   other: '❔ Другое',
 };
 
