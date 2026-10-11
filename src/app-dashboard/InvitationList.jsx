@@ -371,7 +371,9 @@ export default function InvitationList() {
 
         {/* Вход в поддержку внизу кабинета: сюда человек возвращается, когда
             что-то пошло не так с уже созданным приглашением. */}
-        <p className="mt-10 text-center text-xs" style={{ color: t.ink, opacity: 0.5, fontFamily: t.fontUI }}>
+        {/* Приглушаем цветом, а не opacity: прозрачность у родителя гасила бы
+            и ссылку внутри. */}
+        <p className="mt-10 text-center text-xs" style={{ color: T.muted, fontFamily: t.fontUI }}>
           {tr('support.dashboardPrompt')}{' '}
           <SupportTrigger
             variant="quiet"

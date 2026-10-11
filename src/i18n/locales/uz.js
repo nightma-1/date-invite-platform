@@ -317,6 +317,7 @@ export default {
     error_message_too_short: "Hech bo'lmaganda bir-ikki gap bilan tasvirlang — shunda tezroq tushunamiz.",
     error_message_too_long: "Xabar juda uzun. Eng muhimini qoldiring, qolganini Telegramda yozasiz.",
     error_contact_required: "Kontakt qoldiring — aks holda javob berishga joy bo'lmaydi.",
+    beforePayPrompt: "To'lovdan oldin savolingiz bormi?",
     faqPrompt: "Savolingizni topmadingizmi yoki taklifingiz bormi?",
     faqPromptLink: "Qo'llab-quvvatlashga yozing",
     dashboardPrompt: 'Nimadir ishlamayaptimi?',

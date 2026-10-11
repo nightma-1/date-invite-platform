@@ -19,6 +19,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient.js';
@@ -128,7 +129,11 @@ export function SupportDialog({ open, onClose, defaultTopic = 'other' }) {
     setSending(false);
   }
 
-  return (
+  // Рендерим в body, а не на месте вызова. Иначе модалка наследует стили
+  // родителя: например, у подсказки в кабинете стоит opacity на абзаце, и
+  // окно вместе с затемнением становилось полупрозрачным. Портал заодно
+  // защищает от transform/filter у предков, которые ломают position: fixed.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -310,7 +315,8 @@ export function SupportDialog({ open, onClose, defaultTopic = 'other' }) {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

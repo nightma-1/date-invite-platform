@@ -317,6 +317,7 @@ export default {
     error_message_too_short: 'Describe it in a sentence or two so we can tell what you mean.',
     error_message_too_long: 'That message is too long. Keep the essentials — you can add the rest on Telegram.',
     error_contact_required: 'Leave a contact, otherwise we have nowhere to reply.',
+    beforePayPrompt: 'Unsure about something before paying?',
     faqPrompt: "Didn't find your question, or have a suggestion?",
     faqPromptLink: 'Contact support',
     dashboardPrompt: 'Something not working?',

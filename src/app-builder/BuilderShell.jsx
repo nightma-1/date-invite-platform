@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
@@ -640,8 +641,32 @@ export default function BuilderShell() {
         </AnimatePresence>
 
         {publishError && (
-          <p style={{ color: '#C0392B', fontSize: 13, marginTop: 12, fontFamily: T.font }}>
-            {publishError}
+          <div style={{ marginTop: 12 }}>
+            <p style={{ color: '#C0392B', fontSize: 13, fontFamily: T.font }}>
+              {publishError}
+            </p>
+            {/* Публикация сорвалась у самой оплаты — здесь человеку нужен
+                живой ответ, а не только текст ошибки. */}
+            <SupportTrigger
+              variant="quiet"
+              defaultTopic="payment"
+              label={t('support.paymentHelp')}
+              style={{ marginTop: 6, color: T.pink, fontWeight: 600 }}
+            />
+          </div>
+        )}
+
+        {/* Последний шаг — перед кнопкой оплаты. Намеренно тихая ссылка под
+            контентом, а не кнопка рядом с «Оплатить»: заметный блок про
+            проблемы у самой оплаты скорее посеет сомнение, чем поможет. */}
+        {isLastStep && !publishError && (
+          <p style={{ marginTop: 20, textAlign: 'center', fontSize: 12.5, color: T.muted, fontFamily: T.font }}>
+            {t('support.beforePayPrompt')}{' '}
+            <SupportTrigger
+              variant="quiet"
+              label={t('support.dashboardPromptLink')}
+              style={{ fontSize: 12.5, color: T.pink, fontWeight: 600 }}
+            />
           </p>
         )}
       </div>
