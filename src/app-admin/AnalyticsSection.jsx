@@ -16,12 +16,55 @@ import TicketCard from '../components/ui/TicketCard.jsx';
 
 const t = getTemplateTokens('romantic');
 
-const PERIODS = [
-  { days: 1, label: 'Сутки' },
-  { days: 7, label: '7 дней' },
-  { days: 30, label: '30 дней' },
-  { days: 90, label: '90 дней' },
+// Все даты в разделе — календарные дни по Ташкенту (UTC+5, без перехода на
+// летнее время), независимо от часового пояса браузера. Так «сегодня» и
+// «вчера» в админке совпадают с тем, как их считает база (admin_analytics).
+const TZ_OFFSET_MS = 5 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_RANGE_DAYS = 400; // столько максимум отдаёт admin_analytics
+
+function todayYmd() {
+  return new Date(Date.now() + TZ_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function addDays(ymd, n) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function dayStartIso(ymd) {
+  return new Date(`${ymd}T00:00:00+05:00`).toISOString();
+}
+
+// Конец дня — за миллисекунду до полуночи: база берёт период как [from, to),
+// а лишний пустой день после последнего в графике появляться не должен.
+function dayEndIso(ymd) {
+  return new Date(new Date(`${ymd}T00:00:00+05:00`).getTime() + DAY_MS - 1).toISOString();
+}
+
+function formatYmd(ymd) {
+  const [y, m, d] = String(ymd).split('-');
+  return `${d}.${m}.${y}`;
+}
+
+const PRESETS = [
+  { key: 'today', label: 'Сегодня', range: () => ({ from: todayYmd(), to: todayYmd() }) },
+  { key: 'yesterday', label: 'Вчера', range: () => ({ from: addDays(todayYmd(), -1), to: addDays(todayYmd(), -1) }) },
+  { key: '7d', label: '7 дней', range: () => ({ from: addDays(todayYmd(), -6), to: todayYmd() }) },
+  { key: '30d', label: '30 дней', range: () => ({ from: addDays(todayYmd(), -29), to: todayYmd() }) },
+  { key: '90d', label: '90 дней', range: () => ({ from: addDays(todayYmd(), -89), to: todayYmd() }) },
 ];
+
+function pillStyle(active) {
+  return {
+    padding: '5px 11px', borderRadius: 100, fontSize: 12, fontFamily: t.fontUI,
+    cursor: 'pointer', fontWeight: 600,
+    border: `1.5px solid ${active ? t.berry : `${t.ink}20`}`,
+    background: active ? t.berry : 'transparent',
+    color: active ? '#fff' : t.ink,
+  };
+}
 
 // Что можно вывести на график. Одна метрика за раз и одна шкала — две разные
 // величины на одних осях (например, посетители и выручка) всегда врут глазу.
@@ -51,20 +94,24 @@ function formatDay(iso) {
 }
 
 export default function AnalyticsSection() {
-  const [days, setDays] = useState(30);
+  const [preset, setPreset] = useState('30d');
+  const [range, setRange] = useState(() => PRESETS.find((p) => p.key === '30d').range());
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [metric, setMetric] = useState('visitors');
 
+  const rangeLabel = range.from === range.to
+    ? formatYmd(range.from)
+    : `${formatYmd(range.from)} — ${formatYmd(range.to)}`;
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const to = new Date();
-    const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
     const { data: result, error: rpcError } = await supabase.rpc('admin_analytics', {
-      p_from: from.toISOString(),
-      p_to: to.toISOString(),
+      p_from: dayStartIso(range.from),
+      p_to: dayEndIso(range.to),
     });
     if (rpcError) {
       // Самый частый случай — миграция аналитики ещё не применена к базе
@@ -78,7 +125,7 @@ export default function AnalyticsSection() {
       setData(result);
     }
     setLoading(false);
-  }, [days]);
+  }, [range]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -117,23 +164,34 @@ export default function AnalyticsSection() {
             </span>
           )}
         </h2>
-        <div className="flex items-center gap-1.5">
-          {PERIODS.map((p) => (
+        <div className="relative flex flex-wrap items-center gap-1.5">
+          {PRESETS.map((p) => (
             <button
-              key={p.days}
+              key={p.key}
               type="button"
-              onClick={() => setDays(p.days)}
-              style={{
-                padding: '5px 11px', borderRadius: 100, fontSize: 12, fontFamily: t.fontUI,
-                cursor: 'pointer', fontWeight: 600,
-                border: `1.5px solid ${days === p.days ? t.berry : `${t.ink}20`}`,
-                background: days === p.days ? t.berry : 'transparent',
-                color: days === p.days ? '#fff' : t.ink,
-              }}
+              onClick={() => { setPreset(p.key); setRange(p.range()); setCalendarOpen(false); }}
+              style={pillStyle(preset === p.key)}
             >
               {p.label}
             </button>
           ))}
+          <button
+            type="button"
+            data-calendar-toggle
+            onClick={() => setCalendarOpen((open) => !open)}
+            style={{ ...pillStyle(preset === 'custom'), ...(calendarOpen ? { borderColor: t.berry } : {}) }}
+          >
+            📅 {preset === 'custom' ? rangeLabel : 'Календарь'}
+          </button>
+          {calendarOpen && (
+            <RangeCalendar
+              value={range}
+              maxYmd={todayYmd()}
+              minYmd={addDays(todayYmd(), -(MAX_RANGE_DAYS - 1))}
+              onApply={(next) => { setRange(next); setPreset('custom'); setCalendarOpen(false); }}
+              onClose={() => setCalendarOpen(false)}
+            />
+          )}
           <button
             type="button"
             onClick={load}
@@ -147,6 +205,10 @@ export default function AnalyticsSection() {
           </button>
         </div>
       </div>
+
+      <p className="mb-4 text-xs" style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}>
+        Период: {rangeLabel} · по времени Ташкента
+      </p>
 
       {error && (
         <p className="mb-4 text-sm" style={{ color: '#C0392B', fontFamily: t.fontUI }}>{error}</p>
@@ -356,9 +418,12 @@ function DayBars({ rows, metric, label, isMoney }) {
   const values = rows.map((r) => Number(r[metric] || 0));
   const max = Math.max(1, ...values);
   const H = 150;
-  const GAP = 2;
-  const W = Math.max(rows.length * 8, 320);
-  const barW = rows.length ? Math.max(3, (W - GAP * rows.length) / rows.length) : 0;
+  // Мало дней (например, один выбранный) — узкие столбики фиксированной
+  // ширины, иначе один столбик растянулся бы на всю страницу.
+  const few = rows.length > 0 && rows.length <= 7;
+  const GAP = few ? 24 : 2;
+  const W = few ? rows.length * 64 : Math.max(rows.length * 8, 320);
+  const barW = rows.length ? (few ? 40 : Math.max(3, (W - GAP * rows.length) / rows.length)) : 0;
 
   if (rows.length === 0) return <p className="text-sm opacity-60">Нет данных за период.</p>;
 
@@ -366,10 +431,11 @@ function DayBars({ rows, metric, label, isMoney }) {
   const sum = values.reduce((a, b) => a + b, 0);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div>
       <p className="mb-1 text-xs" style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}>
         {label} · всего за период: {isMoney ? money(sum) : num(sum)} · максимум за день: {isMoney ? money(max) : num(max)}
       </p>
+      <div style={{ position: 'relative', width: few ? `${rows.length * 64}px` : '100%', maxWidth: '100%' }}>
       <svg
         viewBox={`0 0 ${W} ${H + 18}`}
         preserveAspectRatio="none"
@@ -407,7 +473,7 @@ function DayBars({ rows, metric, label, isMoney }) {
           );
         })}
         {/* Подписываем только края и пик — число под каждым столбиком нечитаемо */}
-        {[0, rows.length - 1].map((i) => (
+        {Array.from(new Set([0, rows.length - 1])).map((i) => (
           <text
             key={`ax-${i}`} x={i * (barW + GAP) + barW / 2} y={H + 13}
             textAnchor={i === 0 ? 'start' : 'end'} fontSize="10"
@@ -438,6 +504,153 @@ function DayBars({ rows, metric, label, isMoney }) {
           {formatDay(rows[hover].day)}: {isMoney ? money(rows[hover][metric]) : num(rows[hover][metric])}
         </div>
       )}
+      </div>
+    </div>
+  );
+}
+
+const MONTHS = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+];
+const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+/**
+ * Календарь выбора периода: первый клик — начало, второй — конец. Один клик
+ * и «Применить» — ровно один день. Будущие дни и даты глубже, чем отдаёт
+ * база, недоступны.
+ */
+function RangeCalendar({ value, maxYmd, minYmd, onApply, onClose }) {
+  const [month, setMonth] = useState(value.to.slice(0, 7));
+  const [start, setStart] = useState(value.from);
+  const [end, setEnd] = useState(value.to === value.from ? null : value.to);
+
+  useEffect(() => {
+    function onDown(e) {
+      // Клик по самой кнопке-переключателю обрабатывает она сама, иначе
+      // календарь закрылся бы здесь и тут же открылся обратно.
+      if (e.target.closest?.('[data-calendar-toggle]') || e.target.closest?.('[data-calendar-popover]')) return;
+      onClose();
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  const [y, m] = month.split('-').map(Number);
+  const firstDow = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7; // неделя с понедельника
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const cells = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`),
+  ];
+
+  const canPrev = month > minYmd.slice(0, 7);
+  const canNext = month < maxYmd.slice(0, 7);
+
+  function shiftMonth(delta) {
+    setMonth(new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7));
+  }
+
+  function pick(d) {
+    if (d > maxYmd || d < minYmd) return;
+    if (!start || end) {
+      setStart(d);
+      setEnd(null);
+      return;
+    }
+    if (d < start) {
+      setEnd(start);
+      setStart(d);
+    } else {
+      setEnd(d === start ? null : d);
+    }
+  }
+
+  const summary = !start ? 'Выберите день' : end ? `${formatYmd(start)} — ${formatYmd(end)}` : formatYmd(start);
+  const navBtn = (enabled) => ({
+    width: 28, height: 28, borderRadius: 8, border: `1px solid ${t.ink}18`, background: 'transparent',
+    color: t.ink, cursor: enabled ? 'pointer' : 'default', opacity: enabled ? 1 : 0.25, fontSize: 14,
+  });
+
+  return (
+    <div
+      data-calendar-popover
+      style={{
+        position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 20, width: 280, maxWidth: '100%',
+        background: '#fff', borderRadius: 14, padding: 14, border: `1px solid ${t.ink}15`,
+        boxShadow: `0 12px 32px -8px ${t.ink}40`, fontFamily: t.fontUI, color: t.ink,
+      }}
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <button type="button" disabled={!canPrev} onClick={() => canPrev && shiftMonth(-1)} style={navBtn(canPrev)} aria-label="Предыдущий месяц">‹</button>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{MONTHS[m - 1]} {y}</span>
+        <button type="button" disabled={!canNext} onClick={() => canNext && shiftMonth(1)} style={navBtn(canNext)} aria-label="Следующий месяц">›</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+        {WEEKDAYS.map((w) => (
+          <div key={w} style={{ textAlign: 'center', fontSize: 10.5, opacity: 0.45, padding: '2px 0' }}>{w}</div>
+        ))}
+        {cells.map((d, i) => {
+          if (!d) return <div key={`pad-${i}`} />;
+          const disabled = d > maxYmd || d < minYmd;
+          const last = end || start;
+          const isEdge = d === start || d === last;
+          const inRange = start && end && d >= start && d <= end;
+          return (
+            <button
+              key={d}
+              type="button"
+              disabled={disabled}
+              onClick={() => pick(d)}
+              style={{
+                height: 34, borderRadius: 8, fontSize: 12, fontFamily: t.fontUI,
+                fontWeight: isEdge ? 700 : 500,
+                cursor: disabled ? 'default' : 'pointer',
+                opacity: disabled ? 0.25 : 1,
+                border: d === maxYmd && !isEdge ? `1px solid ${t.berry}66` : '1px solid transparent',
+                background: isEdge ? t.berry : inRange ? `${t.berry}1A` : 'transparent',
+                color: isEdge ? '#fff' : t.ink,
+              }}
+            >
+              {Number(d.slice(8))}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="mt-2 text-xs" style={{ opacity: 0.6 }}>{summary}</p>
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          disabled={!start}
+          onClick={() => onApply({ from: start, to: end || start })}
+          style={{
+            flex: 1, padding: '7px 10px', borderRadius: 100, border: 'none', fontSize: 12, fontWeight: 700,
+            fontFamily: t.fontUI, background: t.berry, color: '#fff',
+            cursor: start ? 'pointer' : 'default', opacity: start ? 1 : 0.5,
+          }}
+        >
+          Применить
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, fontFamily: t.fontUI,
+            border: `1.5px solid ${t.ink}20`, background: 'transparent', color: t.ink, cursor: 'pointer',
+          }}
+        >
+          Отмена
+        </button>
+      </div>
     </div>
   );
 }
