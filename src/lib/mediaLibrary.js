@@ -139,6 +139,22 @@ export async function addGifByFile({ file, title, category }) {
   return addGifByUrl({ url: pub.publicUrl, title, category });
 }
 
+/** Перенести гифку в другую категорию. Категория — обычная строка, поэтому
+ *  новая появляется ровно в тот момент, когда в неё попадает первая гифка. */
+export async function setGifCategory(id, category) {
+  const clean = normalizeCategory(category);
+  if (!clean) throw new Error('Название категории не может быть пустым.');
+  const { error } = await supabase.from('media_library').update({ category: clean }).eq('id', id);
+  if (error) throw error;
+  return clean;
+}
+
+/** Приводим название категории к единому виду, чтобы «Милые», «милые » и
+ *  «милые» не расползлись на три разные категории. */
+export function normalizeCategory(value) {
+  return (value || '').trim().toLowerCase().replace(/\s+/g, '-').slice(0, 40);
+}
+
 export async function setGifActive(id, active) {
   const { error } = await supabase.from('media_library').update({ active }).eq('id', id);
   if (error) throw error;
