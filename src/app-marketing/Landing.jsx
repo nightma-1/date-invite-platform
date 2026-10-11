@@ -14,6 +14,7 @@ import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { listDefaultGifs } from '../lib/mediaLibrary.js';
 
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
@@ -337,6 +338,17 @@ export default function Landing() {
             </AnimatePresence>
           </div>
         ))}
+
+        {/* Человек, долиставший FAQ до конца и не нашедший ответа, — главный
+            кандидат в поддержку. Не прячем это в футер. */}
+        <p style={{ marginTop: 22, fontSize: 14, color: T.muted, fontFamily: T.font, lineHeight: 1.6 }}>
+          {t('support.faqPrompt')}{' '}
+          <SupportTrigger
+            variant="quiet"
+            label={t('support.faqPromptLink')}
+            style={{ color: T.pink, fontWeight: 700, fontSize: 14 }}
+          />
+        </p>
       </section>
 
       {/* FOOTER */}
@@ -346,6 +358,7 @@ export default function Landing() {
           <div className="flex flex-wrap items-center justify-center gap-5">
             <Link to="/builder" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.create')}</Link>
             <Link to="/dashboard" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.myInvitations')}</Link>
+            <SupportTrigger variant="link" />
             <LanguageSwitcher />
           </div>
         </div>

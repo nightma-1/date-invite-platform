@@ -10,6 +10,7 @@ import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 
 const t = getTemplateTokens('romantic');
@@ -367,6 +368,17 @@ export default function InvitationList() {
             );
           })}
         </div>
+
+        {/* Вход в поддержку внизу кабинета: сюда человек возвращается, когда
+            что-то пошло не так с уже созданным приглашением. */}
+        <p className="mt-10 text-center text-xs" style={{ color: t.ink, opacity: 0.5, fontFamily: t.fontUI }}>
+          {tr('support.dashboardPrompt')}{' '}
+          <SupportTrigger
+            variant="quiet"
+            label={tr('support.dashboardPromptLink')}
+            style={{ color: t.berry, fontWeight: 600, fontSize: 12 }}
+          />
+        </p>
       </div>
     </div>
   );

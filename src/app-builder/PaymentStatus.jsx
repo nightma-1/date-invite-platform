@@ -13,6 +13,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
+import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 
 const POLL_INTERVAL_MS = 2500;
@@ -207,6 +208,15 @@ export default function PaymentStatus() {
             >
               {retrying ? t('payment.retrying') : t('payment.retryButtonCard')}
             </button>
+            {/* Деньги списались, а приглашение не опубликовалось — ровно тот
+                случай, когда человеку нужен живой человек, а не ещё одна
+                кнопка «попробовать снова». */}
+            <SupportTrigger
+              variant="card"
+              defaultTopic="payment"
+              label={t('support.paymentHelp')}
+              style={{ marginBottom: 12 }}
+            />
             <Link to="/dashboard" style={{ display: 'block', fontFamily: T.font, fontSize: 13, color: T.muted, textDecoration: 'underline' }}>
               {t('builder.goToDashboard')}
             </Link>
@@ -230,6 +240,9 @@ export default function PaymentStatus() {
                 {t('builder.goToDashboard')}
               </button>
             </Link>
+            <p style={{ marginTop: 14, fontFamily: T.font, fontSize: 13, color: T.muted }}>
+              <SupportTrigger variant="quiet" defaultTopic="payment" label={t('support.paymentHelp')} />
+            </p>
           </>
         )}
       </motion.div>
