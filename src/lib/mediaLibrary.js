@@ -120,12 +120,18 @@ export async function addGifByFile({ file, title, category }) {
   const ext = file.name.split('.').pop()?.toLowerCase() || 'gif';
   const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
+  // У .tgs браузер оставляет file.type пустым, и бакет отвечает
+  // "mime type application/octet-stream is not supported". Опция contentType
+  // тут НЕ помогает: supabase-js для File/Blob шлёт multipart, и тип берётся
+  // из самого блоба, а не из опций. Поэтому пересобираем файл с нужным типом.
+  const body = isTgsFile(file) && file.type !== TGS_MIME
+    ? new File([file], file.name, { type: TGS_MIME })
+    : file;
+
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, body, {
     cacheControl: '3600',
     upsert: false,
-    // У .tgs браузер не проставляет тип — без явного contentType бакет
-    // отклонит файл как application/octet-stream.
-    contentType: isTgsFile(file) ? TGS_MIME : file.type || undefined,
+    contentType: body.type || undefined,
   });
   if (uploadError) throw uploadError;
 

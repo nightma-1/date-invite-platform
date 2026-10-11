@@ -134,6 +134,7 @@ function GifLibrarySection() {
   const [urlForm, setUrlForm] = useState({ url: '', title: '', category: 'romantic' });
   const [fileForm, setFileForm] = useState({ title: '', category: 'romantic' });
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState(null);
   const fileInputRef = useRef(null);
 
   function reload() {
@@ -158,21 +159,42 @@ function GifLibrarySection() {
     }
   }
 
+  // Админка умеет принимать сразу пачку файлов. Грузим по очереди, а не
+  // Promise.all: так видно прогресс, и одна битая гифка не роняет остальные.
   async function handleAddByFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setSaving(true);
     setError(null);
-    try {
-      await addGifByFile({ file, title: fileForm.title, category: fileForm.category });
-      setFileForm({ title: '', category: fileForm.category });
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      reload();
-    } catch (err) {
-      setError(err.message || 'Не получилось загрузить файл.');
-    } finally {
-      setSaving(false);
+    setProgress({ done: 0, total: files.length });
+
+    const failures = [];
+    for (const [index, file] of files.entries()) {
+      try {
+        await addGifByFile({
+          file,
+          // При пачке общее название не имеет смысла — берём имя файла,
+          // чтобы гифки потом можно было различить.
+          title: files.length === 1 ? fileForm.title : file.name.replace(/\.[^.]+$/, ''),
+          category: fileForm.category,
+        });
+      } catch (err) {
+        failures.push(`${file.name}: ${err.message || 'ошибка загрузки'}`);
+      }
+      setProgress({ done: index + 1, total: files.length });
     }
+
+    if (failures.length > 0) {
+      const head = `Не загрузилось файлов: ${failures.length} из ${files.length}.`;
+      setError([head, ...failures].join('\n'));
+    }
+    if (failures.length < files.length) {
+      setFileForm((f) => ({ ...f, title: '' }));
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setProgress(null);
+    setSaving(false);
+    reload();
   }
 
   async function toggleActive(gif) {
@@ -224,7 +246,7 @@ function GifLibrarySection() {
         (на каждый шаг — только одна дефолтная гифка).
       </p>
 
-      {error && <p style={{ color: '#C0392B', fontSize: 12, marginBottom: 10 }}>{error}</p>}
+      {error && <p style={{ color: '#C0392B', fontSize: 12, marginBottom: 10, whiteSpace: 'pre-line' }}>{error}</p>}
 
       <div className="mb-6 grid gap-3 md:grid-cols-2">
         <form onSubmit={handleAddByUrl} className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: `${t.ink}20` }}>
@@ -249,10 +271,18 @@ function GifLibrarySection() {
           <select value={fileForm.category} onChange={(e) => setFileForm((f) => ({ ...f, category: e.target.value }))} style={inp}>
             {GIF_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input ref={fileInputRef} type="file"
+          <input ref={fileInputRef} type="file" multiple
                  accept="image/gif,image/webp,image/png,image/jpeg,video/webm,video/mp4,.tgs,application/x-tgsticker,application/gzip"
                  onChange={handleAddByFile} disabled={saving} style={{ fontSize: 12 }} />
-          <p className="text-[11px]" style={{ color: t.ink, opacity: 0.5 }}>GIF, WebP, PNG, JPG, WebM, MP4 или TGS — до 20 МБ.</p>
+          <p className="text-[11px]" style={{ color: t.ink, opacity: 0.5 }}>
+            GIF, WebP, PNG, JPG, WebM, MP4 или TGS — до 20 МБ. Можно выбрать сразу несколько файлов:
+            тогда названием станет имя файла, а категория применится ко всем.
+          </p>
+          {progress && (
+            <p className="text-[11px]" style={{ color: t.berry, fontWeight: 600 }}>
+              Загружаем… {progress.done} из {progress.total}
+            </p>
+          )}
         </div>
       </div>
 
