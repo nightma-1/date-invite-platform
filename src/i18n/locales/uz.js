@@ -140,6 +140,8 @@ export default {
     openButton: "👀 U qanday ko'rishini ko'ring",
     title: "Taklifnoma qabul qiluvchiga shunday ko'rinadi",
     fix: "To'g'rilash",
+    confirmPublish: "To'lash 💌",
+    confirmSave: 'Saqlash 💾',
   },
   builderUI: {
     cardShapes: {

@@ -790,7 +790,7 @@ export default function BuilderShell() {
         <PreviewOverlay
           previewData={previewData}
           busy={publishing}
-          confirmLabel={state.editInvitationId ? t('builder.saveChanges') : t('builder.publish')}
+          confirmLabel={state.editInvitationId ? t('preview.confirmSave') : t('preview.confirmPublish')}
           onClose={() => setPreviewData(null)}
           onConfirm={() => {
             setPreviewData(null);

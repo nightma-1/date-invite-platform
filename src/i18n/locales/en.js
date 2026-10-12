@@ -140,6 +140,8 @@ export default {
     openButton: '👀 See what they will see',
     title: 'This is how your invitation looks to them',
     fix: 'Edit',
+    confirmPublish: 'Pay 💌',
+    confirmSave: 'Save 💾',
   },
   builderUI: {
     cardShapes: {
