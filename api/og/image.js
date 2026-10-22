@@ -14,11 +14,12 @@ import { ImageResponse } from '@vercel/og';
 import { fetchPublicInvitation } from '../_lib/publicInvitation.js';
 import { inviteCard, storyCard, loadOgFonts, hasPalette } from '../_lib/ogCards.js';
 
-export const config = { runtime: 'edge' };
+// Node-рантайм, а не edge: в edge-функциях этого (не Next.js) проекта
+// запрещена компиляция WebAssembly, а отрисовка PNG на нём держится.
 
 const LONG_CACHE = 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
 
-export default async function handler(request) {
+export async function GET(request) {
   const reqUrl = new URL(request.url);
   const params = reqUrl.searchParams;
   const origin = reqUrl.origin;
