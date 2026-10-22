@@ -87,6 +87,7 @@ export default function InvitationRuntime({ previewData = null }) {
   const [answers, setAnswers] = useState({ selectedDate: null, selectedTime: null, selections: {} });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [noAttempts, setNoAttempts] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +139,13 @@ export default function InvitationRuntime({ previewData = null }) {
       // invitations есть только first_viewed_at/last_viewed_at, по ним нельзя
       // посчитать, сколько раз и сколько разных людей открывали ссылку.
       track('invite_view', { template: inv.template_key }, { slug });
+
+      // Автор открыл свою же ссылку проверить, как она выглядит, — это не
+      // просмотр получателя. Иначе бот пишет ему «она открыла», хотя открыл
+      // он сам, и настоящее первое открытие потом приходит как «снова».
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (sessionData?.session?.user?.id && sessionData.session.user.id === inv.user_id) return;
 
       // Не блокируем рендер результатом — это уведомление, а не критичный путь
       supabase.rpc('mark_invitation_viewed', { p_slug: slug }).then(({ error }) => {
@@ -212,13 +220,14 @@ export default function InvitationRuntime({ previewData = null }) {
         selected_date: answers.selectedDate,
         selected_time: answers.selectedTime,
         selections: answers.selections,
+        no_attempts: noAttempts,
       };
       let { error } = await supabase.from('responses').insert(payload);
       if (error?.code === '23505') {
         ({ error } = await supabase.from('responses').update(payload).eq('invitation_id', invitation.id));
       }
       if (error) { console.error('response submit failed', error); throw error; }
-      track('invite_submit', {}, { slug });
+      track('invite_submit', { no_attempts: noAttempts }, { slug });
       setSubmitted(true);
     } finally {
       setSubmitting(false);
@@ -326,6 +335,7 @@ export default function InvitationRuntime({ previewData = null }) {
           recipientGender={invitation.recipient_gender}
           tokens={tokens}
           onYes={goNext}
+          onNoAttempt={() => setNoAttempts((n) => Math.min(n + 1, 999))}
           cardShape={cardShape}
           stepIndex={activeIndex}
           stepCount={steps.length}
@@ -413,6 +423,10 @@ export default function InvitationRuntime({ previewData = null }) {
           submitted={submitted}
           onSubmit={handleFinalSubmit}
           cardShape={cardShape}
+          templateKey={invitation.template_key}
+          noAttempts={noAttempts}
+          slug={slug}
+          isPreview={isPreview}
         />
       )}
       </div>

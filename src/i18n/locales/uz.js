@@ -125,6 +125,10 @@ export default {
   },
 
   payment: {
+    tgTitle: 'Havola ochilganini birinchi bo‘lib biling',
+    tgText: 'Havola ochilishi bilan bot xabar beradi va javob kelganda uni yuboradi.',
+    tgAction: 'Telegramni ulash',
+    tgDone: '🔔 Telegram ulangan — havola ochilganda bot xabar beradi',
     checkingTitle: "To'lov tekshirilmoqda…",
     checkingSubtitle: "Odatda bu bir necha soniya vaqt oladi — sahifani yopmang",
     timeoutTitle: "To'lov hali ko'rinmayapti",

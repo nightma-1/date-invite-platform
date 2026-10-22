@@ -33,6 +33,8 @@ export default function QuestionScreen({
   noPhrases,
   recipientGender,
   tokens, onYes,
+  // Сколько раз пытались нажать «Нет» — уходит автору в Telegram вместе с ответом
+  onNoAttempt,
   // Временный переключатель формы карточки для живого сравнения на проде —
   // ?card=arch|envelope|polaroid|blob (см. InvitationRuntime.jsx). Уберём,
   // когда определимся с финальным вариантом.
@@ -285,6 +287,7 @@ export default function QuestionScreen({
                 <RunawayButton
                   phrases={effectiveNoPhrases}
                   containerRef={stageRef}
+                  onDodge={onNoAttempt}
                   style={{
                     border: `1.5px solid ${tokens.ink}25`,
                     color: tokens.inkMuted || tokens.ink,

@@ -1,6 +1,17 @@
 {
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/:path*" },
+    {
+      "source": "/i/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(telegrambot|whatsapp|facebookexternalhit|facebot|twitterbot|slackbot|discordbot|linkedinbot|vkshare|viber|skypeuripreview|pinterest|redditbot|embedly|bitlybot|yandex).*"
+        }
+      ],
+      "destination": "/api/og/invite?slug=:slug"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
