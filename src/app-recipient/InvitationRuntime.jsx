@@ -201,32 +201,22 @@ export default function InvitationRuntime({ previewData = null }) {
     }
     setSubmitting(true);
     try {
-      // На invitation_id стоит unique-ограничение (один ответ на
-      // приглашение), так что повторная отправка — например, если
-      // получатель вернулся по той же ссылке и прошёл шаги заново —
-      // должна обновить существующий ответ, а не упасть с ошибкой конфликта.
-      //
-      // ВАЖНО: не supabase upsert()/ON CONFLICT — Postgres требует, чтобы
-      // у роли было SELECT-разрешение (через RLS) на уже существующую
-      // строку, иначе конфликт использовался бы как канал для проверки
-      // "есть ли уже такая строка" в обход приватности. У анонимного
-      // получателя такого доступа нет (и не должно быть — это чужой ответ),
-      // поэтому upsert падал с "new row violates row-level security policy",
-      // даже с корректными insert/update-политиками. Явные insert → (при
-      // конфликте) update этого не требуют.
-      const payload = {
-        invitation_id: invitation.id,
-        answered_yes: true,
-        selected_date: answers.selectedDate,
-        selected_time: answers.selectedTime,
-        selections: answers.selections,
-        no_attempts: noAttempts,
-      };
-      let { error } = await supabase.from('responses').insert(payload);
-      if (error?.code === '23505') {
-        ({ error } = await supabase.from('responses').update(payload).eq('invitation_id', invitation.id));
+      // Ответ сохраняем одной серверной функцией: она сама создаёт или
+      // обновляет ответ. Раньше здесь был insert, а при повторном ответе —
+      // update, но у анонимного получателя нет права читать ответы, и такой
+      // update молча не находил строку: повторный ответ терялся. Подробнее —
+      // миграция submit_response_rpc.
+      const { data: saved, error } = await supabase.rpc('submit_response', {
+        p_slug: slug,
+        p_selected_date: answers.selectedDate || null,
+        p_selected_time: answers.selectedTime || null,
+        p_selections: answers.selections || {},
+        p_no_attempts: noAttempts,
+      });
+      if (error || saved !== true) {
+        console.error('response submit failed', error || 'invitation not available');
+        throw error || new Error('invitation not available');
       }
-      if (error) { console.error('response submit failed', error); throw error; }
       track('invite_submit', { no_attempts: noAttempts }, { slug });
       setSubmitted(true);
     } finally {
