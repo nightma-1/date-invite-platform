@@ -107,28 +107,33 @@ export default function Starfield({ paletteId = 'senti', density = 1, nebula = t
       const g = back.getContext('2d');
       g.setTransform(dpr, 0, 0, dpr, MARGIN * dpr, MARGIN * dpr);
 
-      const sky = g.createLinearGradient(0, 0, width * 0.4, height);
+      // ВАЖНО: закрашиваем ВЕСЬ холст вместе с каймой. Если закрасить только
+      // внутренние width×height, кайма останется прозрачной и при сдвиге от
+      // наклона выедет в кадр — по краю будет видно слой под фоном.
+      const fullW = width + MARGIN * 2;
+      const fullH = height + MARGIN * 2;
+      const sky = g.createLinearGradient(-MARGIN, -MARGIN, width * 0.4, height);
       sky.addColorStop(0, pal.sky[0]);
       sky.addColorStop(0.45, pal.sky[1]);
       sky.addColorStop(1, pal.sky[2]);
       g.fillStyle = sky;
-      g.fillRect(0, 0, width, height);
+      g.fillRect(-MARGIN, -MARGIN, fullW, fullH);
 
       if (nebula) drawBand(g, width, height, seed);
 
       g.globalCompositeOperation = 'lighter';
       const warm = pal.core[1];
       const cool = pal.arms[3].join(',');
-      const count = Math.round((width * height) / 1700 * density);
+      const count = Math.round((fullW * fullH) / 1700 * density);
       for (let i = 0; i < count; i++) {
         const m = rnd(seed);
-        star(g, rnd(seed) * width, rnd(seed) * height, 0.5 + m * m * 2.2,
+        star(g, rnd(seed) * fullW - MARGIN, rnd(seed) * fullH - MARGIN, 0.5 + m * m * 2.2,
           0.25 + rnd(seed) * 0.55, rnd(seed) < 0.22 ? warm : cool);
       }
       twinklers = [];
-      const bright = Math.round((width * height) / 26000 * density) + 6;
+      const bright = Math.round((fullW * fullH) / 26000 * density) + 6;
       for (let i = 0; i < bright; i++) {
-        const x = rnd(seed) * width; const y = rnd(seed) * height;
+        const x = rnd(seed) * fullW - MARGIN; const y = rnd(seed) * fullH - MARGIN;
         const r = 2.4 + rnd(seed) * 3.2;
         const a = 0.55 + rnd(seed) * 0.4;
         const tint = rnd(seed) < 0.3 ? warm : cool;

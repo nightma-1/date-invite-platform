@@ -144,7 +144,7 @@ export default function EnvelopeScene({ recipientName, palette, onOpen }) {
           animate={opening ? { scale: 0.8, opacity: 0, rotate: -18 } : { scale: 1, opacity: 1, rotate: 0 }}
           transition={{ duration: 0.4 }}
           style={{
-            position: 'absolute', top: 72, left: '50%', marginLeft: -24, zIndex: 4,
+            position: 'absolute', top: 58, left: '50%', marginLeft: -24, zIndex: 4,
             width: 48, height: 48, borderRadius: '48% 52% 50% 50% / 52% 48% 52% 48%',
             background: `radial-gradient(circle at 34% 28%, ${seal[0]}, ${seal[1]} 72%)`,
             boxShadow: `0 7px 16px rgba(120,30,70,0.42), inset 0 -3px 6px rgba(0,0,0,0.26), inset 0 2px 4px ${seal[0]}`,
@@ -159,7 +159,7 @@ export default function EnvelopeScene({ recipientName, palette, onOpen }) {
         {/* имя от руки */}
         {recipientName && (
           <div style={{
-            position: 'absolute', top: 104, left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute', top: 112, left: '50%', transform: 'translateX(-50%)',
             fontFamily: '"Caveat", cursive', fontSize: 23, color: '#4a2a3a',
             paddingBottom: 2, borderBottom: '1px solid rgba(212,70,111,0.35)', zIndex: 2,
           }}>
