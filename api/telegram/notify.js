@@ -18,15 +18,43 @@ const supabaseAdmin = createClient(
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
-async function sendMessage(chatId, text) {
+async function sendMessage(chatId, text, button) {
+  const body = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true };
+  if (button?.url?.startsWith('https://')) {
+    body.reply_markup = { inline_keyboard: [[{ text: button.text, url: button.url }]] };
+  }
   const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     console.error('telegram/notify: sendMessage failed', res.status, await res.text());
   }
+}
+
+// Род глагола по полу получателя, который автор выбрал в конструкторе.
+// Не выбрал — нейтральное «(а)», как было раньше.
+function verb(gender, base) {
+  if (gender === 'female') return `${base}а`;
+  if (gender === 'male') return base;
+  return `${base}(а)`;
+}
+
+function appUrl(path) {
+  const origin = (process.env.PUBLIC_APP_URL || '').replace(/\/+$/, '');
+  return origin ? `${origin}${path}` : null;
+}
+
+// 2 раза, 5 раз, 22 раза, 11 раз
+function times(n) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  return m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'раза' : 'раз';
+}
+
+function ordinal(n) {
+  return `${n}-й раз`;
 }
 
 // selections хранится как { [invitation_steps.id]: [optionId, ...] } —
@@ -50,28 +78,38 @@ function decodeSelections(steps, selections) {
 }
 
 function formatAnswered(invitation, extra) {
-  const lines = [
-    `❤️ <b>${escapeHtml(invitation.recipient_name)}</b> ответил(а) на приглашение!`,
-    '',
-    extra?.answered_yes === false ? '💔 Ответ: Нет' : '✅ Ответ: Да',
-  ];
+  const g = invitation.recipient_gender;
+  const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
+  const lines = extra?.answered_yes === false
+    ? [`${name} ${verb(g, 'ответил')} на приглашение.`, '', 'Ответ: нет.']
+    : [`❤️ ${name} ${verb(g, 'сказал')} «да»!`, ''];
+
   if (extra?.selected_date) lines.push(`📅 Дата: ${escapeHtml(extra.selected_date)}`);
-  if (extra?.selected_time) lines.push(`🕒 Время: ${escapeHtml(extra.selected_time)}`);
+  if (extra?.selected_time) lines.push(`🕒 Время: ${escapeHtml(String(extra.selected_time).slice(0, 5))}`);
 
   const choiceAnswers = decodeSelections(invitation.invitation_steps, extra?.selections);
   for (const c of choiceAnswers) {
     lines.push(`${escapeHtml(c.title)}: ${escapeHtml(c.labels.join(', '))}`);
   }
 
-  lines.push('', `Открыть: ${process.env.PUBLIC_APP_URL || ''}/dashboard`.trim());
+  const attempts = Number(extra?.no_attempts) || 0;
+  if (extra?.answered_yes !== false && attempts > 0) {
+    lines.push('', attempts === 1
+      ? `Перед «да» ${verb(g, 'попробовал')} нажать «Нет» один раз 😄`
+      : `Перед «да» ${verb(g, 'пытался')} поймать «Нет» ${attempts} ${times(attempts)} 😄`);
+  }
+
   return lines.join('\n');
 }
 
-function formatViewed(invitation) {
-  return [
-    `👀 <b>${escapeHtml(invitation.recipient_name)}</b> открыл(а) твоё приглашение!`,
-    'Ждём ответа ✨',
-  ].join('\n');
+function formatViewed(invitation, extra) {
+  const g = invitation.recipient_gender;
+  const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
+  const count = Number(extra?.view_count) || 1;
+  if (count <= 1) {
+    return `👀 ${name} ${verb(g, 'открыл')} твоё приглашение. Ждём ответа…`;
+  }
+  return `👀 ${name} снова ${verb(g, 'открыл')} приглашение — уже ${ordinal(count)}.`;
 }
 
 function escapeHtml(s) {
@@ -95,7 +133,7 @@ export default async function handler(req, res) {
 
   const { data: invitation, error: invError } = await supabaseAdmin
     .from('invitations')
-    .select('recipient_name, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
+    .select('id, recipient_name, recipient_gender, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
     .eq('id', invitationId)
     .maybeSingle();
 
@@ -111,8 +149,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: false, reason: 'no telegram linked' });
   }
 
-  const text = event === 'answered' ? formatAnswered(invitation, extra) : formatViewed(invitation);
-  await sendMessage(chatId, text);
+  // Кнопка ведёт прямо на ответ в кабинете — повод вернуться на сайт.
+  // На просмотр кнопку не ставим: там нечего открывать, кроме ожидания.
+  if (event === 'answered') {
+    await sendMessage(chatId, formatAnswered(invitation, extra), {
+      text: 'Открыть ответ',
+      url: appUrl(`/dashboard/response/${invitation.id}`),
+    });
+  } else {
+    await sendMessage(chatId, formatViewed(invitation, extra));
+  }
 
   return res.status(200).json({ ok: true });
 }

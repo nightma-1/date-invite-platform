@@ -125,6 +125,10 @@ export default {
   },
 
   payment: {
+    tgTitle: 'Be the first to know when the link is opened',
+    tgText: 'The bot messages you as soon as the link is opened, and sends the answer when it comes.',
+    tgAction: 'Connect Telegram',
+    tgDone: '🔔 Telegram connected — the bot will message you when the link is opened',
     checkingTitle: 'Checking your payment…',
     checkingSubtitle: "This usually takes a couple seconds — don't close this page",
     timeoutTitle: "We don't see the payment yet",

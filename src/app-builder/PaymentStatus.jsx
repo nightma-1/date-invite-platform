@@ -27,6 +27,8 @@ export default function PaymentStatus() {
   const [slug, setSlug] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  // null — ещё не знаем (не показываем ничего, чтобы блок не мигал)
+  const [telegramLinked, setTelegramLinked] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +74,51 @@ export default function PaymentStatus() {
     poll();
     return () => { cancelled = true; };
   }, [invitationId]);
+
+  // Самый удачный момент предложить бота — человек только что получил
+  // ссылку и сейчас её отправит. В кабинете это предложение видят не все.
+  useEffect(() => {
+    if (status !== 'published') return undefined;
+    let cancelled = false;
+    async function checkLinked() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (!userId) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('telegram_chat_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (!cancelled) setTelegramLinked(!!data?.telegram_chat_id);
+    }
+    checkLinked();
+    // Человек ушёл в Telegram, нажал «Start» и вернулся — обновляем статус
+    window.addEventListener('focus', checkLinked);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', checkLinked);
+    };
+  }, [status]);
+
+  async function connectTelegram() {
+    // Окно открываем сразу в обработчике клика, иначе браузер заблокирует попап
+    const win = window.open('', '_blank');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const res = await fetch('/api/telegram/connect', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${sessionData.session?.access_token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || 'telegram connect failed');
+      track('telegram_connect_click', { from: 'payment_success' });
+      if (win) win.location.href = data.url;
+      else window.location.href = data.url;
+    } catch (e) {
+      win?.close();
+      console.error('telegram connect failed', e);
+    }
+  }
 
   async function retryPayment(method = 'invoice') {
     setRetrying(true);
@@ -158,6 +205,35 @@ export default function PaymentStatus() {
                   {linkCopied ? t('builder.copied') : t('builder.copy')}
                 </button>
               </div>
+            )}
+
+            {telegramLinked === false && (
+              <div style={{
+                background: '#EAF6FF', border: '1.5px solid #B3E0FF', borderRadius: 16,
+                padding: '14px 16px', marginBottom: 16, textAlign: 'left',
+              }}>
+                <p style={{ fontFamily: T.font, fontWeight: 700, fontSize: 14, color: '#1E6FA8', marginBottom: 4 }}>
+                  {t('payment.tgTitle')}
+                </p>
+                <p style={{ fontFamily: T.font, fontSize: 12.5, color: '#1E6FA8', opacity: 0.85, lineHeight: 1.45, marginBottom: 10 }}>
+                  {t('payment.tgText')}
+                </p>
+                <button
+                  type="button"
+                  onClick={connectTelegram}
+                  style={{
+                    background: '#229ED9', color: '#fff', border: 'none', borderRadius: 100,
+                    padding: '9px 18px', fontFamily: T.font, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  {t('payment.tgAction')}
+                </button>
+              </div>
+            )}
+            {telegramLinked === true && (
+              <p style={{ fontFamily: T.font, fontSize: 12, color: T.muted, opacity: 0.7, marginBottom: 14 }}>
+                {t('payment.tgDone')}
+              </p>
             )}
 
             {slug && (
