@@ -117,6 +117,7 @@ export default {
     copied: 'Скопировано ✓',
     openAsRecipient: 'Открыть и посмотреть, как видит получатель →',
     goToDashboard: 'Перейти в «Мои приглашения» →',
+    nameRequired: 'Впиши имя того, кого приглашаешь — оно будет и в приглашении, и в превью ссылки',
     publishGenericError: 'Не получилось сохранить приглашение',
     choosePaymentTitle: 'Как оплатить?',
     payWithClick: '💳 Оплатить через CLICK',

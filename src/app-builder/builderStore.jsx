@@ -15,7 +15,7 @@ export const DEFAULT_STEPS = [
   // конструктор (см. эффект APPLY_DEFAULT_MEDIA ниже). Раньше здесь были
   // зашитые в код URL, из-за которых на долю секунды мелькала СТАРАЯ
   // картинка перед тем, как подставлялась актуальная.
-  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: 'Имя', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
+  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: '', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
   { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!', mediaUrl: null } },
   // Дата и время — один шаг с двумя полями, получатель тоже видит их на одном экране
   { step_type: 'date', step_order: 2, enabled: true, configuration_json: { mode: 'recipient_picks', title: 'И так... Когда ты свободен?', buttonText: 'Выбери дату и время 💌' } },

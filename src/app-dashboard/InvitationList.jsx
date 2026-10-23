@@ -12,6 +12,7 @@ import { getTemplateTokens } from '../templates/registry.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
+import { inviteShareUrl } from '../lib/shareLink.js';
 
 const t = getTemplateTokens('romantic');
 
@@ -99,8 +100,10 @@ export default function InvitationList() {
     }
   }
 
-  function copyLink(slug) {
-    const url = `${window.location.origin}/i/${slug}`;
+  function copyLink(inv) {
+    const slug = inv.slug;
+    // С меткой версии превью — см. src/lib/shareLink.js
+    const url = inviteShareUrl(slug, inv.recipient_name, inv.template_key);
     navigator.clipboard?.writeText(url);
     setCopiedSlug(slug);
     setTimeout(() => setCopiedSlug((s) => (s === slug ? null : s)), 2000);
@@ -338,7 +341,7 @@ export default function InvitationList() {
                     {inv.status === 'published' && (
                       <button
                         type="button"
-                        onClick={() => copyLink(inv.slug)}
+                        onClick={() => copyLink(inv)}
                         className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
                         style={{
                           background: copiedSlug === inv.slug ? t.berry : t.berry + '15',

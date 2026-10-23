@@ -117,6 +117,7 @@ export default {
     copied: 'Copied ✓',
     openAsRecipient: 'Open it and see how the recipient sees it →',
     goToDashboard: 'Go to "My invitations" →',
+    nameRequired: "Enter the name of the person you're inviting — it shows in the invitation and in the link preview",
     publishGenericError: "Couldn't save the invitation",
     choosePaymentTitle: 'How would you like to pay?',
     payWithClick: '💳 Pay via CLICK',

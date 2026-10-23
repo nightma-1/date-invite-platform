@@ -28,6 +28,7 @@ import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
 import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
+import { inviteShareUrl, isPlaceholderName, normalizeName } from '../lib/shareLink.js';
 
 const STEP_COMPONENTS = {
   question: StepQuestion,
@@ -302,6 +303,16 @@ export default function BuilderShell() {
 
   async function handlePublish() {
     setPublishError(null);
+    // Без имени получателя превью ссылки в Telegram выйдет «Имя, это тебе».
+    // Возвращаем на шаг с именем, а не публикуем заглушку.
+    const questionName = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName;
+    if (!normalizeName(questionName) || isPlaceholderName(questionName)) {
+      const idx = orderedStepsForWizard.findIndex((s) => s.step_type === 'question');
+      if (idx >= 0) dispatch({ type: 'SET_ACTIVE_STEP', index: idx });
+      setPublishError(t('builder.nameRequired'));
+      track('publish_blocked_no_name');
+      return;
+    }
     track('builder_publish_click', { edit: Boolean(state.editInvitationId), template: state.templateId });
     // Редактирование опубликованного приглашения — платить повторно не
     // нужно, сразу сохраняем изменения, как и раньше.
@@ -445,7 +456,10 @@ export default function BuilderShell() {
   }
 
   if (publishResult) {
-    const shareUrl = `${window.location.origin}/i/${publishResult.slug}`;
+    // После правки имени ссылка получает новую метку ?v= — мессенджер
+    // заново загрузит превью (см. src/lib/shareLink.js)
+    const questionName = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName;
+    const shareUrl = inviteShareUrl(publishResult.slug, normalizeName(questionName), state.templateId);
     return (
       <div style={{
         minHeight: '100vh',

@@ -78,11 +78,26 @@ export function paletteFor(templateKey) {
   return PALETTES[templateKey] || PALETTES.romantic;
 }
 
+// Заглушки из поля имени, которые автор не заменил: на превью вместо
+// «Имя, это тебе» показываем просто «Это тебе». Тот же список — в
+// src/lib/shareLink.js.
+const PLACEHOLDER_NAMES = new Set(['имя', 'тебя', 'ism', 'name', 'имя получателя']);
+
 /** Имя в превью: без переводов строк, не длиннее 24 символов. */
 export function cleanName(name) {
   const s = String(name || '').replace(/\s+/g, ' ').trim();
-  if (!s) return '';
+  if (!s || PLACEHOLDER_NAMES.has(s.toLowerCase())) return '';
   return s.length > 24 ? `${s.slice(0, 23).trim()}…` : s;
+}
+
+/** Та же метка версии превью, что и в src/lib/shareLink.js. */
+export function previewVersion(name, templateKey) {
+  const input = `${String(name || '').replace(/\s+/g, ' ').trim()}|${templateKey || ''}`;
+  let hash = 5381;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash * 33) ^ input.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(36).slice(0, 5);
 }
 
 function blob(p, { top, left, right, bottom, size, opacity }) {
@@ -137,7 +152,7 @@ export function inviteCard({ name, templateKey }) {
       n
         ? h('div', { fontSize: nameSize, fontWeight: 700, color: p.ink, lineHeight: 1.1 }, `${n},`)
         : null,
-      h('div', { fontSize: n ? 60 : 76, fontWeight: 700, color: p.ink, lineHeight: 1.15, marginTop: 6 }, 'это тебе'),
+      h('div', { fontSize: n ? 60 : 96, fontWeight: 700, color: p.ink, lineHeight: 1.15, marginTop: 6 }, n ? 'это тебе' : 'Это тебе'),
       h('div', { fontSize: 30, color: p.muted, marginTop: 30, lineHeight: 1.4 },
         'Открой, когда будет минутка'),
     ),
