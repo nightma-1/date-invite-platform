@@ -229,7 +229,7 @@ export default function InvitationList() {
       if (ids.length > 0) {
         const { data: respData, error: respErr } = await supabase
           .from('responses')
-          .select('invitation_id, answered_yes, selected_date, selected_time, selections, created_at')
+          .select('invitation_id, answered_yes, selected_date, selected_time, selections, created_at, answer_count')
           .in('invitation_id', ids);
         if (respErr) {
           console.error('responses load failed', respErr);
@@ -346,7 +346,10 @@ export default function InvitationList() {
                     <p className="text-sm" style={{ color: t.berry, fontFamily: t.fontUI }}>
                       {response.answered_yes ? tr('dashboard.answeredYes') : tr('dashboard.answeredNo')}
                       {response.selected_date && ` · ${response.selected_date}`}
-                      {response.selected_time && ` ${response.selected_time}`}
+                      {response.selected_time && ` ${String(response.selected_time).slice(0, 5)}`}
+                      {response.answer_count > 1 && (
+                        <span style={{ opacity: 0.6 }}> · {tr('dashboard.answersCount', { count: response.answer_count })}</span>
+                      )}
                     </p>
                   ) : (
                     <p className="text-sm" style={{ color: t.ink, opacity: 0.4, fontFamily: t.fontUI }}>{tr('dashboard.noAnswerYet')}</p>

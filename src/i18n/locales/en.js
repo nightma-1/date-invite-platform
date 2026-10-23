@@ -304,6 +304,8 @@ export default {
     editLeftHours_one: 'Editable for {{count}} more hour',
     editLeftHours_other: 'Editable for {{count}} more hours',
     editClosed: 'Editing closed (3 days after sending)',
+    answersCount_one: '{{count}} answer',
+    answersCount_other: '{{count}} answers',
     choiceFallbackTitle: 'Choice',
   },
 
@@ -315,6 +317,12 @@ export default {
     noAnswer: 'No answer yet',
     answeredYes: 'Answered: Yes, see you there! ✨',
     answeredNo: 'Answered: No 💔',
+    historyTitle_one: 'Answer history · {{count}}',
+    historyTitle_other: 'Answer history · {{count}}',
+    answerNo: 'Answer {{n}}',
+    latest: 'latest',
+    noAttempts_one: 'tried to tap “No” {{count}} time',
+    noAttempts_other: 'tried to tap “No” {{count}} times',
     waitingForAnswer: "As soon as {{name}} answers, all the details will show up here.",
   },
 

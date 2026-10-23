@@ -304,6 +304,8 @@ export default {
     editLeftHours_one: 'Yana {{count}} soat tahrirlash mumkin',
     editLeftHours_other: 'Yana {{count}} soat tahrirlash mumkin',
     editClosed: 'Tahrirlash muddati tugagan (yuborilganidan 3 kun)',
+    answersCount_one: '{{count}} ta javob',
+    answersCount_other: '{{count}} ta javob',
     choiceFallbackTitle: 'Tanlov',
   },
 
@@ -315,6 +317,12 @@ export default {
     noAnswer: "Hali javob yo'q",
     answeredYes: "Javob berdi: Ha, ko'rishguncha! ✨",
     answeredNo: "Javob berdi: Yo'q 💔",
+    historyTitle_one: 'Javoblar tarixi · {{count}}',
+    historyTitle_other: 'Javoblar tarixi · {{count}}',
+    answerNo: '{{n}}-javob',
+    latest: 'oxirgisi',
+    noAttempts_one: '«Yo‘q»ni {{count}} marta bosishga urindi',
+    noAttempts_other: '«Yo‘q»ni {{count}} marta bosishga urindi',
     waitingForAnswer: "{{name}} javob berishi bilanoq, barcha tafsilotlar shu yerda paydo bo'ladi.",
   },
 

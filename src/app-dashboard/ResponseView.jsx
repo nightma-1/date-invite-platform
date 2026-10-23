@@ -65,6 +65,7 @@ export default function ResponseView() {
   const [state, setState] = useState({ status: 'loading' }); // loading | not_found | forbidden | ready
   const [invitation, setInvitation] = useState(null);
   const [response, setResponse] = useState(null);
+  const [history, setHistory] = useState([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -102,6 +103,17 @@ export default function ResponseView() {
 
       if (cancelled) return;
       if (respErr) console.error('response view: response load failed', respErr);
+
+      // Все ответы по порядку (миграция response_history). Последний ответ
+      // уже показан крупно сверху, здесь — как менялся выбор.
+      const { data: hist, error: histErr } = await supabase
+        .from('response_history')
+        .select('answer_no, answered_yes, selected_date, selected_time, selections, no_attempts, created_at')
+        .eq('invitation_id', invitationId)
+        .order('answer_no', { ascending: false });
+      if (cancelled) return;
+      if (histErr) console.error('response view: history load failed', histErr);
+      setHistory(hist || []);
 
       setInvitation(inv);
       setResponse(resp || null);
@@ -207,6 +219,54 @@ export default function ResponseView() {
             )}
           </div>
         </TicketCard>
+
+        {history.length > 1 && (
+          <div style={{ marginTop: 22 }}>
+            <p style={{ fontFamily: tokens.fontUI, color: tokens.ink, opacity: 0.55, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 10 }}>
+              {t('responseView.historyTitle', { count: history.length })}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {history.map((h, idx) => {
+                const hWhen = formatDateTime(h.selected_date, h.selected_time, i18n.resolvedLanguage, t('responseView.dateTimeJoin'));
+                const hChoices = decodeSelections(invitation.invitation_steps, h.selections, t('dashboard.choiceFallbackTitle'))
+                  .flatMap((c) => c.options.map((o) => `${o.icon} ${o.label}`));
+                const answeredAt = new Date(h.created_at).toLocaleString(DATE_LOCALES[i18n.resolvedLanguage] || 'ru-RU', {
+                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                });
+                return (
+                  <div
+                    key={h.answer_no}
+                    style={{
+                      background: tokens.card || '#fff', borderRadius: 14, padding: '12px 14px',
+                      border: `1px solid ${tokens.ink}${idx === 0 ? '30' : '12'}`,
+                      fontFamily: tokens.fontUI, color: tokens.ink,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13 }}>
+                        {t('responseView.answerNo', { n: h.answer_no })}
+                        {idx === 0 && <span style={{ color: tokens.berry, fontWeight: 600 }}> · {t('responseView.latest')}</span>}
+                      </span>
+                      <span style={{ fontSize: 12, opacity: 0.5 }}>{answeredAt}</span>
+                    </div>
+                    <p style={{ fontSize: 13, opacity: 0.8, lineHeight: 1.5 }}>
+                      {[
+                        h.answered_yes ? '❤️' : '💔',
+                        hWhen ? `📅 ${hWhen}` : null,
+                        hChoices.length ? hChoices.join(', ') : null,
+                      ].filter(Boolean).join(' · ')}
+                    </p>
+                    {h.no_attempts > 0 && (
+                      <p style={{ fontSize: 12, opacity: 0.5, marginTop: 2 }}>
+                        {t('responseView.noAttempts', { count: h.no_attempts })}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

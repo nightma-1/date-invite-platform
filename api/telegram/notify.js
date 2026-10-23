@@ -100,7 +100,7 @@ function formatAnswered(invitation, extra) {
   const lines = extra?.answered_yes === false
     ? [`${name} ${verb(g, 'ответил')} на приглашение.`, '', 'Ответ: нет.']
     : Number(extra?.answer_count) > 1
-      ? [`❤️ ${name} ${verb(g, 'ответил')} ещё раз — снова «да»!`, '']
+      ? [`❤️ ${name} ${verb(g, 'ответил')} ещё раз — снова «да»! (ответ №${Number(extra.answer_count)})`, '']
       : [`❤️ ${name} ${verb(g, 'сказал')} «да»!`, ''];
 
   if (extra?.selected_date) lines.push(`📅 Дата: ${escapeHtml(extra.selected_date)}`);
