@@ -45,8 +45,67 @@ function decodeSelections(inv, response, fallbackTitle) {
     .filter(Boolean);
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * Жизнь приглашения одной-двумя строками: когда отправили, сколько раз
+ * открыли и сколько ещё работает ссылка. Срок — 7 дней с публикации
+ * (триггер set_publication_deadlines), после этого ссылка не открывается.
+ */
+function InvitationTimeline({ inv, now, tr, tokens, lang }) {
+  if (inv.status !== 'published' && inv.status !== 'expired') return null;
+  const publishedAt = inv.published_at ? new Date(inv.published_at).getTime() : null;
+  const expiresAt = inv.expires_at ? new Date(inv.expires_at).getTime() : null;
+
+  const parts = [];
+  if (publishedAt) {
+    const days = Math.floor((now - publishedAt) / DAY_MS);
+    parts.push(days < 1 ? tr('dashboard.sentToday') : tr('dashboard.sentDaysAgo', { count: days }));
+  }
+  const views = inv.view_count || 0;
+  parts.push(views > 0 ? tr('dashboard.views', { count: views }) : tr('dashboard.viewsNone'));
+
+  let expiryText = null;
+  let urgent = false;
+  if (expiresAt) {
+    const left = expiresAt - now;
+    if (inv.status === 'expired' || left <= 0) {
+      const date = new Date(expiresAt).toLocaleDateString(lang, { day: 'numeric', month: 'long' });
+      expiryText = tr('dashboard.expiredOn', { date });
+    } else if (left < HOUR_MS) {
+      expiryText = tr('dashboard.expiresSoon');
+      urgent = true;
+    } else if (left < DAY_MS) {
+      expiryText = tr('dashboard.expiresInHours', { count: Math.floor(left / HOUR_MS) });
+      urgent = true;
+    } else {
+      // «ещё 6 дней», даже если осталось 6 дней 23 часа — округляем вниз,
+      // чтобы не обещать лишнего
+      expiryText = tr('dashboard.expiresInDays', { count: Math.floor(left / DAY_MS) });
+    }
+  }
+
+  return (
+    <div className="mb-2" style={{ fontFamily: tokens.fontUI }}>
+      <p className="text-xs" style={{ color: tokens.ink, opacity: 0.55 }}>{parts.join(' · ')}</p>
+      {expiryText && (
+        <p className="text-xs" style={{ color: urgent ? tokens.berry : tokens.ink, opacity: urgent ? 1 : 0.55, fontWeight: urgent ? 600 : 400 }}>
+          ⏳ {expiryText}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function InvitationList() {
-  const { t: tr } = useTranslation();
+  const { t: tr, i18n } = useTranslation();
+  // Тикает раз в минуту, чтобы «осталось 3 часа» не застывало на открытой вкладке
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const STATUS_LABELS = tr('dashboard.status', { returnObjects: true });
   const [session, setSession] = useState(undefined);
   const [invitations, setInvitations] = useState([]);
@@ -268,7 +327,8 @@ export default function InvitationList() {
                       {STATUS_LABELS[inv.status] || inv.status}
                     </span>
                   </div>
-                  <p className="mb-2 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>/i/{inv.slug}</p>
+                  <p className="mb-1 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>/i/{inv.slug}</p>
+                  <InvitationTimeline inv={inv} now={now} tr={tr} tokens={t} lang={i18n.language} />
                   {response ? (
                     <p className="text-sm" style={{ color: t.berry, fontFamily: t.fontUI }}>
                       {response.answered_yes ? tr('dashboard.answeredYes') : tr('dashboard.answeredNo')}

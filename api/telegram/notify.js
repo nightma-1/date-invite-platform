@@ -131,6 +131,20 @@ function formatViewed(invitation, extra) {
   return `👀 ${name} снова ${verb(g, 'открыл')} приглашение — уже ${ordinal(count)}.`;
 }
 
+// Напоминание за сутки до конца срока, если ответа ещё нет. Шлёт
+// планировщик в базе (send_expiry_reminders, раз в час), а не триггер.
+function formatExpiring(invitation, extra) {
+  const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
+  let when = 'через сутки';
+  if (extra?.expires_at) {
+    const time = new Date(extra.expires_at).toLocaleTimeString('ru-RU', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent',
+    });
+    when = `завтра в ${time}`;
+  }
+  return `⏳ Приглашение для ${name} перестанет открываться ${when}. Ответа пока нет.`;
+}
+
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
@@ -175,6 +189,11 @@ export default async function handler(req, res) {
     result = await sendMessage(chatId, formatAnswered(invitation, extra), {
       text: 'Открыть ответ',
       url: appUrl(`/dashboard/response/${invitation.id}`),
+    });
+  } else if (event === 'expiring') {
+    result = await sendMessage(chatId, formatExpiring(invitation, extra), {
+      text: 'Открыть кабинет',
+      url: appUrl('/dashboard'),
     });
   } else {
     result = await sendMessage(chatId, formatViewed(invitation, extra));
