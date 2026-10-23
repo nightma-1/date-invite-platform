@@ -5,6 +5,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
+import { isEditLocked } from '../lib/editWindow.js';
 import { listDefaultGifs } from '../lib/mediaLibrary.js';
 
 const STORAGE_PREFIX = 'date-invite-draft:';
@@ -106,6 +107,7 @@ async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplate
     recipientGender: inv.recipient_gender || null,
     editInvitationId: invitationId,
     slug: inv.slug,
+    editLocked: isEditLocked(inv),
     loading: false,
   };
 }
