@@ -56,7 +56,7 @@ export async function updateInvitationDraft(state, userId, invitationId) {
   const { error: invError } = await supabase
     .from('invitations')
     .update({
-      recipient_name: questionConfig.recipientName || 'Тебя',
+      recipient_name: String(questionConfig.recipientName || '').replace(/\s+/g, ' ').trim() || 'Тебя',
       recipient_gender: state.recipientGender || null,
       mood: state.mood,
       template_key: state.templateId,

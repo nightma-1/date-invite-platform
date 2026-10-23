@@ -117,6 +117,7 @@ export default {
     copied: 'Nusxalandi ✓',
     openAsRecipient: "Ochib, qabul qiluvchi qanday ko'rishini tekshiring →",
     goToDashboard: "«Mening taklifnomalarim»ga o'tish →",
+    nameRequired: 'Taklif qilayotgan kishingizning ismini yozing — u taklifnomada ham, havola ko‘rinishida ham chiqadi',
     publishGenericError: "Taklifnomani saqlab bo'lmadi",
     choosePaymentTitle: "Qanday to'lamoqchisiz?",
     payWithClick: "💳 CLICK orqali to'lash",

@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
+import { inviteShareUrl } from '../lib/shareLink.js';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 
@@ -25,6 +26,7 @@ export default function PaymentStatus() {
   const { invitationId } = useParams();
   const [status, setStatus] = useState('checking'); // checking | published | timeout | notfound
   const [slug, setSlug] = useState(null);
+  const [previewInfo, setPreviewInfo] = useState({ name: '', templateKey: '' });
   const [linkCopied, setLinkCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
   // null — ещё не знаем (не показываем ничего, чтобы блок не мигал)
@@ -38,7 +40,7 @@ export default function PaymentStatus() {
       attempt += 1;
       const { data, error } = await supabase
         .from('invitations')
-        .select('status, slug')
+        .select('status, slug, recipient_name, template_key')
         .eq('id', invitationId)
         .maybeSingle();
 
@@ -53,6 +55,7 @@ export default function PaymentStatus() {
 
       if (data.status === 'published') {
         setSlug(data.slug);
+        setPreviewInfo({ name: data.recipient_name, templateKey: data.template_key });
         setStatus('published');
         // Человек вернулся с оплаты и увидел опубликованное приглашение —
         // это и есть «успешно дошёл до конца» в воронке.
@@ -141,7 +144,7 @@ export default function PaymentStatus() {
     setRetrying(false);
   }
 
-  const shareUrl = slug ? `${window.location.origin}/i/${slug}` : null;
+  const shareUrl = slug ? inviteShareUrl(slug, previewInfo.name, previewInfo.templateKey) : null;
 
   return (
     <div style={{

@@ -11,7 +11,7 @@
  */
 
 import { fetchPublicInvitation } from '../_lib/publicInvitation.js';
-import { cleanName } from '../_lib/ogCards.js';
+import { cleanName, previewVersion } from '../_lib/ogCards.js';
 
 export const config = { runtime: 'edge' };
 
@@ -50,17 +50,17 @@ export default async function handler(request) {
   const reqUrl = new URL(request.url);
   const origin = reqUrl.origin;
   const slug = reqUrl.searchParams.get('slug') || '';
-  const url = `${origin}/i/${encodeURIComponent(slug)}`;
-
   const inv = await fetchPublicInvitation(slug);
+  const v = inv ? previewVersion(inv.recipient_name, inv.template_key) : '';
+  const url = `${origin}/i/${encodeURIComponent(slug)}${v ? `?v=${v}` : ''}`;
   const name = inv ? cleanName(inv.recipient_name) : '';
 
   const html = inv
     ? page({
       title: name ? `${name}, это тебе` : 'Это тебе',
       description: 'Открой, когда будет минутка.',
-      // v= меняется при правке приглашения — мессенджер не покажет старое имя
-      image: `${origin}/api/og/image?slug=${encodeURIComponent(slug)}&v=${encodeURIComponent(Date.parse(inv.updated_at) || 0)}`,
+      // v= меняется вместе с именем/шаблоном — кэш картинки не покажет старое имя
+      image: `${origin}/api/og/image?slug=${encodeURIComponent(slug)}&v=${v}`,
       url,
     })
     : page({
