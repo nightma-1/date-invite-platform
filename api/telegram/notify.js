@@ -28,17 +28,34 @@ async function sendMessage(chatId, text, button) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    console.error('telegram/notify: sendMessage failed', res.status, await res.text());
+  if (res.ok) return { ok: true };
+
+  const description = (await res.text()).slice(0, 300);
+  console.error('telegram/notify: sendMessage failed', res.status, description);
+
+  // Кнопка — приятное дополнение, а не повод потерять уведомление:
+  // если Telegram отверг сообщение с кнопкой, шлём то же самое без неё.
+  if (body.reply_markup) {
+    const retry = await sendMessage(chatId, text, null);
+    return { ...retry, firstError: description };
   }
+  return { ok: false, status: res.status, description };
 }
 
 // Род глагола по полу получателя, который автор выбрал в конструкторе.
-// Не выбрал — нейтральное «(а)», как было раньше.
+// Формы явные: «пытался → пыталась» склейкой окончаний не получить.
+const VERBS = {
+  открыл: ['открыл', 'открыла', 'открыл(а)'],
+  ответил: ['ответил', 'ответила', 'ответил(а)'],
+  сказал: ['сказал', 'сказала', 'сказал(а)'],
+  попробовал: ['попробовал', 'попробовала', 'попробовал(а)'],
+  пытался: ['пытался', 'пыталась', 'пытался(-ась)'],
+};
+
 function verb(gender, base) {
-  if (gender === 'female') return `${base}а`;
-  if (gender === 'male') return base;
-  return `${base}(а)`;
+  const forms = VERBS[base];
+  if (!forms) return base;
+  return gender === 'male' ? forms[0] : gender === 'female' ? forms[1] : forms[2];
 }
 
 function appUrl(path) {
@@ -82,7 +99,9 @@ function formatAnswered(invitation, extra) {
   const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
   const lines = extra?.answered_yes === false
     ? [`${name} ${verb(g, 'ответил')} на приглашение.`, '', 'Ответ: нет.']
-    : [`❤️ ${name} ${verb(g, 'сказал')} «да»!`, ''];
+    : Number(extra?.answer_count) > 1
+      ? [`❤️ ${name} ${verb(g, 'ответил')} ещё раз — снова «да»!`, '']
+      : [`❤️ ${name} ${verb(g, 'сказал')} «да»!`, ''];
 
   if (extra?.selected_date) lines.push(`📅 Дата: ${escapeHtml(extra.selected_date)}`);
   if (extra?.selected_time) lines.push(`🕒 Время: ${escapeHtml(String(extra.selected_time).slice(0, 5))}`);
@@ -151,14 +170,17 @@ export default async function handler(req, res) {
 
   // Кнопка ведёт прямо на ответ в кабинете — повод вернуться на сайт.
   // На просмотр кнопку не ставим: там нечего открывать, кроме ожидания.
+  let result;
   if (event === 'answered') {
-    await sendMessage(chatId, formatAnswered(invitation, extra), {
+    result = await sendMessage(chatId, formatAnswered(invitation, extra), {
       text: 'Открыть ответ',
       url: appUrl(`/dashboard/response/${invitation.id}`),
     });
   } else {
-    await sendMessage(chatId, formatViewed(invitation, extra));
+    result = await sendMessage(chatId, formatViewed(invitation, extra));
   }
 
-  return res.status(200).json({ ok: true });
+  // Ответ уходит в pg_net и сохраняется в net._http_response — так причину
+  // отказа Telegram видно прямо в базе, даже когда логи функции пусты.
+  return res.status(200).json(result);
 }
