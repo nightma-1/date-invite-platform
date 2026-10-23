@@ -7,10 +7,23 @@
  */
 
 import { supabase } from '../lib/supabaseClient.js';
+import i18n from '../i18n/index.js';
+import { isEditLocked } from '../lib/editWindow.js';
 import { uploadMedia } from '../lib/uploadMedia.js';
 import { getPendingMedia, clearPendingMedia } from './pendingMedia.js';
 
 export async function updateInvitationDraft(state, userId, invitationId) {
+  // Проверяем срок правки ДО загрузки картинок и записи: база всё равно
+  // откажет, но так не останется наполовину сохранённых изменений.
+  const { data: current } = await supabase
+    .from('invitations')
+    .select('status, edit_until')
+    .eq('id', invitationId)
+    .maybeSingle();
+  if (isEditLocked(current)) {
+    throw new Error(i18n.t('builder.editLockedText'));
+  }
+
   const questionConfig = state.steps.find((s) => s.step_type === 'question').configuration_json;
   const reactionConfig = state.steps.find((s) => s.step_type === 'reaction').configuration_json;
   const dateConfig = state.steps.find((s) => s.step_type === 'date').configuration_json;
@@ -64,7 +77,13 @@ export async function updateInvitationDraft(state, userId, invitationId) {
     })
     .eq('id', invitationId)
     .eq('user_id', userId);
-  if (invError) throw invError;
+  if (invError) {
+    // Срок правки вышел, пока вкладка была открыта — см. миграцию edit_window_lock
+    if (String(invError.message || '').includes('edit_window_closed')) {
+      throw new Error(i18n.t('builder.editLockedText'));
+    }
+    throw invError;
+  }
 
   const { error: contentError } = await supabase
     .from('invitation_content')

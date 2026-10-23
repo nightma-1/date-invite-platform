@@ -193,6 +193,31 @@ export default function BuilderShell() {
     );
   }
 
+  // Срок правки (3 дня с публикации) вышел — база всё равно не даст
+  // сохранить, поэтому не пускаем в конструктор и объясняем почему.
+  if (state.editInvitationId && state.editLocked) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: 360, fontFamily: T.font }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🔒</div>
+          <h1 style={{ fontWeight: 700, fontSize: 20, color: T.darkPurple, marginBottom: 8 }}>
+            {t('builder.editLockedTitle')}
+          </h1>
+          <p style={{ color: T.muted, fontSize: 13, lineHeight: 1.5, marginBottom: 20 }}>
+            {t('builder.editLockedText')}
+          </p>
+          <a href="/dashboard" style={{ color: T.pink, fontSize: 14, fontWeight: 700 }}>
+            {t('builder.goToDashboard')}
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   // Gender selection screen
   if (!state.recipientGender) {
     return (

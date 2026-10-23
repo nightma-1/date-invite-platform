@@ -12,6 +12,7 @@ import { getTemplateTokens } from '../templates/registry.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
+import { isEditLocked } from '../lib/editWindow.js';
 import { inviteShareUrl } from '../lib/shareLink.js';
 
 const t = getTemplateTokens('romantic');
@@ -86,9 +87,21 @@ function InvitationTimeline({ inv, now, tr, tokens, lang }) {
     }
   }
 
+  // Срок правки: 3 дня с публикации (edit_until)
+  let editText = null;
+  if (inv.status === 'published' && inv.edit_until) {
+    const editLeft = new Date(inv.edit_until).getTime() - now;
+    if (editLeft <= 0) editText = tr('dashboard.editClosed');
+    else if (editLeft < DAY_MS) editText = tr('dashboard.editLeftHours', { count: Math.max(1, Math.floor(editLeft / HOUR_MS)) });
+    else editText = tr('dashboard.editLeftDays', { count: Math.floor(editLeft / DAY_MS) });
+  }
+
   return (
     <div className="mb-2" style={{ fontFamily: tokens.fontUI }}>
       <p className="text-xs" style={{ color: tokens.ink, opacity: 0.55 }}>{parts.join(' · ')}</p>
+      {editText && (
+        <p className="text-xs" style={{ color: tokens.ink, opacity: 0.55 }}>✏️ {editText}</p>
+      )}
       {expiryText && (
         <p className="text-xs" style={{ color: urgent ? tokens.berry : tokens.ink, opacity: urgent ? 1 : 0.55, fontWeight: urgent ? 600 : 400 }}>
           ⏳ {expiryText}
@@ -391,6 +404,7 @@ export default function InvitationList() {
                         </button>
                       </>
                     )}
+                    {!isEditLocked(inv, now) && (
                     <Link
                       to={`/builder/edit/${inv.id}`}
                       className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline"
@@ -398,6 +412,7 @@ export default function InvitationList() {
                     >
                       {tr('dashboard.edit')}
                     </Link>
+                    )}
                     {inv.status === 'published' && (
                       <button
                         type="button"
