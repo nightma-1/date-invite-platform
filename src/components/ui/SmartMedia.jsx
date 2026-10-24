@@ -18,6 +18,7 @@
  * У .tgs вдобавок пустой file.type, так что туда передаём ещё и имя файла.
  */
 
+import { useState } from 'react';
 import TgsMedia from './TgsMedia.jsx';
 
 const VIDEO_EXTENSION_RE = /\.(webm|mp4|mov|m4v)(\?.*)?$/i;
@@ -46,9 +47,16 @@ export function isTgsMediaUrl(url) {
 }
 
 export default function SmartMedia({ src, alt = '', style, className, objectFit, objectPosition, ...rest }) {
+  // Плавное появление, когда файл реально готов, вместо «впрыгивания»
+  // наполовину загруженной картинки. Ключ — src: новая картинка снова
+  // появляется плавно.
+  const [loadedSrc, setLoadedSrc] = useState(null);
   if (!src) return null;
 
-  const mediaStyle = { ...style, ...(objectFit ? { objectFit } : null), ...(objectPosition ? { objectPosition } : null) };
+  const visible = loadedSrc === src;
+  const fade = { opacity: visible ? 1 : 0, transition: 'opacity .3s ease' };
+  const mediaStyle = { ...style, ...(objectFit ? { objectFit } : null), ...(objectPosition ? { objectPosition } : null), ...fade };
+  const markLoaded = () => setLoadedSrc(src);
 
   if (isTgsMediaUrl(src)) {
     return <TgsMedia src={src} style={style} className={className} objectFit={objectFit} {...rest} />;
@@ -64,10 +72,26 @@ export default function SmartMedia({ src, alt = '', style, className, objectFit,
         loop
         muted
         playsInline
+        onLoadedData={markLoaded}
+        onError={markLoaded}
         {...rest}
       />
     );
   }
 
-  return <img src={src} alt={alt} style={mediaStyle} className={className} {...rest} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      style={mediaStyle}
+      className={className}
+      decoding="async"
+      // Картинка уже в кэше браузера — onLoad может прийти раньше, чем
+      // React повесит обработчик; ref ловит этот случай.
+      ref={(el) => { if (el && el.complete && el.naturalWidth > 0 && loadedSrc !== src) markLoaded(); }}
+      onLoad={markLoaded}
+      onError={markLoaded}
+      {...rest}
+    />
+  );
 }

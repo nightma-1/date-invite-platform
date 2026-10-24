@@ -10,8 +10,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import SmartMedia from '../ui/SmartMedia.jsx';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
+import { useTranslation } from 'react-i18next';
 
 export default function DateTimeScreen({ title, buttonText, mode = 'recipient_picks', fixedDate, fixedTime, mediaUrl, tokens, onContinue, cardShape = 'classic' }) {
+  const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState(fixedDate || '');
   const [selectedTime, setSelectedTime] = useState(fixedTime || '');
   const canContinue = mode === 'creator_sets' ? true : Boolean(selectedDate) && Boolean(selectedTime);
@@ -39,12 +41,12 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
         <div style={{ fontSize: 40, marginBottom: 12 }}>🗓️</div>
       ))}
       <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-        {title || 'Когда встретимся?'}
+        {title || t('screens.dateTitle')}
       </h1>
 
       {mode === 'creator_sets' ? (
         <p style={{ color: tokens.berry, fontFamily: tokens.fontUI, fontSize: 20, fontWeight: 700, margin: '16px 0 24px' }}>
-          {fixedDate || 'Дата'}{fixedDate && fixedTime ? ' · ' : ''}{fixedTime || (fixedDate ? '' : 'Время пока не выбраны')}
+          {fixedDate || t('screens.dateLabel')}{fixedDate && fixedTime ? ' · ' : ''}{fixedTime || (fixedDate ? '' : t('screens.dateNotChosen'))}
         </p>
       ) : (
         <div style={{ display: 'flex', gap: 10, margin: '16px 0 24px' }}>
@@ -95,7 +97,7 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
           boxShadow: canContinue ? `0 14px 30px -8px ${tokens.berry}60` : 'none',
         }}
       >
-        {buttonText || 'Отлично →'}
+        {buttonText || t('screens.dateContinue')}
       </motion.button>
     </QuestionCardFrame>
     </motion.div>

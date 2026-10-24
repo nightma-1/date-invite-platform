@@ -15,7 +15,7 @@ import FinalScreen from '../components/screens/FinalScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
-import { listDefaultGifs } from '../lib/mediaLibrary.js';
+import { listDefaultGifs, getCachedDefaultGifs, preloadMedia } from '../lib/mediaLibrary.js';
 import { track } from '../lib/analytics.js';
 
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
@@ -33,17 +33,35 @@ function LandingPreviewDemo() {
   // Пусто, пока не загрузится актуальный дефолт из админки — раньше здесь
   // стояла зашитая в код СТАРАЯ картинка, которая на долю секунды мелькала
   // перед тем, как подставлялась текущая.
-  const [stepMedia, setStepMedia] = useState({});
+  //
+  // Чтобы карточка не стояла пустой, а гифка не «впрыгивала» через секунду:
+  //   1) адреса берём из кэша прошлого захода — повторный визит мгновенный;
+  //   2) все гифки сценария грузим заранее, а не на каждом шаге;
+  //   3) карточку плавно показываем, когда готова гифка первого экрана
+  //      (но не дольше 1.5 с — медленная сеть не должна прятать демо).
+  const [stepMedia, setStepMedia] = useState(() => getCachedDefaultGifs() || {});
+  const [mediaReady, setMediaReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    const reveal = () => { if (!cancelled) setMediaReady(true); };
+    const fallback = setTimeout(reveal, 1500);
+
+    const cached = getCachedDefaultGifs();
+    if (cached?.question) preloadMedia(cached.question).then(reveal);
+
     listDefaultGifs()
       .then((defaults) => {
         if (cancelled || !defaults) return;
-        setStepMedia((prev) => ({ ...prev, ...defaults }));
+        Object.values(defaults).forEach((url) => { preloadMedia(url); });
+        preloadMedia(defaults.question).then(() => {
+          if (cancelled) return;
+          setStepMedia((prev) => ({ ...prev, ...defaults }));
+          reveal();
+        });
       })
-      .catch(() => {}); // тихо — просто без картинки на превью
-    return () => { cancelled = true; };
+      .catch(reveal); // тихо — просто без картинки на превью
+    return () => { cancelled = true; clearTimeout(fallback); };
   }, []);
 
   const STEP_COUNT = 5;
@@ -87,6 +105,11 @@ function LandingPreviewDemo() {
         ))}
       </div>
 
+      <motion.div
+        initial={false}
+        animate={{ opacity: mediaReady ? 1 : 0, y: mediaReady ? 0 : 8 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      >
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
@@ -150,6 +173,7 @@ function LandingPreviewDemo() {
           )}
         </motion.div>
       </AnimatePresence>
+      </motion.div>
 
       <p style={{ textAlign: 'center', fontSize: 12, color: T.muted, marginTop: 12 }}>
         {step === 0 && !submitted ? t('landing.previewHint') : null}

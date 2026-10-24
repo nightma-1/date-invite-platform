@@ -2,10 +2,12 @@
  * © 2026 Senti. Все права защищены.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
 export default function RunawayButton({ phrases, containerRef, style = {}, onDodge }) {
+  const { t } = useTranslation();
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
@@ -34,7 +36,7 @@ export default function RunawayButton({ phrases, containerRef, style = {}, onDod
     }
   }
 
-  const phraseList = phrases || ['Нет', 'Подумаю', 'Может быть', 'Неееет', 'Не поймаешь!'];
+  const phraseList = phrases || t('questionScreen.noPhrases', { returnObjects: true });
 
   return (
     <motion.button
@@ -52,7 +54,7 @@ export default function RunawayButton({ phrases, containerRef, style = {}, onDod
         top: pos ? pos.y : 'auto',
         userSelect: 'none',
       }}
-      aria-label="Кнопка «Нет» — она убегает"
+      aria-label={t('screens.noButtonAria')}
     >
       {phraseList[phraseIndex]}
     </motion.button>
