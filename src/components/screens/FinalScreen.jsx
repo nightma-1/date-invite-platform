@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import SmartMedia from '../ui/SmartMedia.jsx';
 import { track } from '../../lib/analytics.js';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
+import { useTranslation } from 'react-i18next';
 
 const FALL_HEART_ICONS = ['❤️', '💗', '✨'];
 
@@ -60,6 +61,7 @@ function FallingHearts() {
  * В превью конструктора не показываем: там смотрит автор, а не получатель.
  */
 function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
+  const { t } = useTranslation();
   const [sharing, setSharing] = useState(false);
   const [hint, setHint] = useState(null);
 
@@ -87,11 +89,11 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(href), 4000);
-        setHint('Картинка сохранена — её можно выложить в сторис.');
+        setHint(t('screens.storySaved'));
       }
     } catch (e) {
       // Закрыла окно «Поделиться» — это не ошибка
-      if (e?.name !== 'AbortError') setHint('Не получилось подготовить картинку. Попробуй ещё раз.');
+      if (e?.name !== 'AbortError') setHint(t('screens.storyFailed'));
     } finally {
       setSharing(false);
     }
@@ -115,10 +117,10 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
           cursor: sharing ? 'default' : 'pointer', opacity: sharing ? 0.6 : 1,
         }}
       >
-        {sharing ? 'Готовим картинку…' : 'Поделиться в сторис'}
+        {sharing ? t('screens.storyPreparing') : t('screens.storyShare')}
       </button>
       <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 12, opacity: 0.65, marginTop: 8 }}>
-        {hint || 'Без имён — только конверт и кнопка «Нет»'}
+        {hint || t('screens.storyHint')}
       </p>
 
       <a
@@ -132,7 +134,7 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
           textDecoration: 'underline', textUnderlineOffset: 3,
         }}
       >
-        Тоже хочешь кого-то позвать? Собери своё →
+        {t('screens.makeYourOwn')}
       </a>
     </motion.div>
   );
@@ -143,11 +145,12 @@ export default function FinalScreen({
   // Для экрана после ответа (см. AfterAnswer). isPreview — автор смотрит черновик.
   templateKey, noAttempts = 0, slug, isPreview = false,
 }) {
+  const { t } = useTranslation();
   const [localError, setLocalError] = useState(null);
 
   async function handleSubmit() {
     setLocalError(null);
-    try { await onSubmit(); } catch { setLocalError('Не получилось отправить. Попробуй ещё раз.'); }
+    try { await onSubmit(); } catch { setLocalError(t('screens.submitFailed')); }
   }
 
   return (
@@ -167,10 +170,10 @@ export default function FinalScreen({
           <FallingHearts />
           <div style={{ fontSize: 56, marginBottom: 12 }}>🎉</div>
           <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-            Ответ отправлен!
+            {t('screens.sentTitle')}
           </h1>
           <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, opacity: 0.8 }}>
-            Твой ответ уже доставлен. Ждите встречи ❤️
+            {t('screens.sentText')}
           </p>
           {!isPreview && (
             <AfterAnswer tokens={tokens} templateKey={templateKey} noAttempts={noAttempts} slug={slug} />
@@ -189,10 +192,10 @@ export default function FinalScreen({
             <div style={{ fontSize: 48, marginBottom: 12 }}>💌</div>
           ))}
           <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-            {title || 'Ну всё, теперь пути назад нет 😄❤️'}
+            {title || t('screens.finalTitle')}
           </h1>
           <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, lineHeight: 1.6, marginBottom: 16, opacity: 0.85 }}>
-            {description || 'Наше свидание официально запланировано!'}
+            {description || t('screens.finalDescription')}
           </p>
 
           {summary?.length > 0 && (
@@ -223,7 +226,7 @@ export default function FinalScreen({
               boxShadow: submitting ? 'none' : `0 14px 30px -8px ${tokens.berry}60`,
             }}
           >
-            {submitting ? 'Отправляем…' : 'Отправить подтверждение 💌'}
+            {submitting ? t('screens.submitting') : t('screens.submit')}
           </motion.button>
 
           {localError && (

@@ -160,10 +160,10 @@ export default function QuestionScreen({
               )}
 
               <motion.h1 variants={itemVariants} style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 27, fontWeight: 700, marginBottom: 8, letterSpacing: '-0.01em' }}>
-                {recipientName || 'Привет'}
+                {recipientName || t('screens.hello')}
               </motion.h1>
               <motion.p variants={itemVariants} style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 16, lineHeight: 1.55, marginBottom: 32, opacity: 0.9, maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
-                {questionText || 'Пойдёшь со мной на свидание?'}
+                {questionText || t('screens.questionDefault')}
               </motion.p>
 
               <motion.div

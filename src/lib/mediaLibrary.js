@@ -69,6 +69,59 @@ export const DEFAULT_GIF_STEP_COLUMNS = {
 
 /** Текущие дефолтные гифки по шагам — { question: url, reaction: url, date: url }.
  *  Используется конструктором при создании нового черновика и демо на главной. */
+const DEFAULT_GIFS_CACHE_KEY = 'senti_default_gifs_v1';
+
+/**
+ * Адреса дефолтных гифок с прошлого захода — чтобы превью на главной
+ * показывало картинку сразу, а не ждало ответа базы. Свежий список всё
+ * равно запрашивается и, если поменялся в админке, подменяет этот.
+ */
+export function getCachedDefaultGifs() {
+  try {
+    const raw = window.localStorage.getItem(DEFAULT_GIFS_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheDefaultGifs(result) {
+  try {
+    window.localStorage.setItem(DEFAULT_GIFS_CACHE_KEY, JSON.stringify(result));
+  } catch { /* приватный режим — просто без кэша */ }
+}
+
+/**
+ * Начать загрузку картинки/видео заранее. Промис резолвится, когда файл
+ * готов к показу (или не загрузился — тогда тоже, чтобы никого не держать).
+ */
+export function preloadMedia(url) {
+  return new Promise((resolve) => {
+    if (!url || typeof window === 'undefined') { resolve(); return; }
+    if (/\.(webm|mp4|mov|m4v)(\?.*)?$/i.test(url)) {
+      const v = document.createElement('video');
+      v.preload = 'auto';
+      v.muted = true;
+      v.oncanplaythrough = () => resolve();
+      v.onloadeddata = () => resolve();
+      v.onerror = () => resolve();
+      v.src = url;
+      v.load();
+      return;
+    }
+    if (/\.tgs(\?.*)?$/i.test(url)) {
+      fetch(url).then(() => resolve(), () => resolve());
+      return;
+    }
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+    img.src = url;
+  });
+}
+
 export async function listDefaultGifs() {
   const columns = Object.values(DEFAULT_GIF_STEP_COLUMNS).join(', ');
   const { data, error } = await supabase
@@ -84,6 +137,7 @@ export async function listDefaultGifs() {
       if (row[column]) result[stepType] = row.url;
     }
   }
+  cacheDefaultGifs(result);
   return result;
 }
 
