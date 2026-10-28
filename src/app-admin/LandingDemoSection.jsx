@@ -11,6 +11,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import i18n from '../i18n/index.js';
+import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import {
   LANDING_DEMO_KEY,
@@ -68,6 +69,8 @@ export default function LandingDemoSection() {
   const [form, setForm] = useState(null);
   const [savedForm, setSavedForm] = useState(null);
   const [status, setStatus] = useState(null); // null | 'saving' | 'saved' | { error }
+  const [translating, setTranslating] = useState(false);
+  const [translateNote, setTranslateNote] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +100,67 @@ export default function LandingDemoSection() {
   function setField(id, v) {
     setStatus(null);
     setForm((prev) => ({ ...prev, [lang]: { ...prev[lang], [id]: v } }));
+  }
+
+  // Переводит заполненные русские поля в UZ и EN через /api/admin/translate.
+  // Ничего не сохраняет — перевод попадает в форму, админ проверяет и жмёт
+  // «Сохранить». Значки вариантов берём из русских строк, переводим подписи.
+  async function translateFromRu() {
+    const ru = form.ru;
+    const ruOptions = {};
+    const fields = {};
+    for (const f of LANDING_DEMO_FIELDS) {
+      if (f.options) {
+        const opts = parseOptionLines(ru[f.id]);
+        if (opts.length) { ruOptions[f.id] = opts; fields[f.id] = opts.map((o) => o.label); }
+      } else if (String(ru[f.id] || '').trim()) {
+        fields[f.id] = ru[f.id];
+      }
+    }
+    if (Object.keys(fields).length === 0) {
+      setTranslateNote({ error: 'Сначала заполни русские поля — переводятся только они.' });
+      return;
+    }
+    const filled = ['uz', 'en'].some((l) => LANDING_DEMO_FIELDS.some((f) => String(form[l][f.id] || '').trim()));
+    if (filled && !window.confirm('В UZ/EN уже есть тексты. Заменить их переводом с русского?')) return;
+
+    setTranslating(true);
+    setTranslateNote(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token}` },
+        body: JSON.stringify({ fields }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Не получилось перевести');
+
+      setForm((prev) => {
+        const next = { ...prev };
+        for (const l of ['uz', 'en']) {
+          const row = { ...prev[l], recipientGender: prev.ru.recipientGender };
+          const got = data[l] || {};
+          for (const f of LANDING_DEMO_FIELDS) {
+            if (!(f.id in fields)) continue;
+            if (f.options) {
+              const labels = Array.isArray(got[f.id]) ? got[f.id] : [];
+              row[f.id] = ruOptions[f.id].map((o, i) => `${o.icon} ${labels[i] || o.label}`).join('\n');
+            } else if (typeof got[f.id] === 'string') {
+              row[f.id] = got[f.id];
+            }
+          }
+          next[l] = row;
+        }
+        return next;
+      });
+      setStatus(null);
+      setTranslateNote({ ok: 'Готово. Проверь UZ и EN (особенно узбекский) и нажми «Сохранить».' });
+    } catch (e) {
+      setTranslateNote({ error: e.message });
+    } finally {
+      setTranslating(false);
+    }
   }
 
   async function save() {
@@ -150,7 +214,26 @@ export default function LandingDemoSection() {
                 {l.label}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={translateFromRu}
+              disabled={translating}
+              className="ml-auto rounded-full px-3.5 py-1.5 text-xs font-semibold"
+              style={{
+                fontFamily: t.fontUI, background: '#fff', color: t.berry,
+                border: `1.5px solid ${t.berry}`, cursor: translating ? 'default' : 'pointer',
+                opacity: translating ? 0.6 : 1,
+              }}
+              title="Заполнить UZ и EN переводом русских полей"
+            >
+              {translating ? 'Переводим…' : '🌐 Перевести RU → UZ, EN'}
+            </button>
           </div>
+          {translateNote && (
+            <p className="-mt-2 mb-4 text-xs" style={{ color: translateNote.error ? '#C0392B' : t.berry, fontFamily: t.fontUI }}>
+              {translateNote.error || translateNote.ok}
+            </p>
+          )}
 
           <div className="space-y-3">
             <div>
