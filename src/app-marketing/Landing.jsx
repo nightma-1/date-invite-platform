@@ -346,17 +346,28 @@ export default function Landing() {
       <section style={{ background: `linear-gradient(160deg, ${T.darkPurple}, #1a0f1a)`, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: T.pink, opacity: 0.15, pointerEvents: 'none' }} />
         <div className="mx-auto max-w-[480px] px-5 py-14 text-center sm:py-16" style={{ position: 'relative', zIndex: 1 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 12 }}>
-            {t('landing.priceTag')}
-          </p>
-          {/* Цена нарочно не «кричит»: умеренный размер, «сум» в той же
-              строке. Крупная цифра на всю ширину воспринимается дороже. */}
-          <p style={{ fontFamily: T.font, color: '#fff', lineHeight: 1, marginBottom: 22 }}>
-            <span className="text-[30px] sm:text-[34px]" style={{ fontWeight: 600 }}>19 000</span>
-            <span style={{ fontSize: 15, opacity: 0.6, marginLeft: 6 }}>{t('landing.priceCurrency')}</span>
-          </p>
-          <div style={{ color: '#fff', opacity: 0.8, fontSize: 14, marginBottom: 28, lineHeight: 2.2, fontFamily: T.font }}>
+          {/* Сначала ценность, потом цифра: человек читает, что получает,
+              и только затем видит цену — рядом со сравнением с кофе. */}
+          <h2 style={{ fontFamily: T.font, color: '#fff', fontSize: 24, fontWeight: 700, lineHeight: 1.25, marginBottom: 18 }}>
+            {t('landing.priceValueTitle')}
+          </h2>
+          <div style={{ color: '#fff', opacity: 0.8, fontSize: 14, marginBottom: 26, lineHeight: 2.1, fontFamily: T.font }}>
             {priceFeatures.map((f, i) => <p key={i}>{f}</p>)}
+          </div>
+
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: 22, marginBottom: 26 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 10 }}>
+              {t('landing.priceTag')}
+            </p>
+            {/* Цена нарочно не «кричит»: умеренный размер, «сум» в той же
+                строке. Крупная цифра на всю ширину воспринимается дороже. */}
+            <p style={{ fontFamily: T.font, color: '#fff', lineHeight: 1, marginBottom: 10 }}>
+              <span className="text-[30px] sm:text-[34px]" style={{ fontWeight: 600 }}>19 000</span>
+              <span style={{ fontSize: 15, opacity: 0.6, marginLeft: 6 }}>{t('landing.priceCurrency')}</span>
+            </p>
+            <p style={{ color: '#fff', opacity: 0.7, fontSize: 14, fontFamily: T.font }}>
+              {t('landing.priceCompare')}
+            </p>
           </div>
           <Link to="/builder" onClick={() => track('landing_cta_click', { place: 'price' })}>
             <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>

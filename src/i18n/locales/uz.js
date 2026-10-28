@@ -55,11 +55,12 @@ export default {
     no: "Yo'q",
     chooseTemplate: 'Shu shablonni tanlash →',
     priceTag: 'Bir martalik, obunasiz',
+    priceValueTitle: 'Esda qoladigan taklifnoma',
+    priceCompare: '☕ Bir chashka qahvadan arzonroq',
     priceCurrency: "so'm",
     priceFeatures: [
       '✓ 7 kun onlayn',
       '✓ Tahrirlash uchun 3 kun',
-      '✓ Obunasiz',
       '✓ Real vaqtda javob',
     ],
     faqTitle: 'Savollar',
