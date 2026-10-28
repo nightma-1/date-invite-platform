@@ -55,11 +55,12 @@ export default {
     no: 'No',
     chooseTemplate: 'Choose this template →',
     priceTag: 'One-time, no subscription',
+    priceValueTitle: "An invitation they'll remember",
+    priceCompare: '☕ Cheaper than a cup of coffee',
     priceCurrency: 'UZS',
     priceFeatures: [
       '✓ 7 days online',
       '✓ 3 days to edit',
-      '✓ No subscription',
       '✓ Real-time answer',
     ],
     faqTitle: 'Questions',
