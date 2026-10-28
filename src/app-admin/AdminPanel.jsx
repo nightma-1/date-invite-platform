@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import NotFound from '../components/ui/NotFound.jsx';
 import AnalyticsSection from './AnalyticsSection.jsx';
+import LandingDemoSection from './LandingDemoSection.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import {
   listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep,
@@ -143,6 +144,10 @@ export default function AdminPanel() {
         ))}
       </div>
       {invitations.length === 0 && <p className="text-sm opacity-60">Пока пусто.</p>}
+
+      <div className="mt-12">
+        <LandingDemoSection />
+      </div>
 
       <div className="mt-12">
         <GifLibrarySection />

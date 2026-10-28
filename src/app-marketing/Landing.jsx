@@ -16,6 +16,7 @@ import { T } from '../app-builder/BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { listDefaultGifs, getCachedDefaultGifs, preloadMedia } from '../lib/mediaLibrary.js';
+import { LANDING_DEMO_KEY, getCachedSiteContent, loadSiteContent } from '../lib/siteContent.js';
 import { track } from '../lib/analytics.js';
 
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
@@ -24,7 +25,30 @@ import { track } from '../lib/analytics.js';
 // его адресат. Ничего никуда не отправляется — это витрина, а не реальное
 // приглашение.
 function LandingPreviewDemo() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  // Тексты образца владелец правит в админке (раздел «Образец на главной»).
+  // Пустое поле — текст по умолчанию из переводов.
+  const [demoContent, setDemoContent] = useState(() => getCachedSiteContent(LANDING_DEMO_KEY) || {});
+  useEffect(() => {
+    let cancelled = false;
+    loadSiteContent(LANDING_DEMO_KEY)
+      .then((value) => { if (!cancelled) setDemoContent(value || {}); })
+      .catch(() => {}); // нет связи — остаёмся на кэше/дефолтах
+    return () => { cancelled = true; };
+  }, []);
+  const lang = (i18n.resolvedLanguage || 'ru').slice(0, 2);
+  const custom = demoContent?.[lang] || {};
+  const text = (field, i18nKey) => {
+    const v = typeof custom[field] === 'string' ? custom[field].trim() : '';
+    return v || t(i18nKey);
+  };
+  const options = (field, i18nKey) => (
+    Array.isArray(custom[field]) && custom[field].length > 0
+      ? custom[field]
+      : t(i18nKey, { returnObjects: true })
+  );
+  const demoGender = custom.recipientGender === 'male' ? 'male' : 'female';
   const tokens = getTemplateTokens('romantic');
   const [step, setStep] = useState(0);
   const [collected, setCollected] = useState({ date: null, time: null });
@@ -82,8 +106,8 @@ function LandingPreviewDemo() {
     track('landing_demo_finish');
   }
 
-  const placeOptions = t('landing.demo.placeOptions', { returnObjects: true });
-  const foodOptions = t('landing.demo.foodOptions', { returnObjects: true });
+  const placeOptions = options('placeOptions', 'landing.demo.placeOptions');
+  const foodOptions = options('foodOptions', 'landing.demo.foodOptions');
   const summaryLines = [
     collected.date ? `📅 ${collected.date}` : null,
     collected.time ? `🕒 ${collected.time}` : null,
@@ -120,9 +144,10 @@ function LandingPreviewDemo() {
         >
           {step === 0 && (
             <QuestionScreen
-              recipientName={t('landing.previewRecipient')}
-              questionText={t('landing.previewQuestion')}
-              recipientGender="female"
+              recipientName={text('recipientName', 'landing.previewRecipient')}
+              questionText={text('question', 'landing.previewQuestion')}
+              yesText={text('yesText', 'questionScreen.yesDefault')}
+              recipientGender={demoGender}
               mediaUrl={stepMedia.question}
               cardShape="polaroid"
               tokens={tokens}
@@ -131,8 +156,9 @@ function LandingPreviewDemo() {
           )}
           {step === 1 && (
             <ReactionScreen
-              title={t('landing.demo.reactionTitle')}
-              text={t('landing.demo.reactionText')}
+              title={text('reactionTitle', 'landing.demo.reactionTitle')}
+              text={text('reactionText', 'landing.demo.reactionText')}
+              recipientGender={demoGender}
               mediaUrl={stepMedia.reaction}
               cardShape="polaroid"
               tokens={tokens}
@@ -141,7 +167,7 @@ function LandingPreviewDemo() {
           )}
           {step === 2 && (
             <DateTimeScreen
-              title={t('landing.demo.dateTitle')}
+              title={text('dateTitle', 'landing.demo.dateTitle')}
               mediaUrl={stepMedia.date}
               cardShape="polaroid"
               tokens={tokens}
@@ -150,9 +176,9 @@ function LandingPreviewDemo() {
           )}
           {step === 3 && (
             <DoubleChoiceScreen
-              placeTitle={t('landing.demo.placeTitle')}
+              placeTitle={text('placeTitle', 'landing.demo.placeTitle')}
               placeOptions={placeOptions}
-              foodTitle={t('landing.demo.foodTitle')}
+              foodTitle={text('foodTitle', 'landing.demo.foodTitle')}
               foodOptions={foodOptions}
               tokens={tokens}
               onContinue={() => setStep(4)}
@@ -160,8 +186,8 @@ function LandingPreviewDemo() {
           )}
           {step === 4 && (
             <FinalScreen
-              title={t('landing.demo.finalTitle')}
-              description={t('landing.demo.finalDescription')}
+              title={text('finalTitle', 'landing.demo.finalTitle')}
+              description={text('finalDescription', 'landing.demo.finalDescription')}
               summary={summaryLines}
               mediaUrl={stepMedia.final}
               cardShape="polaroid"
