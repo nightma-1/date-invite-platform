@@ -349,10 +349,12 @@ export default function Landing() {
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 12 }}>
             {t('landing.priceTag')}
           </p>
-          <p className="text-[44px] sm:text-[56px]" style={{ fontFamily: T.font, color: '#fff', fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>
-            19 000
+          {/* Цена нарочно не «кричит»: умеренный размер, «сум» в той же
+              строке. Крупная цифра на всю ширину воспринимается дороже. */}
+          <p style={{ fontFamily: T.font, color: '#fff', lineHeight: 1, marginBottom: 22 }}>
+            <span className="text-[30px] sm:text-[34px]" style={{ fontWeight: 600 }}>19 000</span>
+            <span style={{ fontSize: 15, opacity: 0.6, marginLeft: 6 }}>{t('landing.priceCurrency')}</span>
           </p>
-          <p style={{ color: '#fff', opacity: 0.55, fontSize: 18, marginBottom: 24, fontFamily: T.font }}>{t('landing.priceCurrency')}</p>
           <div style={{ color: '#fff', opacity: 0.8, fontSize: 14, marginBottom: 28, lineHeight: 2.2, fontFamily: T.font }}>
             {priceFeatures.map((f, i) => <p key={i}>{f}</p>)}
           </div>
