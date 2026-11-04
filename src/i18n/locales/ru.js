@@ -90,6 +90,9 @@ export default {
     genericError: 'Не получилось войти',
     showPassword: 'Показать пароль',
     hidePassword: 'Скрыть пароль',
+    withTelegram: 'Войти через Telegram',
+    orEmail: 'или по почте',
+    oauthError: 'Не получилось войти. Попробуй ещё раз или войди по почте.',
   },
 
   builder: {

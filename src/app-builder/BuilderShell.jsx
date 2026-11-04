@@ -152,6 +152,8 @@ export default function BuilderShell() {
   // Прогон приглашения целиком перед оплатой. Собираем объект в момент
   // открытия, чтобы превью показывало текущее состояние черновика.
   const [previewData, setPreviewData] = useState(null);
+  // Ошибка входа через Telegram, с которой человек вернулся на сайт.
+  const [authError, setAuthError] = useState(null);
 
   // Аналитика воронки. Хуки объявлены до ранних return'ов ниже — иначе
   // React ругается на разное число хуков между рендерами.
@@ -167,6 +169,41 @@ export default function BuilderShell() {
     track('builder_step', { index: state.activeStepIndex, step: activeStep.step_type });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.activeStepIndex, state.loading, state.recipientGender]);
+
+  // Возврат после входа через Telegram. Перед уходом на сайт
+  // провайдера AuthGate запоминает, что человек собирался сделать, — здесь
+  // продолжаем с того же места: сразу ведём на оплату (или сохраняем правки),
+  // а не оставляем его снова на первом шаге.
+  useEffect(() => {
+    if (state.loading) return;
+    let pending = null;
+    try {
+      const raw = window.localStorage.getItem(resumeKey());
+      if (raw) {
+        window.localStorage.removeItem(resumeKey());
+        pending = JSON.parse(raw);
+      }
+    } catch { /* localStorage недоступен — продолжить не получится, человек нажмёт ещё раз */ }
+    if (!pending || Date.now() - (pending.at || 0) > 30 * 60 * 1000) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) {
+        track('auth_success', { mode: 'oauth', provider: pending.provider });
+        await runPublish(data.session.user.id, pending.method || 'invoice');
+      } else {
+        // Вернулись без сессии: человек отменил вход или провайдер вернул ошибку.
+        track('auth_error', { mode: 'oauth', provider: pending.provider });
+        setPendingPaymentMethod(pending.method || 'invoice');
+        setAuthError(t('auth.oauthError'));
+        setShowAuthGate(true);
+      }
+    })();
+    return () => { cancelled = true; };
+    // Один раз, когда черновик готов
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.loading]);
 
   const canGoBack = state.activeStepIndex > 0;
   const canGoNext = state.activeStepIndex < orderedStepsForWizard.length - 1;
@@ -326,6 +363,18 @@ export default function BuilderShell() {
     );
   }
 
+  function resumeKey() {
+    return `senti:resume:${window.location.pathname}`;
+  }
+
+  function rememberResume(provider) {
+    try {
+      window.localStorage.setItem(resumeKey(), JSON.stringify({
+        provider, method: pendingPaymentMethod, at: Date.now(),
+      }));
+    } catch { /* без localStorage после входа просто нажмут кнопку ещё раз */ }
+  }
+
   async function handlePublish() {
     setPublishError(null);
     // Без имени получателя превью ссылки в Telegram выйдет «Имя, это тебе».
@@ -474,7 +523,11 @@ export default function BuilderShell() {
       }}>
         <DecorativeBlobs />
         <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <AuthGate onAuthenticated={(user) => { setShowAuthGate(false); runPublish(user.id, pendingPaymentMethod); }} />
+          <AuthGate
+            initialError={authError}
+            onBeforeRedirect={rememberResume}
+            onAuthenticated={(user) => { setShowAuthGate(false); setAuthError(null); runPublish(user.id, pendingPaymentMethod); }}
+          />
         </div>
       </div>
     );

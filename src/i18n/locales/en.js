@@ -90,6 +90,9 @@ export default {
     genericError: "Couldn't sign in",
     showPassword: 'Show password',
     hidePassword: 'Hide password',
+    withTelegram: 'Sign in with Telegram',
+    orEmail: 'or with email',
+    oauthError: "Couldn't sign you in. Try again or use email.",
   },
 
   builder: {

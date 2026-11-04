@@ -90,6 +90,9 @@ export default {
     genericError: "Kirib bo'lmadi",
     showPassword: "Parolni ko'rsatish",
     hidePassword: "Parolni yashirish",
+    withTelegram: 'Telegram orqali kirish',
+    orEmail: 'yoki pochta orqali',
+    oauthError: 'Kirib bo‘lmadi. Qayta urinib ko‘ring yoki pochta orqali kiring.',
   },
 
   builder: {
