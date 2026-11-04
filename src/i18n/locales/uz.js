@@ -3,6 +3,7 @@
  */
 export default {
   nav: {
+    privacy: 'Maxfiylik',
     create: "Yaratish",
     myInvitations: 'Mening taklifnomalarim',
     admin: 'Admin',

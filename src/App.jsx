@@ -13,6 +13,7 @@ import InvitationList from './app-dashboard/InvitationList.jsx';
 import ResponseView from './app-dashboard/ResponseView.jsx';
 import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
+import Privacy from './app-marketing/Privacy.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
 
@@ -71,6 +72,7 @@ export default function App() {
       <PageViewTracker />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/privacy" element={<Privacy />} />
         {/* Каждый новый черновик получает свой id — иначе второе приглашение
             перезаписало бы localStorage первого */}
         <Route path="/builder" element={<NewDraftRedirect />} />

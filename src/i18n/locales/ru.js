@@ -3,6 +3,7 @@
  */
 export default {
   nav: {
+    privacy: 'Конфиденциальность',
     create: 'Создать',
     myInvitations: 'Мои приглашения',
     admin: 'Админ',
