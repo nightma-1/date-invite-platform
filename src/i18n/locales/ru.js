@@ -241,7 +241,7 @@ export default {
       noButton: 'Кнопка «Нет»',
       noPlaceholder: 'Нет',
       noButtonHint: 'Кнопка «Нет» всегда убегает — это фирменная механика.',
-      previewDefaultRecipient: 'Муниса',
+      previewDefaultRecipient: 'Имя',
       previewDefaultQuestion: 'Пойдёшь со мной на свидание?',
       previewDefaultYes: 'Да, конечно ❤️',
     },
