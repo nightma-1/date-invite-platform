@@ -16,6 +16,17 @@ const OAUTH_PROVIDERS = [
   { id: 'custom:telegram', key: 'withTelegram', bg: '#2AABEE', color: '#fff', border: '#2AABEE' },
 ];
 
+// Адрес, куда вернуть человека после входа: текущая страница, но без
+// следов прошлой неудачной попытки. Если оставить ?error=… от предыдущего
+// раза, Supabase вернёт ключи входа вместе со старой ошибкой, и клиент
+// увидит ошибку и не войдёт.
+function cleanReturnUrl() {
+  const url = new URL(window.location.href);
+  url.hash = '';
+  ['error', 'error_code', 'error_description', 'code', 'state'].forEach((k) => url.searchParams.delete(k));
+  return url.toString();
+}
+
 function TelegramIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -30,7 +41,19 @@ export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialErr
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState('signin');
-  const [error, setError] = useState(initialError);
+  // Вернулись из Telegram с ошибкой (отменили вход, Telegram не ответил):
+  // показываем понятный текст и убираем ?error=… из адреса.
+  const [error, setError] = useState(() => {
+    if (initialError) return initialError;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has('error')) return null;
+      window.history.replaceState(null, '', cleanReturnUrl());
+      return t('auth.oauthError');
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   const inputStyle = {
@@ -89,7 +112,7 @@ export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialErr
       if (onBeforeRedirect) onBeforeRedirect(provider);
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: window.location.href.split('#')[0] },
+        options: { redirectTo: cleanReturnUrl() },
       });
       if (authError) throw authError;
       // Дальше браузер уходит на страницу провайдера.
