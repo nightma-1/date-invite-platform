@@ -242,7 +242,7 @@ export default {
       noButton: '"No" button',
       noPlaceholder: 'No',
       noButtonHint: 'The "No" button always runs away — that\'s the signature move.',
-      previewDefaultRecipient: 'Munisa',
+      previewDefaultRecipient: 'Name',
       previewDefaultQuestion: 'Will you go on a date with me?',
       previewDefaultYes: 'Yes, of course ❤️',
     },

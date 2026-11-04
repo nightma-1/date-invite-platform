@@ -375,6 +375,17 @@ export default function BuilderShell() {
     } catch { /* без localStorage после входа просто нажмут кнопку ещё раз */ }
   }
 
+  function focusRecipientName(attempt = 0) {
+    // Шаг перерисовывается с анимацией — ждём, пока поле появится в DOM.
+    const el = document.getElementById('builder-recipient-name');
+    if (!el) {
+      if (attempt < 20) setTimeout(() => focusRecipientName(attempt + 1), 50);
+      return;
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.focus({ preventScroll: true });
+  }
+
   async function handlePublish() {
     setPublishError(null);
     // Без имени получателя превью ссылки в Telegram выйдет «Имя, это тебе».
@@ -382,9 +393,13 @@ export default function BuilderShell() {
     const questionName = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName;
     if (!normalizeName(questionName) || isPlaceholderName(questionName)) {
       const idx = orderedStepsForWizard.findIndex((s) => s.step_type === 'question');
-      if (idx >= 0) dispatch({ type: 'SET_ACTIVE_STEP', index: idx });
+      if (idx >= 0) dispatch({ type: 'SET_ACTIVE_STEP', index: idx, nameMissing: true });
       setPublishError(t('builder.nameRequired'));
       track('publish_blocked_no_name');
+      // Поле имени — в середине длинного первого шага, а текст ошибки — в
+      // самом низу. Без прокрутки человек видел только «вернуло на первую
+      // страницу» и не понимал почему. Ведём прямо к полю и ставим курсор.
+      focusRecipientName();
       return;
     }
     track('builder_publish_click', { edit: Boolean(state.editInvitationId), template: state.templateId });

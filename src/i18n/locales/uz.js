@@ -242,7 +242,7 @@ export default {
       noButton: "«Yo'q» tugmasi",
       noPlaceholder: "Yo'q",
       noButtonHint: "«Yo'q» tugmasi doim qochib ketadi — bu bizning o'ziga xos mexanikamiz.",
-      previewDefaultRecipient: 'Munisa',
+      previewDefaultRecipient: 'Ism',
       previewDefaultQuestion: 'Men bilan uchrashuvga borasanmi?',
       previewDefaultYes: 'Ha, albatta ❤️',
     },
