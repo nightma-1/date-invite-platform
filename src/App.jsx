@@ -5,6 +5,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { trackPageView } from './lib/analytics.js';
+import { pixelPageView } from './lib/metaPixel.js';
 import { BuilderProvider } from './app-builder/builderStore.jsx';
 import BuilderShell from './app-builder/BuilderShell.jsx';
 import InvitationRuntime from './app-recipient/InvitationRuntime.jsx';
@@ -29,6 +30,7 @@ function PageViewTracker() {
   const location = useLocation();
   useEffect(() => {
     trackPageView(location.pathname);
+    pixelPageView(location.pathname);
   }, [location.pathname]);
   return null;
 }

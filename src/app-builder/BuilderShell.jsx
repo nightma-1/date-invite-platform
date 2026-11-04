@@ -23,6 +23,7 @@ import { T, DecorativeBlobs } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { track, trackBeforeLeaving } from '../lib/analytics.js';
+import { pixelInitiateCheckout } from '../lib/metaPixel.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
@@ -394,6 +395,7 @@ export default function BuilderShell() {
       }
       // Ждём отправку события: сразу после этой строки страница уходит на
       // Click, и незавершённый запрос браузер просто отменил бы.
+      pixelInitiateCheckout();
       await trackBeforeLeaving('payment_redirect', { method });
       window.location.href = data.paymentUrl;
     } catch (err) {
