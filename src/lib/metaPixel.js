@@ -13,7 +13,7 @@
  */
 
 // ID пикселя не секрет: он всё равно виден в коде любой страницы.
-export const META_PIXEL_ID = '';
+export const META_PIXEL_ID = '1853938249149554';
 
 const INVITATION_PRICE_UZS = 19000;
 const IGNORED_PATH_PREFIXES = ['/i/', '/xujayin'];
