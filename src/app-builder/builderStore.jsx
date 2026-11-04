@@ -161,7 +161,7 @@ function draftReducer(state, action) {
     case 'SET_GENDER':
       return { ...state, recipientGender: action.gender, steps: genderizeSteps(state.steps, action.gender) };
     case 'SET_ACTIVE_STEP':
-      return { ...state, activeStepIndex: action.index };
+      return { ...state, activeStepIndex: action.index, nameMissing: action.nameMissing || false };
     case 'TOGGLE_STEP':
       return {
         ...state,
