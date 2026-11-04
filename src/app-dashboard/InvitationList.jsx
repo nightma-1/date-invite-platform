@@ -260,8 +260,19 @@ export default function InvitationList() {
 
     load();
     loadProfile();
-    return () => { cancelled = true; };
+    // Человек уходит в бота, жмёт «Start» и возвращается на вкладку —
+    // перепроверяем, привязался ли Telegram, чтобы карточка исчезла сама.
+    const onFocus = () => { loadProfile(); };
+    window.addEventListener('focus', onFocus);
+    return () => { cancelled = true; window.removeEventListener('focus', onFocus); };
   }, [session]);
+
+  // Вошёл через Telegram — значит, Telegram у человека под рукой. Зовём
+  // включить уведомления крупной карточкой, а не тихой строкой.
+  const signedInWithTelegram = Boolean(
+    session?.user?.identities?.some((i) => i.provider === 'custom:telegram')
+    || session?.user?.app_metadata?.provider === 'custom:telegram'
+  );
 
   if (session === undefined) return <p className="p-8 text-center text-sm opacity-60">{tr('dashboard.loading')}</p>;
 
@@ -294,7 +305,25 @@ export default function InvitationList() {
           {tr('dashboard.title')}
         </h1>
 
-        {telegramLinked === false && (
+        {telegramLinked === false && signedInWithTelegram && (
+          <div className="mb-8 rounded-2xl px-5 py-5" style={{ background: '#2AABEE', color: '#fff' }}>
+            <p style={{ margin: 0, fontFamily: t.fontUI, fontSize: 16, fontWeight: 700 }}>
+              {tr('dashboard.telegramPromptTitle')}
+            </p>
+            <p style={{ margin: '6px 0 14px', fontFamily: t.fontUI, fontSize: 13.5, lineHeight: 1.45, opacity: 0.92 }}>
+              {tr('dashboard.telegramPromptText')}
+            </p>
+            <button
+              type="button"
+              onClick={connectTelegram}
+              className="w-full rounded-full px-4 py-3"
+              style={{ background: '#fff', color: '#1E6FA8', border: 'none', cursor: 'pointer', fontFamily: t.fontUI, fontSize: 15, fontWeight: 700 }}
+            >
+              {tr('dashboard.telegramPromptAction')}
+            </button>
+          </div>
+        )}
+        {telegramLinked === false && !signedInWithTelegram && (
           <button
             type="button"
             onClick={connectTelegram}

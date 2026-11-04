@@ -56,7 +56,7 @@ export default async function handler(req, res) {
   if (!userId) {
     await sendMessage(
       chatId,
-      'Открой этого бота по ссылке из своего кабинета на сайте (ссылка действует 15 минут) — так я узнаю, кому присылать уведомления.'
+      'Чтобы я присылал тебе ответы на приглашения, зайди в «Мои приглашения» на https://senti.uz/dashboard и нажми «Получать ответы в Telegram». Это займёт пару секунд.'
     );
     return res.status(200).json({ ok: true });
   }
