@@ -13,13 +13,15 @@
  *    своим интерфейсом — аватаркой, именем, полем ответа. Всё, что должно
  *    читаться, держим между SAFE_TOP и SAFE_BOTTOM.
  */
+import { paintStarMap } from './starMap.js';
+
 export const STORY_W = 1080;
 export const STORY_H = 1920;
 const SAFE_TOP = 270;
 const SAFE_BOTTOM = 1560;
 
 // Подписи кадров живут в переводах (galaxy.frame*), здесь только порядок.
-export const FRAMES = [{ id: 'galaxy' }, { id: 'envelope' }, { id: 'portrait' }];
+export const FRAMES = [{ id: 'galaxy' }, { id: 'envelope' }, { id: 'sky' }, { id: 'portrait' }];
 
 function roundRect(g, x, y, w, h, r) {
   g.beginPath();
@@ -152,6 +154,12 @@ export function paintCaptions(g, pal, { caption, subcaption, frame, texts = {} }
     g.font = '500 58px "Caveat", cursive';
     g.fillText(subcaption, STORY_W / 2, y);
   }
+  if (frame === 'sky' && texts.skyWhen) {
+    y += 70;
+    g.fillStyle = 'rgba(255,255,255,0.6)';
+    g.font = '500 40px "Caveat", cursive';
+    g.fillText(texts.skyWhen, STORY_W / 2, y);
+  }
   if (frame === 'envelope') {
     y += 70;
     g.fillStyle = 'rgba(255,255,255,0.6)';
@@ -179,7 +187,7 @@ export function paintCaptions(g, pal, { caption, subcaption, frame, texts = {} }
 }
 
 /** Готовая картинка 9:16 для выбранного кадра. */
-export async function composeStory({ pal, canvases, frame, caption, subcaption, recipientName, texts = {} }) {
+export async function composeStory({ pal, canvases, frame, caption, subcaption, recipientName, sky, texts = {} }) {
   const out = document.createElement('canvas');
   out.width = STORY_W; out.height = STORY_H;
   const g = out.getContext('2d');
@@ -187,6 +195,10 @@ export async function composeStory({ pal, canvases, frame, caption, subcaption, 
   if (frame === 'envelope') {
     paintScene(g, canvases.slice(0, 1));   // только звёздный фон, без частиц
     paintEnvelope(g, pal, recipientName);
+  } else if (frame === 'sky') {
+    paintScene(g, canvases.slice(0, 1));
+    const R = STORY_W * 0.41;
+    paintStarMap(g, { ...sky, cx: STORY_W / 2, cy: STORY_H * 0.37, R, palette: pal });
   } else {
     paintScene(g, canvases);
   }
