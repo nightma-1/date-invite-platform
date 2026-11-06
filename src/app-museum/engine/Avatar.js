@@ -163,9 +163,11 @@ export function poseAvatar(a, dt, { moving, sit, speed = 1 }) {
   a.hips.position.y = HIP_HEIGHT + (SEAT_HIP_HEIGHT - HIP_HEIGHT) * sitting + Math.abs(Math.cos(a.phase)) * 0.025 * a.moving * (1 - sitting);
   a.torso.rotation.x = a.moving * 0.06 * (1 - sitting);
   if (a.skirt) {
-    a.skirt.scale.y = 1 - sitting * 0.55;
-    a.skirt.position.y = -0.2 + sitting * 0.12;
-    a.skirt.position.z = -sitting * 0.16;
+    // Сидя юбка ложится на колени, а не складывается вокруг ног
+    a.skirt.rotation.x = sitting * 1.32;
+    a.skirt.scale.y = 1 - sitting * 0.3;
+    a.skirt.position.y = -0.2 + sitting * 0.19;
+    a.skirt.position.z = -sitting * 0.21;
   }
 }
 
