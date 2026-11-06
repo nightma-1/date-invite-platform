@@ -6,6 +6,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { clickProvider, isClickConfigured, PAYMENT_METHOD } from '../../src/lib/clickProvider.js';
 import { rateLimit, clientIp } from '../_lib/rateLimit.js';
+import { museumPublishPrice, museumExtendPrice, museumTerm } from '../../src/lib/museumPlans.js';
 
 const INVITATION_PRICE = 19000; // сум, см. ТЗ раздел 3 (цена задаётся только здесь, клиент её не передаёт)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -71,7 +72,7 @@ export default async function handler(req, res) {
 
   const { data: invitation, error: invitationError } = await supabase
     .from('invitations')
-    .select('id, status, user_id')
+    .select('id, status, user_id, kind')
     .eq('id', invitationId)
     .single();
 
@@ -80,11 +81,39 @@ export default async function handler(req, res) {
   if (invitationError || !invitation || invitation.user_id !== userId) {
     return res.status(404).json({ error: 'приглашение не найдено' });
   }
-  if (invitation.status === 'published') {
+
+  // Музей: цена зависит от срока. Срок читаем из базы или проверяем по белому
+  // списку, сумма считается только здесь. Продлить можно лишь живую ссылку.
+  const isExtension = req.body?.purpose === 'extend';
+  if (isExtension && (invitation.kind !== 'museum' || invitation.status !== 'published')) {
+    return res.status(409).json({ error: 'продлить можно только активный музей' });
+  }
+  if (!isExtension && invitation.status === 'published') {
     return res.status(409).json({ error: 'приглашение уже опубликовано' });
   }
 
   const admin = getAdmin();
+
+  let amount = INVITATION_PRICE;
+  let termDays = null;
+  if (invitation.kind === 'museum') {
+    if (isExtension) {
+      if (!museumTerm(req.body?.termDays)) {
+        return res.status(400).json({ error: 'неверный срок' });
+      }
+      termDays = Number(req.body.termDays);
+      amount = museumExtendPrice(termDays);
+    } else {
+      const { data: content } = await admin
+        .from('museum_content')
+        .select('term_days')
+        .eq('invitation_id', invitationId)
+        .maybeSingle();
+      if (!content) return res.status(404).json({ error: 'музей не найден' });
+      termDays = content.term_days;
+      amount = museumPublishPrice(termDays);
+    }
+  }
 
   // Считаем только свежие попытки. Без окна брошенные оплаты (пользователь
   // ушёл на страницу Click и закрыл вкладку) копились бы вечно, и после пятой
@@ -112,9 +141,11 @@ export default async function handler(req, res) {
     .insert({
       user_id: userId,
       invitation_id: invitationId,
-      amount: INVITATION_PRICE,
+      amount,
       status: 'pending',
       method,
+      term_days: termDays,
+      purpose: isExtension ? 'extend' : 'publish',
     })
     .select()
     .single();
@@ -126,8 +157,8 @@ export default async function handler(req, res) {
 
   const { paymentUrl } = await clickProvider.createPayment({
     invitationId,
-    amount: INVITATION_PRICE,
-    returnUrl: `${process.env.PUBLIC_APP_URL || 'https://senti.uz'}/payment/${invitationId}`,
+    amount,
+    returnUrl: `${process.env.PUBLIC_APP_URL || 'https://senti.uz'}${isExtension ? '/dashboard' : `/payment/${invitationId}`}`,
     method,
   });
 

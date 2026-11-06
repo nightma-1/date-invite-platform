@@ -3,7 +3,7 @@
  * Несанкционированное копирование или распространение запрещено.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
@@ -14,6 +14,9 @@ import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
 import ChoiceScreen from '../components/screens/ChoiceScreen.jsx';
 import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
+
+// three.js весит много, поэтому код музея скачивается только тем, кто его открыл
+const MuseumRecipient = lazy(() => import('../app-museum/MuseumRecipient.jsx'));
 
 // 'time' больше не отдельный шаг (дата и время теперь на одном экране —
 // см. DateTimeScreen.jsx), но старые опубликованные приглашения могут
@@ -226,6 +229,13 @@ export default function InvitationRuntime({ previewData = null }) {
 
   if (state.status === 'loading') {
     return <CenteredMessage text="Открываем приглашение…" tokens={tokens} />;
+  }
+  if (invitation?.kind === 'museum') {
+    return (
+      <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#2b1320' }} />}>
+        <MuseumRecipient slug={invitation.slug} />
+      </Suspense>
+    );
   }
   if (state.status === 'not_found') {
     return <CenteredMessage text="Кажется, ссылка больше не работает." tokens={tokens} />;

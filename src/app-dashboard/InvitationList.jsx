@@ -14,6 +14,7 @@ import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 import { isEditLocked } from '../lib/editWindow.js';
 import { inviteShareUrl } from '../lib/shareLink.js';
+import MuseumExtend from '../app-museum/MuseumExtend.jsx';
 
 const t = getTemplateTokens('romantic');
 
@@ -438,13 +439,14 @@ export default function InvitationList() {
                     )}
                     {!isEditLocked(inv, now) && (
                     <Link
-                      to={`/builder/edit/${inv.id}`}
+                      to={inv.kind === 'museum' ? `/lab/museum/edit/${inv.id}` : `/builder/edit/${inv.id}`}
                       className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline"
                       style={{ background: 'white', color: t.ink, border: `1.5px solid ${t.ink}25`, fontFamily: t.fontUI }}
                     >
                       {tr('dashboard.edit')}
                     </Link>
                     )}
+                    {inv.kind === 'museum' && inv.status === 'published' && <MuseumExtend invitationId={inv.id} />}
                     {inv.status === 'published' && (
                       <button
                         type="button"

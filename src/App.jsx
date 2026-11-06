@@ -2,7 +2,7 @@
  * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  */
 
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { trackPageView } from './lib/analytics.js';
 import { BuilderProvider } from './app-builder/builderStore.jsx';
@@ -14,6 +14,14 @@ import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
+
+// «Наш музей» пока скрыт: только прямые адреса /lab, без ссылок на сайте.
+const MuseumBuilder = lazy(() => import('./app-museum/MuseumBuilder.jsx'));
+const MuseumDemo = lazy(() => import('./app-museum/MuseumDemo.jsx'));
+
+function Lazy({ children }) {
+  return <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#2b1320' }} />}>{children}</Suspense>;
+}
 
 // Адрес админки нарочно не угадываемый и не в публичных ссылках сайта —
 // /admin слишком легко найти перебором ботов. Поменять адрес, если он
@@ -78,6 +86,9 @@ export default function App() {
         <Route path="/i/:slug" element={<InvitationRuntime />} />
         <Route path="/dashboard" element={<InvitationList />} />
         <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />
+        <Route path="/lab/museum" element={<Lazy><MuseumBuilder /></Lazy>} />
+        <Route path="/lab/museum/demo" element={<Lazy><MuseumDemo /></Lazy>} />
+        <Route path="/lab/museum/edit/:invitationId" element={<Lazy><MuseumBuilder /></Lazy>} />
         <Route path={ADMIN_PATH} element={<AdminPanel />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

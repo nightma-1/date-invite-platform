@@ -1,6 +1,9 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
     {
       "source": "/i/:slug",
       "has": [
@@ -12,6 +15,15 @@
       ],
       "destination": "/api/og/invite?slug=:slug"
     },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/museum?action=cleanup",
+      "schedule": "30 3 * * *"
+    }
   ]
 }
