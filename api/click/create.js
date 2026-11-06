@@ -96,6 +96,7 @@ export default async function handler(req, res) {
 
   let amount = INVITATION_PRICE;
   let termDays = null;
+  let features = null;
   if (invitation.kind === 'museum') {
     if (isExtension) {
       if (!museumTerm(req.body?.termDays)) {
@@ -106,12 +107,14 @@ export default async function handler(req, res) {
     } else {
       const { data: content } = await admin
         .from('museum_content')
-        .select('term_days')
+        .select('term_days, tier, theme, voice_url, song_url')
         .eq('invitation_id', invitationId)
         .maybeSingle();
       if (!content) return res.status(404).json({ error: 'музей не найден' });
       termDays = content.term_days;
-      amount = museumPublishPrice(termDays);
+      // Снимок оплаченного: всё, что появится позже, при публикации будет снято
+      features = { tier: content.tier, theme: content.theme, voice: Boolean(content.voice_url), song: Boolean(content.song_url) };
+      amount = museumPublishPrice({ termDays, ...features });
     }
   }
 
@@ -145,6 +148,7 @@ export default async function handler(req, res) {
       status: 'pending',
       method,
       term_days: termDays,
+      features,
       purpose: isExtension ? 'extend' : 'publish',
     })
     .select()

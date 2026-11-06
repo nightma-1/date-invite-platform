@@ -114,9 +114,9 @@ async function put(userId, folder, name, blob, contentType) {
 }
 
 /** Загружает всё, чего ещё нет на сервере. Повторный запуск докачает только новое. */
-export async function uploadMedia({ userId, folder, photos, video, onProgress }) {
+export async function uploadMedia({ userId, folder, photos, video, voice, song, onProgress }) {
   const pending = photos.filter((p) => !p.full);
-  const total = pending.length + (video?.blob ? 1 : 0);
+  const total = pending.length + [video, voice, song].filter((m) => m?.blob).length;
   let done = 0;
   onProgress?.(done, total);
   const queue = [...pending];
@@ -135,13 +135,16 @@ export async function uploadMedia({ userId, folder, photos, video, onProgress })
   };
   await Promise.all(Array.from({ length: 4 }, worker));
 
-  if (video?.blob) {
-    const ext = (video.blob.name?.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
-    const type = video.blob.type || 'video/mp4';
-    video.url = await put(userId, folder, `film-${crypto.randomUUID()}.${ext}`, video.blob, type);
-    video.blob = null;
-    done += 1;
-    onProgress?.(done, total);
+  for (const [media, prefix, fallback] of [[video, 'film', 'video/mp4'], [voice, 'voice', 'audio/mp4'], [song, 'song', 'audio/mpeg']]) {
+    if (media?.blob) {
+      // Запись из браузера приходит с типом вроде audio/webm;codecs=opus
+      const type = (media.blob.type || fallback).split(';')[0];
+      const ext = type.split('/')[1].replace(/[^a-z0-9]/g, '') || 'bin';
+      media.url = await put(userId, folder, `${prefix}-${crypto.randomUUID()}.${ext}`, media.blob, type);
+      media.blob = null;
+      done += 1;
+      onProgress?.(done, total);
+    }
   }
 }
 

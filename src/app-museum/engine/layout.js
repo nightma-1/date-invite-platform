@@ -106,7 +106,7 @@ export function buildLayout(photos, hasVideo) {
     putFlank(flankX, zStart - wallT / 2 - 0.02, Math.PI);
   }
 
-  place(0, { x: 0, y: 2, z: totalEnd + wallT / 2 + 0.02, rotY: 0, hall: hallCount - 1, maxW: 5.4, maxH: 3 });
+  place(0, { x: 0, y: 2.15, z: totalEnd + wallT / 2 + 0.02, rotY: 0, hall: hallCount - 1, maxW: 5.2, maxH: 2.7 });
 
   const lastStart = -vestDepth - (hallCount - 1) * depth;
   const lastMid = lastStart - depth / 2;

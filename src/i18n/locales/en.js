@@ -132,6 +132,12 @@ export default {
   },
 
   payment: {
+
+    museumTitle: 'Your museum is ready',
+
+    museumSubtitle: 'Send the link. Once it is opened, you can step in and walk together.',
+
+    museumOpen: 'Enter the museum',
     tgTitle: 'Be the first to know when the link is opened',
     tgText: 'The bot messages you as soon as the link is opened, and sends the answer when it comes.',
     tgAction: 'Connect Telegram',

@@ -16,6 +16,14 @@ const SCENES = [
   ['#e4f1c9', '#9abf6b', '#4a6b3a'], ['#f3d4f0', '#c47ac0', '#5f3470'], ['#cfe8e5', '#6db3ab', '#2f5f60'],
 ];
 
+const CAPTIONS = [
+  { caption: 'Здесь могла быть ваша история', date: '14 февраля 2025' },
+  { caption: 'Первая общая поездка', date: 'Самарканд, май' },
+  null,
+  { caption: 'Тот самый вечер, когда всё началось' },
+  null,
+];
+
 function paint(canvas, [sky, mid, land], i, label) {
   const w = canvas.width;
   const h = canvas.height;
@@ -49,7 +57,7 @@ function samplePhotos(count) {
     canvas.height = portrait ? 1100 : 800;
     paint(canvas, SCENES[i % SCENES.length], i, `№ ${i + 1}`);
     const url = canvas.toDataURL('image/jpeg', 0.82);
-    return { full: url, thumb: url, w: canvas.width, h: canvas.height };
+    return { full: url, thumb: url, w: canvas.width, h: canvas.height, ...(CAPTIONS[i % 5] || {}) };
   });
 }
 
@@ -67,6 +75,11 @@ export default function MuseumDemo() {
         dedication: 'Здесь будут ваши слова. Тёплое посвящение, которое встречает у самого входа, прежде чем вы вместе пойдёте смотреть на свои лучшие дни.',
         signature: 'С любовью, Senti',
         videoUrl: '/museum/demo-film.mp4',
+        theme: params.get('theme') || 'classic',
+        ambient: 'warm',
+        finaleQuestion: 'Пойдём делать новые фото?',
+        hearts: { 1: 3 },
+        guestbook: [{ author: 'Дилноза', message: 'Какие же вы красивые! Плачу у экрана.' }],
         photos: samplePhotos(Math.min(45, Math.max(6, Number(params.get('photos')) || 16))),
       });
     });

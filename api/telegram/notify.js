@@ -145,6 +145,35 @@ function formatExpiring(invitation, extra) {
   return `⏳ Приглашение для ${name} перестанет открываться ${when}. Ответа пока нет.`;
 }
 
+// Тексты «Нашего музея»: здесь важнее всего позвать автора зайти прямо сейчас
+function formatMuseumViewed(invitation, extra) {
+  const g = invitation.recipient_gender;
+  const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
+  const count = Number(extra?.view_count) || 1;
+  return count <= 1
+    ? `🖼 ${name} ${verb(g, 'открыл')} твой музей. Зайди, и вы встретитесь внутри.`
+    : `🖼 ${name} снова в музее, уже ${ordinal(count)}. Можно зайти вместе.`;
+}
+
+function formatMuseumAnswered(invitation, extra) {
+  const g = invitation.recipient_gender;
+  const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
+  const attempts = Number(extra?.no_attempts) || 0;
+  const lines = [`❤️ ${name} ${verb(g, 'сказал')} «да» в конце твоего музея!`];
+  if (attempts > 0) lines.push('', `Перед этим ${verb(g, 'пытался')} поймать «Нет» ${attempts} ${times(attempts)} 😄`);
+  return lines.join('\n');
+}
+
+function formatMuseumExpiring(invitation, extra) {
+  const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
+  const left = extra?.expires_at ? new Date(extra.expires_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Asia/Tashkent' }) : 'завтра';
+  return `⏳ Музей для ${name} закроется ${left}. Его можно продлить в кабинете, иначе ссылка перестанет работать.`;
+}
+
+function formatGuestbook(invitation, extra) {
+  return `✍️ <b>${escapeHtml(extra?.author)}</b> оставил(а) запись в музее для ${escapeHtml(invitation.recipient_name)}:\n\n${escapeHtml(extra?.message)}`;
+}
+
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
@@ -166,7 +195,7 @@ export default async function handler(req, res) {
 
   const { data: invitation, error: invError } = await supabaseAdmin
     .from('invitations')
-    .select('id, recipient_name, recipient_gender, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
+    .select('id, slug, kind, recipient_name, recipient_gender, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
     .eq('id', invitationId)
     .maybeSingle();
 
@@ -185,6 +214,18 @@ export default async function handler(req, res) {
   // Кнопка ведёт прямо на ответ в кабинете — повод вернуться на сайт.
   // На просмотр кнопку не ставим: там нечего открывать, кроме ожидания.
   let result;
+  const museumUrl = invitation.slug ? appUrl(`/i/${invitation.slug}`) : null;
+  if (invitation.kind === 'museum') {
+    const museum = {
+      viewed: [formatMuseumViewed, { text: 'Войти в музей', url: museumUrl }],
+      answered: [formatMuseumAnswered, { text: 'Войти в музей', url: museumUrl }],
+      guestbook: [formatGuestbook, { text: 'Войти в музей', url: museumUrl }],
+      expiring: [formatMuseumExpiring, { text: 'Продлить', url: appUrl('/dashboard') }],
+    }[event];
+    if (!museum) return res.status(200).json({ ok: false, reason: 'unknown event' });
+    return res.status(200).json(await sendMessage(chatId, museum[0](invitation, extra), museum[1]));
+  }
+
   if (event === 'answered') {
     result = await sendMessage(chatId, formatAnswered(invitation, extra), {
       text: 'Открыть ответ',

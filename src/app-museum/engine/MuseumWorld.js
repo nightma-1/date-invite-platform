@@ -9,12 +9,13 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { HALL, resolveCollisions } from './layout.js';
+import { themeOf } from './themes.js';
 
-const PALETTE = ['#7c2c4a', '#3f4a6b', '#7a4a2e', '#355a55', '#5d3473'];
 const SPEED = 2.9;
 const LOOK = 0.0042;
 const FULL_RADIUS = 11;
-const MAX_FULL = 10;
+const LOW_END = (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+const MAX_FULL = LOW_END ? 5 : 10;
 
 function shade(hex, f) {
   return new THREE.Color(hex).multiplyScalar(f);
@@ -77,14 +78,14 @@ function parquet() {
   }, true);
 }
 
-function skylight() {
+function skylight([center, edge, bar]) {
   return canvasTexture(256, 512, (g, w, h) => {
     const glow = g.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, h * 0.62);
-    glow.addColorStop(0, '#fff3dc');
-    glow.addColorStop(1, '#e9c79a');
+    glow.addColorStop(0, center);
+    glow.addColorStop(1, edge);
     g.fillStyle = glow;
     g.fillRect(0, 0, w, h);
-    g.fillStyle = '#4a2c2f';
+    g.fillStyle = bar;
     for (let x = 0; x <= 4; x += 1) g.fillRect((x * w) / 4 - 3, 0, 6, h);
     for (let y = 0; y <= 8; y += 1) g.fillRect(0, (y * h) / 8 - 3, w, 6);
   });
@@ -201,11 +202,12 @@ export class MuseumWorld {
     this.cb = { onPhotoTap, onHud, onFilmChange, onProgress };
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.pixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
+    this.pixelRatio = Math.min(window.devicePixelRatio || 1, LOW_END ? 1.25 : 1.75);
     this.renderer.setPixelRatio(this.pixelRatio);
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#1a0c13');
-    this.scene.fog = new THREE.Fog('#1a0c13', 24, 62);
+    this.theme = themeOf(data.theme);
+    this.scene.background = new THREE.Color(this.theme.fog);
+    this.scene.fog = new THREE.Fog(this.theme.fog, 24, 62);
     this.camera = new THREE.PerspectiveCamera(66, 1, 0.08, 90);
     this.scene.add(new THREE.HemisphereLight('#fff4e6', '#5a3440', 2.4));
 
@@ -225,6 +227,7 @@ export class MuseumWorld {
     this.raycaster = new THREE.Raycaster();
     this.lastSent = { t: 0, x: 0, z: 0, yaw: 0, sit: false };
     this.hud = {};
+    this.bursts = [];
     this.disposables = [];
     this.running = false;
 
@@ -250,8 +253,7 @@ export class MuseumWorld {
     const { halfW, depth, height, wallT, doorHalf, doorTop, vestHalfW, vestDepth } = HALL;
     const { hallCount, totalEnd } = this.layout;
     const geos = [];
-    const cream = '#f3e4d3';
-    const vest = '#8f3253';
+    const { trim: cream, entrance: vest, rail, walls: palette } = this.theme;
 
     const wallY = height / 2;
     geos.push(shadedBox(wallT, height, vestDepth, -vestHalfW - wallT / 2, wallY, -vestDepth / 2, vest));
@@ -260,7 +262,7 @@ export class MuseumWorld {
     geos.push(shadedBox(4.4, height, 0.3, 0, wallY, -5.4, cream));
 
     for (let i = 0; i < hallCount; i += 1) {
-      const color = PALETTE[i % PALETTE.length];
+      const color = palette[i % palette.length];
       const zStart = -vestDepth - i * depth;
       const zEnd = zStart - depth;
       const mid = (zStart + zEnd) / 2;
@@ -278,7 +280,7 @@ export class MuseumWorld {
       // Плинтус и карниз
       for (const side of [-1, 1]) {
         geos.push(shadedBox(0.05, 0.2, depth, side * (halfW - 0.025), 0.1, mid, cream));
-        geos.push(shadedBox(0.08, 0.1, depth, side * (halfW - 0.04), height - 0.5, mid, '#c79a58'));
+        geos.push(shadedBox(0.08, 0.1, depth, side * (halfW - 0.04), height - 0.5, mid, rail));
       }
     }
     // Стены входа по бокам от двери в первый зал и торцевая стена
@@ -286,7 +288,7 @@ export class MuseumWorld {
       const part = vestHalfW - doorHalf;
       geos.push(shadedBox(part, height, wallT / 2, side * (doorHalf + part / 2), wallY, -vestDepth + wallT / 4, vest));
     }
-    geos.push(shadedBox(halfW * 2, height, wallT, 0, wallY, totalEnd - wallT / 2 + wallT / 2, PALETTE[(hallCount - 1) % PALETTE.length]));
+    geos.push(shadedBox(halfW * 2, height, wallT, 0, wallY, totalEnd - wallT / 2 + wallT / 2, palette[(hallCount - 1) % palette.length]));
 
     const staticMesh = new THREE.Mesh(
       this.track(mergeGeometries(geos)),
@@ -300,7 +302,7 @@ export class MuseumWorld {
     floorTex.repeat.set((halfW * 2 + 1) / 3, length / 3);
     const floor = new THREE.Mesh(
       this.track(new THREE.PlaneGeometry(halfW * 2 + 1, length)),
-      this.track(new THREE.MeshBasicMaterial({ map: floorTex, color: '#ffffff' })),
+      this.track(new THREE.MeshBasicMaterial({ map: floorTex, color: this.theme.floor })),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, 0, -length / 2 + 0.5);
@@ -308,14 +310,14 @@ export class MuseumWorld {
 
     const ceiling = new THREE.Mesh(
       this.track(new THREE.PlaneGeometry(halfW * 2 + 1, length)),
-      this.track(new THREE.MeshBasicMaterial({ color: '#2a151e' })),
+      this.track(new THREE.MeshBasicMaterial(this.ceilingMaterial(length))),
     );
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(0, height, -length / 2 + 0.5);
     this.scene.add(ceiling);
 
     // Световые фонари в потолке и мягкие пятна от них на полу
-    const skylightMat = this.track(new THREE.MeshBasicMaterial({ map: this.track(skylight()) }));
+    const skylightMat = this.track(new THREE.MeshBasicMaterial({ map: this.track(skylight(this.theme.sky)), transparent: true, opacity: this.theme.cold ? 0.35 : 1 }));
     const skylightGeo = this.track(new THREE.PlaneGeometry(4.6, depth - 6));
     const poolTex = this.track(softSpot('rgba(255,226,180,.42)', 'rgba(255,226,180,0)'));
     const poolMat = this.track(new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -332,6 +334,8 @@ export class MuseumWorld {
       this.scene.add(pool);
     }
 
+    if (this.theme.frieze) this.buildFrieze();
+
     const panel = new THREE.Mesh(
       this.track(new THREE.PlaneGeometry(3.4, 2.26)),
       this.track(new THREE.MeshBasicMaterial({ map: this.track(dedicationTexture(this.labels.dedicationArt)) })),
@@ -340,12 +344,114 @@ export class MuseumWorld {
     this.scene.add(panel);
   }
 
+  ceilingMaterial(length) {
+    if (!this.theme.ceilingArt) return { color: this.theme.ceiling };
+    const tex = this.track(canvasTexture(1024, 1024, this.theme.ceilingArt, true));
+    tex.repeat.set(1, length / 12);
+    return { map: tex };
+  }
+
+  /** Полоса орнамента вдоль стен над карнизом. */
+  buildFrieze() {
+    const { halfW, height, vestDepth, depth } = HALL;
+    const tex = this.track(canvasTexture(1024, 128, this.theme.frieze, true));
+    const length = this.layout.hallCount * depth;
+    tex.repeat.set(length / 6, 1);
+    const mat = this.track(new THREE.MeshBasicMaterial({ map: tex }));
+    const geo = this.track(new THREE.PlaneGeometry(length, 0.5));
+    for (const side of [-1, 1]) {
+      const strip = new THREE.Mesh(geo, mat);
+      strip.position.set(side * (halfW - 0.015), height - 0.22, -vestDepth - length / 2);
+      strip.rotation.y = -side * (Math.PI / 2);
+      this.scene.add(strip);
+    }
+  }
+
+  /** Табличка под фото, как в настоящем музее. */
+  buildPlaque(pic, n, plane) {
+    const photo = this.data.photos[pic.index];
+    if (!photo.caption && !photo.date) return;
+    const tex = canvasTexture(640, 240, (g, w, h) => {
+      g.fillStyle = '#fbf6ee';
+      g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#c79a58';
+      g.lineWidth = 4;
+      g.strokeRect(6, 6, w - 12, h - 12);
+      g.textAlign = 'center';
+      g.fillStyle = '#2b1320';
+      g.font = 'italic 600 38px "Cormorant Garamond", serif';
+      const lines = wrapLines(g, photo.caption || '', w - 70).slice(0, 3);
+      const top = photo.date ? 62 : 80;
+      lines.forEach((l, i) => g.fillText(l, w / 2, top + i * 46));
+      if (photo.date) {
+        g.fillStyle = '#b23a62';
+        g.font = '600 26px Manrope, sans-serif';
+        g.fillText(photo.date, w / 2, h - 32);
+      }
+    });
+    tex.anisotropy = 4;
+    this.track(tex);
+    const mesh = new THREE.Mesh(plane, this.track(new THREE.MeshBasicMaterial({ map: tex })));
+    mesh.scale.set(1.05, 0.39, 1);
+    mesh.position.set(pic.x, pic.y - pic.h / 2 - 0.4, pic.z).addScaledVector(n, 0.03);
+    mesh.rotation.y = pic.rotY;
+    this.scene.add(mesh);
+  }
+
+  /** Счётчик сердечек у фото. Появляется с первого сердечка. */
+  setHeartCount(photoIndex, count) {
+    const mesh = this.pictureMeshes.find((m) => m.userData.photoIndex === photoIndex);
+    if (!mesh || !count) return;
+    if (mesh.userData.badge) {
+      this.scene.remove(mesh.userData.badge);
+      mesh.userData.badge.material.map.dispose();
+      mesh.userData.badge.material.dispose();
+    }
+    const badge = labelSprite(`♥ ${count}`, { bg: 'rgba(32,12,22,.82)', color: '#ffd3df', width: 0.62, size: 56 });
+    const pic = this.layout.pictures.find((p) => p.index === photoIndex);
+    badge.position.copy(mesh.position);
+    badge.position.y += pic.h / 2 + 0.34;
+    this.scene.add(badge);
+    mesh.userData.badge = badge;
+  }
+
+  /** Сердечко взлетает от фото: видно всем, кто рядом. */
+  heartBurst(photoIndex) {
+    const mesh = this.pictureMeshes.find((m) => m.userData.photoIndex === photoIndex);
+    if (!mesh) return;
+    for (let i = 0; i < 5; i += 1) {
+      const s = labelSprite('♥', { bg: 'rgba(0,0,0,0)', color: '#ff6f96', width: 0.5, size: 90 });
+      s.position.copy(mesh.position);
+      s.position.x += (Math.random() - 0.5) * 0.8;
+      s.position.z += (Math.random() - 0.5) * 0.8;
+      this.scene.add(s);
+      this.bursts.push({ sprite: s, born: performance.now() + i * 90 });
+    }
+  }
+
+  stepBursts(now) {
+    this.bursts = this.bursts.filter((b) => {
+      const age = (now - b.born) / 1400;
+      if (age < 0) { b.sprite.visible = false; return true; }
+      b.sprite.visible = true;
+      if (age >= 1) {
+        this.scene.remove(b.sprite);
+        b.sprite.material.map.dispose();
+        b.sprite.material.dispose();
+        return false;
+      }
+      b.sprite.position.y += 0.012;
+      b.sprite.material.opacity = 1 - age;
+      return true;
+    });
+  }
+
   buildPictures() {
     const { pictures } = this.layout;
     const box = this.track(new THREE.BoxGeometry(1, 1, 1));
     const plane = this.track(new THREE.PlaneGeometry(1, 1));
     const count = pictures.length;
-    const frames = new THREE.InstancedMesh(box, this.track(new THREE.MeshBasicMaterial({ color: '#b98f52' })), count);
+    const frames = new THREE.InstancedMesh(box, this.track(new THREE.MeshBasicMaterial({ color: this.theme.frame })), count);
     const mats = new THREE.InstancedMesh(plane, this.track(new THREE.MeshBasicMaterial({ color: '#fbf6ee' })), count);
     const shadows = new THREE.InstancedMesh(plane, this.track(new THREE.MeshBasicMaterial({
       map: this.track(softSpot('rgba(0,0,0,.62)', 'rgba(0,0,0,0)')), transparent: true, depthWrite: false,
@@ -385,6 +491,7 @@ export class MuseumWorld {
       this.scene.add(mesh);
       this.pictureMeshes.push(mesh);
       this.disposables.push(mat);
+      this.buildPlaque(pic, n, plane);
     });
 
     for (const mesh of [washes, shadows, frames, mats]) {
@@ -641,7 +748,10 @@ export class MuseumWorld {
 
   emitHud() {
     const nearFilm = Boolean(this.screen && Math.hypot(this.screen.position.x - this.pos.x, this.screen.position.z - this.pos.z) < 8);
+    const hero = this.layout.pictures.find((p) => p.index === 0);
     const hud = {
+      nearHero: Math.hypot(hero.x - this.pos.x, hero.z - this.pos.z) < 7.5,
+      nearEntrance: this.pos.z > -HALL.vestDepth,
       canSit: !this.seat && Boolean(this.nearestSeat()),
       sitting: Boolean(this.seat),
       nearFilm,
@@ -778,7 +888,7 @@ export class MuseumWorld {
   updateFilmVolume() {
     if (!this.video || this.video.paused) return;
     const d = Math.hypot(this.screen.position.x - this.pos.x, this.screen.position.z - this.pos.z);
-    this.video.volume = THREE.MathUtils.clamp(1.15 - d / 15, 0, 1);
+    this.video.volume = THREE.MathUtils.clamp(1.15 - d / 15, 0, 1) * (this.filmDuck ?? 1);
   }
 
   adaptQuality(dt) {
@@ -802,6 +912,7 @@ export class MuseumWorld {
     const now = performance.now();
     this.stepPlayer(dt);
     this.stepPeers(dt, now);
+    this.stepBursts(now);
 
     this.camera.position.set(this.pos.x, this.seat ? HALL.seatEye : HALL.eye, this.pos.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
@@ -853,7 +964,10 @@ export class MuseumWorld {
     window.removeEventListener('resize', this.onResize);
     [...this.peers.keys()].forEach((id) => this.removePeer(id));
     if (this.video) { this.video.pause(); this.video.removeAttribute('src'); this.video.load(); }
-    this.pictureMeshes.forEach((m) => { m.userData.thumb?.dispose(); });
+    this.pictureMeshes.forEach((m) => {
+      m.userData.thumb?.dispose();
+      if (m.userData.badge) { m.userData.badge.material.map.dispose(); m.userData.badge.material.dispose(); }
+    });
     this.fullLoaded.forEach((t) => t.dispose());
     this.disposables.forEach((o) => o.dispose?.());
     this.renderer.dispose();

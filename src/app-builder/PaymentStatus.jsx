@@ -26,7 +26,7 @@ export default function PaymentStatus() {
   const { invitationId } = useParams();
   const [status, setStatus] = useState('checking'); // checking | published | timeout | notfound
   const [slug, setSlug] = useState(null);
-  const [previewInfo, setPreviewInfo] = useState({ name: '', templateKey: '' });
+  const [previewInfo, setPreviewInfo] = useState({ name: '', templateKey: '', kind: 'invite' });
   const [linkCopied, setLinkCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
   // null — ещё не знаем (не показываем ничего, чтобы блок не мигал)
@@ -40,7 +40,7 @@ export default function PaymentStatus() {
       attempt += 1;
       const { data, error } = await supabase
         .from('invitations')
-        .select('status, slug, recipient_name, template_key')
+        .select('status, slug, recipient_name, template_key, kind')
         .eq('id', invitationId)
         .maybeSingle();
 
@@ -55,7 +55,7 @@ export default function PaymentStatus() {
 
       if (data.status === 'published') {
         setSlug(data.slug);
-        setPreviewInfo({ name: data.recipient_name, templateKey: data.template_key });
+        setPreviewInfo({ name: data.recipient_name, templateKey: data.template_key, kind: data.kind });
         setStatus('published');
         // Человек вернулся с оплаты и увидел опубликованное приглашение —
         // это и есть «успешно дошёл до конца» в воронке.
@@ -178,10 +178,10 @@ export default function PaymentStatus() {
           <>
             <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
             <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 24, color: T.darkPurple, marginBottom: 8 }}>
-              {t('builder.publishedTitle')}
+              {t(previewInfo.kind === 'museum' ? 'payment.museumTitle' : 'builder.publishedTitle')}
             </h1>
             <p style={{ color: T.muted, fontFamily: T.font, fontSize: 13, marginBottom: 20, opacity: 0.8 }}>
-              {t('builder.publishedSubtitle')}
+              {t(previewInfo.kind === 'museum' ? 'payment.museumSubtitle' : 'builder.publishedSubtitle')}
             </p>
 
             {shareUrl && (
@@ -246,7 +246,7 @@ export default function PaymentStatus() {
                 rel="noreferrer"
                 style={{ display: 'block', marginBottom: 20, fontFamily: T.font, fontSize: 13, color: T.pink, textDecoration: 'underline' }}
               >
-                {t('builder.openAsRecipient')}
+                {t(previewInfo.kind === 'museum' ? 'payment.museumOpen' : 'builder.openAsRecipient')}
               </a>
             )}
 

@@ -321,8 +321,103 @@ const en = {
   extend: { action: 'Extend', title: 'Extend for how long?', pay: 'Pay', failed: 'Could not open payment.' },
 };
 
+
+const extra = {
+  ru: {
+    world: {
+      soundOn: 'Включить звук', soundOff: 'Выключить звук', voicePlay: 'Послушать послание', voiceStop: 'Остановить',
+      yes: 'Да', later: 'Может, позже', finaleYes: '{{name}} уже знает', finaleAgain: 'Вопрос из музея',
+      noPhrases: ['Нет', 'Точно?', 'Подумай ещё', 'Ну пожалуйста', 'Последний шанс', 'Совсем никак?'],
+      heart: 'Сердечко', guest: 'Гость',
+      endTitle: 'Спасибо, что зашли', endText: 'Музей останется открытым, сюда можно вернуться по той же ссылке.',
+      story: 'Поделиться в сторис', makeYours: 'Сделать такой же', backInside: 'Вернуться в музей',
+      storyTitle: 'Мне подарили целый музей',
+      book: 'Книга отзывов', bookPlaceholder: 'Оставь пару тёплых слов', bookSend: 'Оставить запись', bookThanks: 'Запись появилась в книге',
+      waitTitle: '{{name}}, тебя ждёт сюрприз', waitText: 'Откроется {{date}}. Эта страница откроет его сама.',
+      days: 'дней', hours: 'часов', minutes: 'минут', seconds: 'секунд',
+    },
+    builder: {
+      format: 'Формат', tiers: { lite: 'Лёгкий', full: 'Полный' }, tierLite: 'До 15 фото, без фильма', tierFull: 'До 45 фото и фильм',
+      tooMany: 'В этом формате до {{max}} фото. Уберите лишние или выберите «Полный».',
+      theme: 'Оформление залов', themes: { classic: 'Классика', night: 'Ночной', garden: 'Сад', samarkand: 'Самарканд', valentine: 'Валентинка' },
+      free: 'Бесплатно',
+      editPhoto: 'Подпись', caption: 'История этого фото', captionHint: 'Появится на табличке под фото', photoDate: 'Когда или где', done: 'Готово',
+      sound: 'Звук', voice: 'Голосовое послание', voiceHint: 'До {{seconds}} секунд. Оно звучит у входа, рядом с посвящением.',
+      record: 'Записать голос', stop: 'Остановить', recording: 'Идёт запись: {{seconds}} с', uploadAudio: 'Загрузить файл', removeVoice: 'Убрать голос',
+      micDenied: 'Браузер не дал доступ к микрофону. Разрешите его или загрузите файл.',
+      music: 'Музыка в залах', ambient: { off: 'Без музыки', warm: 'Тёплая', dream: 'Мечтательная' },
+      song: 'Своя песня', songHint: 'До {{mb}} МБ. Загружайте только то, что можно использовать.', chooseSong: 'Выбрать файл', removeSong: 'Убрать песню', songTooBig: 'Файл больше {{mb}} МБ.',
+      finale: 'Сюрприз в конце', finaleHint: 'Вопрос появится у главного фото. Кнопка «Нет» будет убегать, а ответ придёт вам в Telegram.',
+      finaleQuestion: 'Вопрос', finaleExamples: ['Пойдём делать новые фото?', 'Поужинаем в субботу?', 'Будем вместе ещё сто лет?'],
+      opening: 'Когда откроется', openingHint: 'Необязательно. До этого момента получатель увидит обратный отсчёт. Время ташкентское, срок ссылки начнётся с открытия.',
+      book: 'Книга отзывов', bookEmpty: 'Записей пока нет', bookRemove: 'Удалить',
+    },
+  },
+  uz: {
+    world: {
+      soundOn: 'Ovozni yoqish', soundOff: 'Ovozni o‘chirish', voicePlay: 'Xabarni tinglash', voiceStop: 'To‘xtatish',
+      yes: 'Ha', later: 'Balki keyinroq', finaleYes: '{{name}} allaqachon biladi', finaleAgain: 'Muzeydagi savol',
+      noPhrases: ['Yo‘q', 'Rostdanmi?', 'Yana o‘ylab ko‘r', 'Iltimos', 'Oxirgi imkoniyat', 'Umuman yo‘qmi?'],
+      heart: 'Yurakcha', guest: 'Mehmon',
+      endTitle: 'Kelganingiz uchun rahmat', endText: 'Muzey ochiq qoladi, shu havola orqali qaytish mumkin.',
+      story: 'Storisda ulashish', makeYours: 'Xuddi shundayini yaratish', backInside: 'Muzeyga qaytish',
+      storyTitle: 'Menga butun muzey sovg‘a qilishdi',
+      book: 'Taassurotlar kitobi', bookPlaceholder: 'Bir-ikki iliq so‘z qoldir', bookSend: 'Yozib qoldirish', bookThanks: 'Yozuv kitobda paydo bo‘ldi',
+      waitTitle: '{{name}}, seni syurpriz kutmoqda', waitText: '{{date}} da ochiladi. Bu sahifa uni o‘zi ochadi.',
+      days: 'kun', hours: 'soat', minutes: 'daqiqa', seconds: 'soniya',
+    },
+    builder: {
+      format: 'Format', tiers: { lite: 'Yengil', full: 'To‘liq' }, tierLite: '15 tagacha rasm, filmsiz', tierFull: '45 tagacha rasm va film',
+      tooMany: 'Bu formatda {{max}} tagacha rasm. Ortiqchasini olib tashlang yoki «To‘liq»ni tanlang.',
+      theme: 'Zallar bezagi', themes: { classic: 'Klassik', night: 'Tungi', garden: 'Bog‘', samarkand: 'Samarqand', valentine: 'Valentin' },
+      free: 'Bepul',
+      editPhoto: 'Izoh', caption: 'Bu rasm tarixi', captionHint: 'Rasm ostidagi lavhada chiqadi', photoDate: 'Qachon yoki qayerda', done: 'Tayyor',
+      sound: 'Ovoz', voice: 'Ovozli xabar', voiceHint: '{{seconds}} soniyagacha. Kirishda, bag‘ishlov yonida yangraydi.',
+      record: 'Ovoz yozish', stop: 'To‘xtatish', recording: 'Yozilmoqda: {{seconds}} s', uploadAudio: 'Fayl yuklash', removeVoice: 'Ovozni olib tashlash',
+      micDenied: 'Brauzer mikrofonga ruxsat bermadi. Ruxsat bering yoki fayl yuklang.',
+      music: 'Zallardagi musiqa', ambient: { off: 'Musiqasiz', warm: 'Iliq', dream: 'Xayolchan' },
+      song: 'O‘z qo‘shig‘ingiz', songHint: '{{mb}} MB gacha. Faqat foydalanish mumkin bo‘lganini yuklang.', chooseSong: 'Fayl tanlash', removeSong: 'Qo‘shiqni olib tashlash', songTooBig: 'Fayl {{mb}} MB dan katta.',
+      finale: 'Oxiridagi syurpriz', finaleHint: 'Savol asosiy rasm yonida chiqadi. «Yo‘q» tugmasi qochadi, javob esa sizga Telegramda keladi.',
+      finaleQuestion: 'Savol', finaleExamples: ['Yangi rasmlar olgani boramizmi?', 'Shanba kuni kechki ovqatga boramizmi?', 'Yana yuz yil birga bo‘lamizmi?'],
+      opening: 'Qachon ochiladi', openingHint: 'Ixtiyoriy. Shu paytgacha oluvchi teskari sanoqni ko‘radi. Vaqt Toshkent bo‘yicha, havola muddati ochilishdan boshlanadi.',
+      book: 'Taassurotlar kitobi', bookEmpty: 'Hozircha yozuvlar yo‘q', bookRemove: 'O‘chirish',
+    },
+  },
+  en: {
+    world: {
+      soundOn: 'Turn sound on', soundOff: 'Turn sound off', voicePlay: 'Hear the message', voiceStop: 'Stop',
+      yes: 'Yes', later: 'Maybe later', finaleYes: '{{name}} already knows', finaleAgain: 'A question from the museum',
+      noPhrases: ['No', 'Sure?', 'Think again', 'Please', 'Last chance', 'Really no?'],
+      heart: 'Heart', guest: 'Guest',
+      endTitle: 'Thank you for coming', endText: 'The museum stays open, and the same link brings you back.',
+      story: 'Share to stories', makeYours: 'Make one like this', backInside: 'Back to the museum',
+      storyTitle: 'Someone gave me a whole museum',
+      book: 'Guest book', bookPlaceholder: 'Leave a few warm words', bookSend: 'Sign the book', bookThanks: 'Your note is in the book',
+      waitTitle: '{{name}}, a surprise is waiting', waitText: 'Opens on {{date}}. This page will open it by itself.',
+      days: 'days', hours: 'hours', minutes: 'minutes', seconds: 'seconds',
+    },
+    builder: {
+      format: 'Format', tiers: { lite: 'Light', full: 'Full' }, tierLite: 'Up to 15 photos, no film', tierFull: 'Up to 45 photos and a film',
+      tooMany: 'This format fits {{max}} photos. Remove some or choose Full.',
+      theme: 'Hall style', themes: { classic: 'Classic', night: 'Night', garden: 'Garden', samarkand: 'Samarkand', valentine: 'Valentine' },
+      free: 'Free',
+      editPhoto: 'Caption', caption: 'The story of this photo', captionHint: 'Shown on the plaque under the photo', photoDate: 'When or where', done: 'Done',
+      sound: 'Sound', voice: 'Voice message', voiceHint: 'Up to {{seconds}} seconds. It plays at the entrance, next to the dedication.',
+      record: 'Record voice', stop: 'Stop', recording: 'Recording: {{seconds}} s', uploadAudio: 'Upload a file', removeVoice: 'Remove voice',
+      micDenied: 'The browser blocked the microphone. Allow it or upload a file.',
+      music: 'Music in the halls', ambient: { off: 'No music', warm: 'Warm', dream: 'Dreamy' },
+      song: 'Your own song', songHint: 'Up to {{mb}} MB. Upload only what you may use.', chooseSong: 'Choose a file', removeSong: 'Remove song', songTooBig: 'The file is over {{mb}} MB.',
+      finale: 'A surprise at the end', finaleHint: 'The question appears at the centrepiece. The No button runs away, and the answer comes to your Telegram.',
+      finaleQuestion: 'Question', finaleExamples: ['Shall we make new photos?', 'Dinner this Saturday?', 'Another hundred years together?'],
+      opening: 'When it opens', openingHint: 'Optional. Until then they see a countdown. Tashkent time; the link term starts at opening.',
+      book: 'Guest book', bookEmpty: 'No notes yet', bookRemove: 'Delete',
+    },
+  },
+};
+
 for (const [lng, museum] of Object.entries({ ru, uz, en })) {
   i18n.addResourceBundle(lng, 'translation', { museum }, true, true);
+  i18n.addResourceBundle(lng, 'translation', { museum: extra[lng] }, true, true);
 }
 
 export default i18n;

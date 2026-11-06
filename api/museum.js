@@ -92,7 +92,7 @@ async function cleanup(req, res) {
   const cutoff = new Date(Date.now() - GRACE_DAYS * 86400000).toISOString();
   const { data, error } = await db
     .from('museum_content')
-    .select('invitation_id, photos, video_url, invitations!inner(kind, expires_at)')
+    .select('invitation_id, photos, video_url, voice_url, song_url, invitations!inner(kind, expires_at)')
     .is('purged_at', null)
     .eq('invitations.kind', 'museum')
     .lt('invitations.expires_at', cutoff)
@@ -104,13 +104,13 @@ async function cleanup(req, res) {
 
   let purged = 0;
   for (const row of data || []) {
-    const paths = [...row.photos.flatMap((p) => [pathOf(p.full), pathOf(p.thumb)]), pathOf(row.video_url)].filter(Boolean);
+    const paths = [...row.photos.flatMap((p) => [pathOf(p.full), pathOf(p.thumb)]), pathOf(row.video_url), pathOf(row.voice_url), pathOf(row.song_url)].filter(Boolean);
     const { error: removeError } = await db.storage.from(BUCKET).remove(paths);
     if (removeError) {
       console.error('museum/cleanup: remove failed', row.invitation_id, removeError);
       continue;
     }
-    await db.from('museum_content').update({ photos: [], video_url: null, purged_at: new Date().toISOString() }).eq('invitation_id', row.invitation_id);
+    await db.from('museum_content').update({ photos: [], video_url: null, voice_url: null, song_url: null, purged_at: new Date().toISOString() }).eq('invitation_id', row.invitation_id);
     purged += 1;
   }
   return res.status(200).json({ purged });

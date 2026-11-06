@@ -132,6 +132,12 @@ export default {
   },
 
   payment: {
+
+    museumTitle: 'Muzeyingiz tayyor',
+
+    museumSubtitle: 'Havolani yuboring. Ochilganda kirib, birga aylanishingiz mumkin.',
+
+    museumOpen: 'Muzeyga kirish',
     tgTitle: 'Havola ochilganini birinchi bo‘lib biling',
     tgText: 'Havola ochilishi bilan bot xabar beradi va javob kelganda uni yuboradi.',
     tgAction: 'Telegramni ulash',

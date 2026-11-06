@@ -11,6 +11,14 @@ import './museumI18n.js';
 import { MuseumWorld } from './engine/MuseumWorld.js';
 import { buildLayout } from './engine/layout.js';
 import { createRoom } from './engine/room.js';
+import { createAmbient } from './engine/ambient.js';
+import { makeStoryCard, shareBlob } from './storyCard.js';
+import { supabase } from '../lib/supabaseClient.js';
+import RunawayButton from '../components/ui/RunawayButton.jsx';
+
+// До запуска ведёт в скрытый конструктор. При запуске поменять на публичный адрес.
+const MAKE_YOURS_URL = '/lab/museum?utm_source=museum&utm_medium=recipient';
+const NO_LIMIT = 6;
 
 const C = {
   night: '#2b1320', ink: '#2b1320', cream: '#fff8f0', rose: '#f85589', berry: '#b23a62', gold: '#d9b26f',
@@ -73,6 +81,39 @@ function Joystick({ onMove }) {
   );
 }
 
+function Finale({ question, author, live, slug, onClose, onAnswered, t }) {
+  const box = useRef(null);
+  const [tries, setTries] = useState(0);
+  const [done, setDone] = useState(false);
+  const yes = async () => {
+    setDone(true);
+    onAnswered();
+    if (live) await supabase.rpc('submit_response', { p_slug: slug, p_no_attempts: tries });
+  };
+  const btn = { ...pill, minWidth: 96, background: '#fff', color: C.ink };
+  return (
+    <div ref={box} data-testid="finale" style={{ position: 'absolute', left: 12, right: 12, bottom: 'calc(166px + env(safe-area-inset-bottom))', maxWidth: 420, height: 230, margin: '0 auto', boxSizing: 'border-box', padding: 20, borderRadius: 20, background: 'rgba(32,12,22,.9)', color: '#fff', textAlign: 'center' }}>
+      {done ? (
+        <>
+          <p style={{ margin: '4px 0 6px', fontSize: 34 }}>🤍</p>
+          <p style={{ margin: 0, fontFamily: C.display, fontSize: 28 }}>{t('museum.world.finaleYes', { name: author || '' })}</p>
+          <button type="button" onClick={onClose} style={{ ...pill, background: C.berry, marginTop: 20 }}>{t('museum.common.close')}</button>
+        </>
+      ) : (
+        <>
+          <p style={{ margin: '8px 0 22px', fontFamily: C.display, fontSize: 28, lineHeight: 1.15 }}>{question}</p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+            <button type="button" data-testid="finale-yes" onClick={yes} style={{ ...pill, minWidth: 96, background: C.rose }}>{t('museum.world.yes')}</button>
+            {tries >= NO_LIMIT
+              ? <button type="button" data-testid="finale-later" onClick={onClose} style={btn}>{t('museum.world.later')}</button>
+              : <RunawayButton containerRef={box} phrases={t('museum.world.noPhrases', { returnObjects: true })} onDodge={() => setTries((n) => n + 1)} style={btn} />}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function FallbackGallery({ data, text }) {
   return (
     <div style={{ minHeight: '100dvh', background: C.night, color: C.cream, padding: 20, fontFamily: C.ui }}>
@@ -103,6 +144,17 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
   const [unread, setUnread] = useState(0);
   const [room, setRoom] = useState({ players: [], admitted: true, queue: 0, status: 'idle' });
   const [about, setAbout] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [hearts, setHearts] = useState(data.hearts || {});
+  const [ended, setEnded] = useState(false);
+  const [finale, setFinale] = useState('waiting'); // waiting | open | closed | answered
+  const [book, setBook] = useState(data.guestbook || []);
+  const [bookText, setBookText] = useState('');
+  const [bookSent, setBookSent] = useState(false);
+  const musicRef = useRef(null);
+  const answeredRef = useRef(false);
+  const voiceRef = useRef(null);
   const webgl = useMemo(hasWebGL, []);
   const touch = useMemo(() => window.matchMedia?.('(pointer: coarse)').matches, []);
   const isLive = mode === 'live';
@@ -145,6 +197,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
       world.start();
       await world.loadThumbnails();
       if (cancelled) return;
+      Object.entries(data.hearts || {}).forEach(([i, n]) => world.setHeartCount(Number(i), n));
       setReady(true);
 
       if (!isLive) return;
@@ -172,6 +225,11 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
             setUnread((n) => n + 1);
           },
           onFilm: ({ playing, t: time }) => world.setFilmPlaying(playing, false, time),
+          onHeart: (photo, count) => {
+            world.heartBurst(photo);
+            world.setHeartCount(photo, count);
+            setHearts((h) => ({ ...h, [photo]: count }));
+          },
         },
       });
       roomRef.current = r;
@@ -184,19 +242,113 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
       roomRef.current = null;
       worldRef.current?.dispose();
       worldRef.current = null;
+      musicRef.current?.stop();
+      musicRef.current = null;
+      voiceRef.current?.pause();
     };
     // Сцена создаётся один раз, при входе
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entered]);
 
+  // Музыка становится тише, когда звучат голос или фильм
+  useEffect(() => {
+    const music = musicRef.current;
+    if (music) music.setLevel(muted ? 0 : voiceOn || hud.filmPlaying ? 0.03 : 0.16);
+    if (voiceRef.current) voiceRef.current.muted = muted;
+    if (worldRef.current) worldRef.current.filmDuck = muted ? 0 : voiceOn ? 0.25 : 1;
+  }, [muted, voiceOn, hud.filmPlaying]);
+
+  useEffect(() => {
+    if (hud.nearHero && data.finaleQuestion && finale === 'waiting') setFinale('open');
+  }, [hud.nearHero, data.finaleQuestion, finale]);
+
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden) worldRef.current?.stop();
-      else worldRef.current?.start();
+      if (document.hidden) {
+        worldRef.current?.stop();
+        musicRef.current?.pause();
+      } else {
+        worldRef.current?.start();
+        musicRef.current?.resume();
+      }
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
+
+  // Браузер разрешает звук только после нажатия, поэтому запускаем его на входе
+  function enter(e) {
+    e.preventDefault();
+    if (data.songUrl) {
+      const song = new Audio(data.songUrl);
+      song.loop = true;
+      song.volume = 0.45;
+      song.play().catch(() => {});
+      musicRef.current = {
+        setLevel: (v) => { song.volume = Math.min(1, v * 2.8); },
+        pause: () => song.pause(),
+        resume: () => song.play().catch(() => {}),
+        stop: () => song.pause(),
+      };
+    } else if (data.ambient && data.ambient !== 'off') {
+      musicRef.current = createAmbient(data.ambient);
+      musicRef.current?.start();
+    }
+    if (data.voiceUrl) {
+      const voice = new Audio(data.voiceUrl);
+      voice.onended = () => setVoiceOn(false);
+      voiceRef.current = voice;
+    }
+    setEntered(true);
+  }
+
+  function toggleVoice() {
+    const voice = voiceRef.current;
+    if (!voice) return;
+    if (voice.paused) {
+      voice.currentTime = 0;
+      voice.play().catch(() => {});
+      setVoiceOn(true);
+    } else {
+      voice.pause();
+      setVoiceOn(false);
+    }
+  }
+
+  async function giveHeart(photo) {
+    const world = worldRef.current;
+    let count = (hearts[photo] || 0) + 1;
+    if (isLive) {
+      const { data: server } = await supabase.rpc('museum_heart', { p_slug: slug, p_photo: photo });
+      if (server) count = server;
+      roomRef.current?.sendHeart(photo, count);
+    }
+    setHearts((h) => ({ ...h, [photo]: count }));
+    world?.heartBurst(photo);
+    world?.setHeartCount(photo, count);
+  }
+
+  async function signBook(e) {
+    e.preventDefault();
+    const message = bookText.trim();
+    if (!message) return;
+    const author = name.trim() || t('museum.world.guest');
+    if (isLive) await supabase.rpc('museum_sign', { p_slug: slug, p_author: author, p_message: message });
+    setBook((b) => [{ author, message }, ...b]);
+    setBookText('');
+    setBookSent(true);
+  }
+
+  async function shareStory() {
+    const hero = data.photos[0];
+    const blob = await makeStoryCard({ photoUrl: hero?.full, title: t('museum.world.storyTitle'), footer: 'senti.uz' });
+    if (blob) await shareBlob(blob, 'senti-museum.png');
+  }
+
+  function leave() {
+    if (mode === 'preview') onExit?.();
+    else setEnded(true);
+  }
 
   function sendChat(e) {
     e.preventDefault();
@@ -219,7 +371,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: `radial-gradient(120% 90% at 50% 20%, #7c2c4a 0%, ${C.night} 70%)`, color: C.cream, userSelect: 'text' }}>
           <form
             style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}
-            onSubmit={(e) => { e.preventDefault(); setEntered(true); }}
+            onSubmit={enter}
           >
             <p style={{ margin: 0, color: C.gold, fontSize: 13, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' }}>{t('museum.world.coverKicker')}</p>
             <h1 style={{ margin: '14px 0 8px', fontFamily: C.display, fontSize: 'clamp(38px, 9vw, 54px)', lineHeight: 1.05, fontWeight: 700 }}>
@@ -263,7 +415,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
         <>
           <div style={{ position: 'absolute', top: 'calc(12px + env(safe-area-inset-top))', left: 12, right: 12, display: 'flex', justifyContent: 'space-between', gap: 8, pointerEvents: 'none' }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', pointerEvents: 'auto' }}>
-              {onExit && <button type="button" style={pill} onClick={onExit}>{t('museum.world.exit')}</button>}
+              <button type="button" data-testid="exit" style={pill} onClick={leave}>{t('museum.world.exit')}</button>
               {isLive && room.players.map((p) => (
                 <span key={p.id} style={{ ...pill, cursor: 'default', display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 0, padding: '8px 12px', fontSize: 13 }}>
                   <i style={{ width: 9, height: 9, borderRadius: '50%', background: p.color }} />{p.name}
@@ -271,6 +423,9 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
               ))}
             </div>
             <div style={{ display: 'flex', gap: 6, pointerEvents: 'auto' }}>
+              {(data.songUrl || (data.ambient && data.ambient !== 'off') || data.voiceUrl) && (
+                <button type="button" data-testid="mute" style={pill} aria-label={t(muted ? 'museum.world.soundOn' : 'museum.world.soundOff')} onClick={() => setMuted((m) => !m)}>{muted ? '🔇' : '🔊'}</button>
+              )}
               <button type="button" style={pill} aria-label={t('museum.world.about')} onClick={() => setAbout(true)}>i</button>
               {isLive && (
                 <button type="button" style={pill} data-testid="chat-toggle" onClick={() => { setChatOpen((o) => !o); setUnread(0); }}>
@@ -290,6 +445,14 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
           <Joystick onMove={(x, y) => worldRef.current?.setMove(x, y)} />
 
           <div style={{ position: 'absolute', right: 16, bottom: 'calc(28px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            {hud.nearEntrance && data.voiceUrl && (
+              <button type="button" data-testid="voice" style={{ ...pill, background: C.berry }} onClick={toggleVoice}>
+                {voiceOn ? t('museum.world.voiceStop') : t('museum.world.voicePlay')}
+              </button>
+            )}
+            {hud.nearHero && data.finaleQuestion && finale === 'closed' && (
+              <button type="button" style={{ ...pill, background: C.berry }} onClick={() => setFinale('open')}>{t('museum.world.finaleAgain')}</button>
+            )}
             {hud.nearFilm && (
               <button type="button" data-testid="film" style={{ ...pill, background: C.berry }} onClick={() => worldRef.current?.toggleFilm()}>
                 {hud.filmPlaying ? t('museum.world.pauseFilm') : t('museum.world.playFilm')}
@@ -307,6 +470,18 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
               <p style={{ margin: '0 0 14px', fontSize: 15, lineHeight: 1.5 }}>{touch ? t('museum.world.hintTouch') : t('museum.world.hintMouse')}</p>
               <button type="button" data-testid="hint-ok" onClick={() => setHint(false)} style={{ ...pill, background: C.rose, width: '100%' }}>{t('museum.world.gotIt')}</button>
             </div>
+          )}
+
+          {finale === 'open' && !hint && (
+            <Finale
+              question={data.finaleQuestion}
+              author={data.authorName}
+              live={isLive}
+              slug={slug}
+              t={t}
+              onClose={() => setFinale(answeredRef.current ? 'answered' : 'closed')}
+              onAnswered={() => { answeredRef.current = true; }}
+            />
           )}
 
           {chatOpen && (
@@ -327,14 +502,52 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
       )}
 
       {viewer !== null && (
-        <button
-          type="button"
-          aria-label={t('museum.common.close')}
+        <div
+          role="dialog"
+          data-testid="viewer"
           onClick={() => setViewer(null)}
-          style={{ position: 'absolute', inset: 0, border: 'none', padding: 16, background: 'rgba(15,5,10,.92)', cursor: 'zoom-out', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 16, boxSizing: 'border-box', background: 'rgba(15,5,10,.92)', cursor: 'zoom-out' }}
         >
-          <img src={data.photos[viewer].full} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 4 }} />
-        </button>
+          <img src={data.photos[viewer].full} alt="" style={{ maxWidth: '100%', minHeight: 0, flex: '0 1 auto', objectFit: 'contain', borderRadius: 4 }} />
+          {(data.photos[viewer].caption || data.photos[viewer].date) && (
+            <p style={{ margin: 0, maxWidth: 520, textAlign: 'center', color: C.cream, fontFamily: C.display, fontStyle: 'italic', fontSize: 22, lineHeight: 1.25 }}>
+              {data.photos[viewer].caption}
+              {data.photos[viewer].date && <span style={{ display: 'block', marginTop: 4, fontFamily: C.ui, fontStyle: 'normal', fontSize: 13, color: C.gold }}>{data.photos[viewer].date}</span>}
+            </p>
+          )}
+          <button type="button" data-testid="heart" onClick={(e) => { e.stopPropagation(); giveHeart(viewer); }} style={{ ...pill, flexShrink: 0, background: C.rose }}>
+            ♥ {hearts[viewer] || t('museum.world.heart')}
+          </button>
+        </div>
+      )}
+
+      {ended && (
+        <div data-testid="end" style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '32px 20px', boxSizing: 'border-box', background: `radial-gradient(120% 90% at 50% 10%, #7c2c4a 0%, ${C.night} 70%)`, color: C.cream, userSelect: 'text' }}>
+          <div style={{ maxWidth: 440, margin: '0 auto', textAlign: 'center' }}>
+            <h2 style={{ margin: '0 0 8px', fontFamily: C.display, fontSize: 38, lineHeight: 1.1 }}>{t('museum.world.endTitle')}</h2>
+            <p style={{ margin: '0 0 20px', fontSize: 15, lineHeight: 1.5, opacity: 0.8 }}>{t('museum.world.endText')}</p>
+            <div style={{ display: 'grid', gap: 8, marginBottom: 26 }}>
+              <button type="button" data-testid="story" onClick={shareStory} style={{ ...pill, background: C.rose }}>{t('museum.world.story')}</button>
+              <a href={MAKE_YOURS_URL} data-testid="make-yours" style={{ ...pill, background: 'rgba(255,255,255,.14)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>{t('museum.world.makeYours')}</a>
+              <button type="button" onClick={() => setEnded(false)} style={{ ...pill, background: 'transparent' }}>{t('museum.world.backInside')}</button>
+            </div>
+
+            <div style={{ textAlign: 'left' }}>
+              <h3 style={{ margin: '0 0 10px', fontFamily: C.display, fontSize: 26 }}>{t('museum.world.book')}</h3>
+              {!bookSent ? (
+                <form onSubmit={signBook} style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+                  <textarea data-testid="book-input" rows={3} maxLength={300} value={bookText} onChange={(e) => setBookText(e.target.value)} placeholder={t('museum.world.bookPlaceholder')} style={{ padding: 12, borderRadius: 12, border: 'none', fontFamily: C.ui, fontSize: 16, color: C.ink, resize: 'vertical' }} />
+                  <button type="submit" data-testid="book-send" style={{ ...pill, background: C.berry }}>{t('museum.world.bookSend')}</button>
+                </form>
+              ) : <p style={{ margin: '0 0 14px', color: C.gold, fontSize: 14 }}>{t('museum.world.bookThanks')}</p>}
+              {book.map((entry, i) => (
+                <p key={`${entry.author}-${i}`} style={{ margin: '0 0 10px', padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.09)', fontSize: 14, lineHeight: 1.45, wordBreak: 'break-word' }}>
+                  <b style={{ color: C.gold }}>{entry.author}: </b>{entry.message}
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {about && (

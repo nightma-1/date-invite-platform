@@ -20,7 +20,52 @@ export function toExperienceData(row) {
     signature: row.signature,
     videoUrl: row.video_url,
     photos: row.photos,
+    theme: row.theme,
+    voiceUrl: row.voice_url,
+    songUrl: row.song_url,
+    ambient: row.ambient,
+    finaleQuestion: row.finale_question,
+    hearts: row.hearts,
+    guestbook: row.guestbook,
   };
+}
+
+function Countdown({ opensAt, name, onOpen, t }) {
+  const [now, setNow] = useState(Date.now());
+  const left = Math.max(0, new Date(opensAt).getTime() - now);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    if (left === 0) onOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left === 0]);
+  const total = Math.floor(left / 1000);
+  const parts = [
+    [Math.floor(total / 86400), t('museum.world.days')],
+    [Math.floor(total / 3600) % 24, t('museum.world.hours')],
+    [Math.floor(total / 60) % 60, t('museum.world.minutes')],
+    [total % 60, t('museum.world.seconds')],
+  ];
+  const date = new Date(opensAt).toLocaleString(undefined, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent' });
+  return (
+    <div data-testid="countdown" style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, boxSizing: 'border-box', background: 'radial-gradient(120% 90% at 50% 20%, #7c2c4a 0%, #2b1320 70%)', color: '#fff8f0', textAlign: 'center', fontFamily: 'Manrope, sans-serif' }}>
+      <div>
+        <p style={{ margin: 0, color: '#d9b26f', fontSize: 13, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' }}>{t('museum.world.coverKicker')}</p>
+        <h1 style={{ margin: '14px 0 22px', fontFamily: '"Cormorant Garamond", serif', fontSize: 'clamp(34px, 8vw, 50px)', lineHeight: 1.08 }}>{t('museum.world.waitTitle', { name })}</h1>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+          {parts.map(([value, label]) => (
+            <div key={label} style={{ width: 70, padding: '12px 0', borderRadius: 14, background: 'rgba(255,255,255,.1)' }}>
+              <b style={{ display: 'block', fontSize: 28 }}>{value}</b>
+              <span style={{ fontSize: 11, opacity: 0.7 }}>{label}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: '20px 0 0', fontSize: 14, opacity: 0.75 }}>{t('museum.world.waitText', { date })}</p>
+      </div>
+    </div>
+  );
 }
 
 export default function MuseumRecipient({ slug }) {
@@ -28,17 +73,23 @@ export default function MuseumRecipient({ slug }) {
   const [params] = useSearchParams();
   const [state, setState] = useState({ status: 'loading' });
 
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
     supabase.rpc('get_museum', { p_slug: slug }).then(({ data, error }) => {
       if (cancelled) return;
-      if (error || !data || !data.photos?.length) setState({ status: 'missing' });
+      if (data?.locked) setState({ status: 'locked', opensAt: data.opens_at, name: data.recipient_name });
+      else if (error || !data || !data.photos?.length) setState({ status: 'missing' });
       else setState({ status: 'ready', data: toExperienceData(data) });
     });
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, attempt]);
 
   if (state.status === 'loading') return <div style={{ minHeight: '100dvh', background: '#2b1320' }} />;
+  if (state.status === 'locked') {
+    return <Countdown opensAt={state.opensAt} name={state.name} t={t} onOpen={() => setTimeout(() => setAttempt((n) => n + 1), 1200)} />;
+  }
   if (state.status === 'missing') {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#2b1320', color: '#fff8f0', textAlign: 'center', fontFamily: 'Manrope, sans-serif' }}>
