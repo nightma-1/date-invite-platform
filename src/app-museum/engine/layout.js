@@ -137,26 +137,27 @@ export function buildLayout(photos, hasVideo) {
     const a = alongZ ? 0.3 : 1.2;
     const b = alongZ ? 1.2 : 0.3;
     add(x - a, x + a, z - b, z + b);
+    colliders[colliders.length - 1].low = true; // камера смотрит поверх скамейки
   };
   for (let i = 0; i < hallCount; i += 1) {
     const mid = -vestDepth - i * depth - depth / 2;
     if (i === hallCount - 1) continue;
     bench(0, mid, true, [
-      { x: -0.45, z: mid + 0.5, yaw: Math.PI / 2 },
-      { x: -0.45, z: mid - 0.5, yaw: Math.PI / 2 },
-      { x: 0.45, z: mid + 0.5, yaw: -Math.PI / 2 },
-      { x: 0.45, z: mid - 0.5, yaw: -Math.PI / 2 },
+      { x: -0.13, z: mid + 0.5, yaw: Math.PI / 2 },
+      { x: -0.13, z: mid - 0.5, yaw: Math.PI / 2 },
+      { x: 0.13, z: mid + 0.5, yaw: -Math.PI / 2 },
+      { x: 0.13, z: mid - 0.5, yaw: -Math.PI / 2 },
     ]);
   }
   const heroZ = totalEnd + 5;
   bench(0, heroZ, false, [
-    { x: -0.5, z: heroZ + 0.45, yaw: 0 },
-    { x: 0.5, z: heroZ + 0.45, yaw: 0 },
+    { x: -0.5, z: heroZ + 0.1, yaw: 0 },
+    { x: 0.5, z: heroZ + 0.1, yaw: 0 },
   ]);
   if (screen) {
     bench(-0.9, lastMid, true, [
-      { x: -0.45, z: lastMid + 0.55, yaw: Math.PI / 2 },
-      { x: -0.45, z: lastMid - 0.55, yaw: Math.PI / 2 },
+      { x: -0.8, z: lastMid + 0.55, yaw: Math.PI / 2 },
+      { x: -0.8, z: lastMid - 0.55, yaw: Math.PI / 2 },
     ]);
   }
 
@@ -174,7 +175,26 @@ export function buildLayout(photos, hasVideo) {
     if (i < hallCount - 1) arrows.push({ x: 0, z: z - depth + 2.2 });
   }
 
-  return { hallCount, totalEnd, pictures, screen, colliders, benches, guestSlots, arrows, spawn: { x: 0, z: -1, yaw: 0 } };
+  return { hallCount, totalEnd, pictures, screen, colliders, benches, guestSlots, arrows, spawn: { x: 0, z: -2.5, yaw: 0 } }; // камере нужно место позади человека
+}
+
+/** Точка перед сиденьем: отсюда человек садится и сюда же встаёт. */
+export function seatFront(seat, distance = 0.76) {
+  return { x: seat.x - Math.sin(seat.yaw) * distance, z: seat.z - Math.cos(seat.yaw) * distance };
+}
+
+/** Сколько камера может отъехать назад, не уйдя за стену. */
+export function clearCameraDistance(head, back, wanted, colliders) {
+  for (let t = 0.2; t <= wanted; t += 0.12) {
+    const x = head.x + back.x * t;
+    const z = head.z + back.z * t;
+    for (const c of colliders) {
+      if (!c.low && x > c.minX - 0.14 && x < c.maxX + 0.14 && z > c.minZ - 0.14 && z < c.maxZ + 0.14) {
+        return Math.max(0, t - 0.14);
+      }
+    }
+  }
+  return wanted;
 }
 
 /** Номер зала по координате: 0 — вход, дальше залы по порядку. */

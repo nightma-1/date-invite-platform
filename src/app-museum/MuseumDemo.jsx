@@ -81,6 +81,8 @@ export default function MuseumDemo() {
         hearts: { 1: 3 },
         guestbook: [{ author: 'Дилноза', message: 'Какие же вы красивые! Плачу у экрана.' }],
         guestPhotos: [],
+        recipientGender: 'female',
+        demoGuest: { name: 'Sardor', gender: 'male', outfit: 1 },
         photos: samplePhotos(Math.min(45, Math.max(6, Number(params.get('photos')) || 16))),
       });
     });

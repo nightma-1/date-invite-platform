@@ -337,6 +337,7 @@ const extra = {
       features: ['Фильм на экране галереи', 'Подпись к каждому фото', 'Голосовое послание у входа', 'Вопрос в конце с убегающей кнопкой «Нет»', 'Открытие ровно в нужный момент', 'Книга отзывов и фото от гостей'],
     },
     world: {
+      character: 'Выбери персонажа', girl: 'Девушка', boy: 'Парень', outfit: 'Цвет одежды {{n}}', wave: 'Помахать', cameraFirst: 'Вид от первого лица', cameraThird: 'Вид от третьего лица',
       hallOf: 'Зал {{hall}} из {{total}}', following: 'Идёте за {{name}} · отменить', followHint: 'Нажми, чтобы идти за этим человеком',
       guestAdd: 'Добавить своё фото', guestDone: 'Фото появится в музее у входа', guestFailed: 'Не получилось добавить фото', guestFrom: 'От {{name}}',
       soundOn: 'Включить звук', soundOff: 'Выключить звук', voicePlay: 'Послушать послание', voiceStop: 'Остановить',
@@ -352,6 +353,7 @@ const extra = {
     },
     dashboard: { answered: 'Ответ «да» в финале', noAnswer: 'Ответа в финале пока нет' },
     builder: {
+      forWhom: 'Кому подарок', forHer: 'Ей', forHim: 'Ему',
       warn: { dark: 'Фото будет выглядеть тускло: оно очень тёмное', small: 'Фото маленькое и в большой раме будет размытым' }, guestPhotos: 'Фото гостей', hide: 'Скрыть',
       format: 'Формат', tiers: { lite: 'Лёгкий', full: 'Полный' }, tierLite: 'До 15 фото, без фильма', tierFull: 'До 45 фото и фильм',
       tooMany: 'В этом формате до {{max}} фото. Уберите лишние или выберите «Полный».',
@@ -383,6 +385,7 @@ const extra = {
       features: ['Galereya ekranida film', 'Har bir rasmga izoh', 'Kirishda ovozli xabar', 'Oxirida qochadigan «Yo‘q» tugmali savol', 'Aynan kerakli paytda ochilish', 'Taassurotlar kitobi va mehmonlar rasmlari'],
     },
     world: {
+      character: 'Personajni tanla', girl: 'Qiz', boy: 'Yigit', outfit: 'Kiyim rangi {{n}}', wave: 'Qo‘l silkitish', cameraFirst: 'Birinchi shaxsdan ko‘rish', cameraThird: 'Uchinchi shaxsdan ko‘rish',
       hallOf: '{{total}} tadan {{hall}}-zal', following: '{{name}} ortidan ketyapsiz · bekor qilish', followHint: 'Bu odam ortidan yurish uchun bos',
       guestAdd: 'O‘z rasmingni qo‘shish', guestDone: 'Rasm muzey kirishida paydo bo‘ladi', guestFailed: 'Rasmni qo‘shib bo‘lmadi', guestFrom: '{{name}}dan',
       soundOn: 'Ovozni yoqish', soundOff: 'Ovozni o‘chirish', voicePlay: 'Xabarni tinglash', voiceStop: 'To‘xtatish',
@@ -398,6 +401,7 @@ const extra = {
     },
     dashboard: { answered: 'Oxirida «ha» deb javob berdi', noAnswer: 'Oxirgi savolga hali javob yo‘q' },
     builder: {
+      forWhom: 'Sovg‘a kimga', forHer: 'Unga (qiz)', forHim: 'Unga (yigit)',
       warn: { dark: 'Rasm xira ko‘rinadi: u juda qorong‘i', small: 'Rasm kichik, katta ramkada xira bo‘ladi' }, guestPhotos: 'Mehmonlar rasmlari', hide: 'Yashirish',
       format: 'Format', tiers: { lite: 'Yengil', full: 'To‘liq' }, tierLite: '15 tagacha rasm, filmsiz', tierFull: '45 tagacha rasm va film',
       tooMany: 'Bu formatda {{max}} tagacha rasm. Ortiqchasini olib tashlang yoki «To‘liq»ni tanlang.',
@@ -429,6 +433,7 @@ const extra = {
       features: ['A film on the gallery screen', 'A caption for every photo', 'A voice message at the entrance', 'A final question with a runaway No button', 'Opening at the exact moment', 'A guest book and guest photos'],
     },
     world: {
+      character: 'Choose your character', girl: 'Girl', boy: 'Boy', outfit: 'Outfit colour {{n}}', wave: 'Wave', cameraFirst: 'First-person view', cameraThird: 'Third-person view',
       hallOf: 'Hall {{hall}} of {{total}}', following: 'Following {{name}} · cancel', followHint: 'Tap to follow this person',
       guestAdd: 'Add your photo', guestDone: 'It will appear at the entrance', guestFailed: 'Could not add the photo', guestFrom: 'From {{name}}',
       soundOn: 'Turn sound on', soundOff: 'Turn sound off', voicePlay: 'Hear the message', voiceStop: 'Stop',
@@ -444,6 +449,7 @@ const extra = {
     },
     dashboard: { answered: 'Answered yes at the end', noAnswer: 'No answer at the end yet' },
     builder: {
+      forWhom: 'Who is it for', forHer: 'Her', forHim: 'Him',
       warn: { dark: 'This photo is very dark and will look dull', small: 'This photo is small and will look blurry in a big frame' }, guestPhotos: 'Guest photos', hide: 'Hide',
       format: 'Format', tiers: { lite: 'Light', full: 'Full' }, tierLite: 'Up to 15 photos, no film', tierFull: 'Up to 45 photos and a film',
       tooMany: 'This format fits {{max}} photos. Remove some or choose Full.',

@@ -15,6 +15,7 @@ import MuseumExperience from './MuseumExperience.jsx';
 export function toExperienceData(row) {
   return {
     recipientName: row.recipient_name,
+    recipientGender: row.recipient_gender,
     authorName: row.author_name,
     dedication: row.dedication,
     signature: row.signature,

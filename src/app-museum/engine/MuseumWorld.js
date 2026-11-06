@@ -8,7 +8,8 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { HALL, hallAt, resolveCollisions } from './layout.js';
+import { HALL, clearCameraDistance, hallAt, resolveCollisions, seatFront } from './layout.js';
+import { createAvatar, createAvatarKit, disposeAvatar, headHeight, poseAvatar } from './Avatar.js';
 import { themeOf } from './themes.js';
 
 const SPEED = 2.9;
@@ -210,7 +211,7 @@ function labelSprite(text, { bg = 'rgba(32,12,22,.78)', color = '#fff', width = 
 }
 
 export class MuseumWorld {
-  constructor(canvas, { data, layout, labels, onPhotoTap, onGuestTap, onHud, onFilmChange, onProgress, onContextLost }) {
+  constructor(canvas, { data, layout, labels, avatar, cameraMode = 'third', onPhotoTap, onGuestTap, onHud, onFilmChange, onProgress, onContextLost }) {
     this.canvas = canvas;
     this.data = data;
     this.layout = layout;
@@ -228,13 +229,17 @@ export class MuseumWorld {
     this.scene.add(new THREE.HemisphereLight('#fff4e6', '#5a3440', 2.4));
 
     // У каждого своё место у входа, иначе двое появляются в одной точке
-    this.pos = { x: layout.spawn.x + (Math.random() - 0.5) * 3.4, z: layout.spawn.z - Math.random() * 1.2 };
+    this.pos = { x: layout.spawn.x + (Math.random() - 0.5) * 2.6, z: layout.spawn.z - Math.random() * 0.5 };
     // Откуда бы человек ни начал, первым он видит посвящение
     this.yaw = Math.atan2(this.pos.x, 5.23 + this.pos.z);
     this.pitch = 0;
     this.move = { x: 0, y: 0 };
     this.keys = new Set();
     this.seat = null;
+    this.seatAnim = null;
+    this.bodyYaw = this.yaw ?? 0;
+    this.cameraMode = cameraMode;
+    this.camDist = 2.6;
     this.followId = null;
     this.peers = new Map();
     this.pictureMeshes = [];
@@ -247,6 +252,10 @@ export class MuseumWorld {
     this.bursts = [];
     this.disposables = [];
     this.running = false;
+
+    this.kit = createAvatarKit((o) => this.track(o));
+    this.me = createAvatar(this.kit, avatar);
+    this.scene.add(this.me.root);
 
     this.buildArchitecture();
     this.buildPictures();
@@ -644,11 +653,11 @@ export class MuseumWorld {
     for (const b of this.layout.benches) {
       const sx = b.alongZ ? 0.6 : 2.4;
       const sz = b.alongZ ? 2.4 : 0.6;
-      geos.push(shadedBox(sx, 0.12, sz, b.x, 0.5, b.z, '#c9925f'));
+      geos.push(shadedBox(sx, 0.1, sz, b.x, 0.41, b.z, '#c9925f'));
       for (const dir of [-1, 1]) {
         const lx = b.alongZ ? 0 : dir * 0.95;
         const lz = b.alongZ ? dir * 0.95 : 0;
-        geos.push(shadedBox(b.alongZ ? 0.5 : 0.1, 0.45, b.alongZ ? 0.1 : 0.5, b.x + lx, 0.225, b.z + lz, '#3a2a22'));
+        geos.push(shadedBox(b.alongZ ? 0.5 : 0.1, 0.36, b.alongZ ? 0.1 : 0.5, b.x + lx, 0.18, b.z + lz, '#3a2a22'));
       }
     }
     const mesh = new THREE.Mesh(this.track(mergeGeometries(geos)), this.track(new THREE.MeshBasicMaterial({ vertexColors: true })));
@@ -822,21 +831,85 @@ export class MuseumWorld {
     return best;
   }
 
+  /** Подойти к скамейке, развернуться и сесть, а не появиться на ней. */
   sit() {
-    const s = this.nearestSeat();
-    if (!s) return;
-    this.seat = s;
-    this.pos.x = s.x;
-    this.pos.z = s.z;
-    this.yaw = s.yaw;
-    this.pitch = 0.08;
+    if (this.seatAnim || this.seat) return;
+    const seat = this.nearestSeat();
+    if (!seat) return;
+    this.followId = null;
+    this.seatAnim = { kind: 'approach', seat, front: seatFront(seat), t: 0 };
     this.emitHud();
   }
 
   stand() {
-    this.seat = null;
-    resolveCollisions(this.pos, this.layout.colliders);
+    if (!this.seat || this.seatAnim) return;
+    this.seatAnim = { kind: 'rise', seat: this.seat, front: seatFront(this.seat), t: 0 };
     this.emitHud();
+  }
+
+  stepSeat(dt) {
+    const anim = this.seatAnim;
+    const { seat, front } = anim;
+    const turnTo = (angle, rate) => {
+      this.bodyYaw += Math.atan2(Math.sin(angle - this.bodyYaw), Math.cos(angle - this.bodyYaw)) * Math.min(1, dt * rate);
+    };
+    if (anim.kind === 'approach') {
+      const dx = front.x - this.pos.x;
+      const dz = front.z - this.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.05) {
+        anim.kind = 'turn';
+        anim.t = 0;
+      } else {
+        const step = Math.min(SPEED * 0.8 * dt, d);
+        this.pos.x += (dx / d) * step;
+        this.pos.z += (dz / d) * step;
+        turnTo(Math.atan2(-dx, -dz), 10);
+      }
+    } else if (anim.kind === 'turn') {
+      anim.t += dt / 0.3;
+      turnTo(seat.yaw, 14);
+      this.yaw += Math.atan2(Math.sin(seat.yaw - this.yaw), Math.cos(seat.yaw - this.yaw)) * Math.min(1, dt * 7);
+      if (anim.t >= 1) {
+        anim.kind = 'lower';
+        anim.t = 0;
+        this.seat = seat;
+      }
+    } else if (anim.kind === 'lower') {
+      anim.t = Math.min(1, anim.t + dt / 0.5);
+      this.pos.x = front.x + (seat.x - front.x) * anim.t;
+      this.pos.z = front.z + (seat.z - front.z) * anim.t;
+      this.bodyYaw = seat.yaw;
+      if (anim.t >= 1) {
+        this.seatAnim = null;
+        this.pitch = 0.04;
+        this.emitHud();
+      }
+    } else {
+      anim.t = Math.min(1, anim.t + dt / 0.45);
+      this.pos.x = seat.x + (front.x - seat.x) * anim.t;
+      this.pos.z = seat.z + (front.z - seat.z) * anim.t;
+      if (anim.t >= 1) {
+        this.seat = null;
+        this.seatAnim = null;
+        resolveCollisions(this.pos, this.layout.colliders);
+        this.emitHud();
+      }
+    }
+  }
+
+  wave() {
+    this.me.waveTime = 2;
+  }
+
+  peerWave(id) {
+    const p = this.peers.get(id);
+    if (p) p.avatar.waveTime = 2;
+  }
+
+  toggleCamera() {
+    this.cameraMode = this.cameraMode === 'third' ? 'first' : 'third';
+    return this.cameraMode;
   }
 
   emitHud() {
@@ -847,8 +920,9 @@ export class MuseumWorld {
       nearEntrance: this.pos.z > -HALL.vestDepth,
       hall: hallAt(this.pos.z, this.layout.hallCount),
       following: this.followId || null,
-      canSit: !this.seat && Boolean(this.nearestSeat()),
+      canSit: !this.seat && !this.seatAnim && Boolean(this.nearestSeat()),
       sitting: Boolean(this.seat),
+      seatBusy: Boolean(this.seatAnim),
       nearFilm,
       filmPlaying: Boolean(this.video && !this.video.paused),
     };
@@ -858,39 +932,25 @@ export class MuseumWorld {
     }
   }
 
-  addPeer(id, name, color) {
+  addPeer(id, name, look) {
     if (this.peers.has(id)) return;
-    const group = new THREE.Group();
-    const mat = new THREE.MeshLambertMaterial({ color });
-    const headMat = new THREE.MeshLambertMaterial({ color: '#f6d9c4' });
-    const body = new THREE.Mesh(this.bodyGeo ||= this.track(new THREE.CapsuleGeometry(0.24, 0.72, 4, 12)), mat);
-    body.position.y = 0.86;
-    const head = new THREE.Mesh(this.headGeo ||= this.track(new THREE.SphereGeometry(0.17, 16, 12)), headMat);
-    head.position.y = 1.56;
-    const eyes = new THREE.Group();
-    for (const side of [-1, 1]) {
-      const eye = new THREE.Mesh(this.eyeGeo ||= this.track(new THREE.SphereGeometry(0.024, 8, 6)), this.eyeMat ||= this.track(new THREE.MeshBasicMaterial({ color: '#2b1320' })));
-      eye.position.set(side * 0.065, 0.03, -0.155);
-      eyes.add(eye);
-    }
-    head.add(eyes);
+    const avatar = createAvatar(this.kit, look);
     const tag = labelSprite(name, { width: 0.82, size: 40 });
     tag.position.y = 2.02;
-    group.add(body, head, tag);
-    this.scene.add(group);
+    avatar.root.add(tag);
+    avatar.root.visible = false;
+    this.scene.add(avatar.root);
     this.peers.set(id, {
-      group, body, head, tag, mat, headMat, bubble: null, bubbleUntil: 0, sit: false,
-      target: { x: this.layout.spawn.x, z: this.layout.spawn.z, yaw: 0 }, walk: 0, seen: false,
+      avatar, group: avatar.root, tag, bubble: null, bubbleUntil: 0, sit: false,
+      target: { x: this.layout.spawn.x, z: this.layout.spawn.z, yaw: 0 }, seen: false,
     });
-    group.visible = false;
   }
 
   removePeer(id) {
     const p = this.peers.get(id);
     if (!p) return;
     this.scene.remove(p.group);
-    p.mat.dispose();
-    p.headMat.dispose();
+    disposeAvatar(p.avatar);
     p.tag.material.map.dispose();
     p.tag.material.dispose();
     if (p.bubble) { p.bubble.material.map.dispose(); p.bubble.material.dispose(); }
@@ -941,7 +1001,8 @@ export class MuseumWorld {
     if (k.has('KeyA') || k.has('ArrowLeft')) mx -= 1;
     if (k.has('KeyD') || k.has('ArrowRight')) mx += 1;
     if ((mx || my) && this.followId) this.followId = null;
-    if ((mx || my) && this.seat && k.size) this.stand();
+    if (this.seatAnim) { this.stepSeat(dt); return; }
+    if ((mx || my) && this.seat) { this.stand(); return; }
     if (this.followId) { this.stepFollow(dt); return; }
     if (this.seat || (!mx && !my)) return;
     const len = Math.hypot(mx, my);
@@ -958,21 +1019,19 @@ export class MuseumWorld {
     const blend = 1 - Math.exp(-dt * 8);
     for (const p of this.peers.values()) {
       const g = p.group;
-      // Вплотную к камере фигуру не рисуем: иначе экран закрывает её голова
-      g.visible = p.seen && Math.hypot(g.position.x - this.pos.x, g.position.z - this.pos.z) > 0.6;
       const dx = p.target.x - g.position.x;
       const dz = p.target.z - g.position.z;
-      const moving = Math.hypot(dx, dz) > 0.03;
+      const moving = Math.hypot(dx, dz) > 0.04 && !p.sit;
+      // Вплотную к камере от первого лица фигуру не рисуем: иначе голова закроет экран
+      const tooClose = this.cameraMode === 'first' && Math.hypot(g.position.x - this.pos.x, g.position.z - this.pos.z) < 0.6;
+      g.visible = p.seen && !tooClose;
       g.position.x += dx * blend;
       g.position.z += dz * blend;
-      g.rotation.y += (Math.atan2(Math.sin(p.target.yaw - g.rotation.y), Math.cos(p.target.yaw - g.rotation.y))) * blend;
-      if (moving) p.walk += dt * 11;
-      g.position.y = moving ? Math.abs(Math.sin(p.walk)) * 0.05 : 0;
-      const seated = p.sit ? -0.36 : 0;
-      p.body.position.y = 0.86 + seated;
-      p.body.scale.y = p.sit ? 0.82 : 1;
-      p.head.position.y = 1.56 + seated * 1.15;
-      p.tag.position.y = 2.02 + seated;
+      g.rotation.y += Math.atan2(Math.sin(p.target.yaw - g.rotation.y), Math.cos(p.target.yaw - g.rotation.y)) * blend;
+      poseAvatar(p.avatar, dt, { moving: moving ? 1 : 0, sit: p.sit ? 1 : 0 });
+      const top = headHeight(p.avatar);
+      p.tag.position.y = top + 0.32;
+      if (p.bubble) p.bubble.position.y = top + 0.72;
       if (p.bubble && now > p.bubbleUntil) {
         g.remove(p.bubble);
         p.bubble.material.map.dispose();
@@ -980,6 +1039,45 @@ export class MuseumWorld {
         p.bubble = null;
       }
     }
+  }
+
+  stepMe(dt, from) {
+    const dx = this.pos.x - from.x;
+    const dz = this.pos.z - from.z;
+    const moved = Math.hypot(dx, dz);
+    const walking = moved / Math.max(dt, 0.001) > 0.25 && !(this.seatAnim?.kind === 'lower') && !(this.seatAnim?.kind === 'rise');
+    if (walking && !this.seatAnim) {
+      const want = Math.atan2(-dx, -dz);
+      this.bodyYaw += Math.atan2(Math.sin(want - this.bodyYaw), Math.cos(want - this.bodyYaw)) * Math.min(1, dt * 12);
+    }
+    const lowered = this.seatAnim?.kind === 'rise' ? 1 - this.seatAnim.t : this.seat ? 1 : 0;
+    const a = this.me;
+    a.root.position.set(this.pos.x, 0, this.pos.z);
+    a.root.rotation.y = this.bodyYaw;
+    poseAvatar(a, dt, { moving: walking ? 1 : 0, sit: lowered });
+  }
+
+  updateCamera(dt) {
+    if (this.cameraMode === 'first') {
+      this.me.root.visible = false;
+      this.camera.position.set(this.pos.x, this.me.hips.position.y + 0.72, this.pos.z);
+    } else {
+      const head = { x: this.pos.x, z: this.pos.z };
+      const back = { x: Math.sin(this.yaw), z: Math.cos(this.yaw) };
+      const cos = Math.cos(this.pitch);
+      const wanted = 2.75 * cos;
+      const room = clearCameraDistance(head, back, wanted, this.layout.colliders);
+      // Приближаемся сразу, чтобы не увидеть стену, а отъезжаем плавно
+      this.camDist = room < this.camDist ? room : this.camDist + (room - this.camDist) * Math.min(1, dt * 4);
+      const y = headHeight(this.me) + 0.28 - Math.sin(this.pitch) * 2.75;
+      this.camera.position.set(
+        head.x + back.x * this.camDist,
+        THREE.MathUtils.clamp(y, 0.3, HALL.height - 0.2),
+        head.z + back.z * this.camDist,
+      );
+      this.me.root.visible = this.camDist > 0.75;
+    }
+    this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
   }
 
   updateFilmVolume() {
@@ -1007,12 +1105,13 @@ export class MuseumWorld {
     this.raf = requestAnimationFrame(this.frame);
     const dt = Math.min(this.clock.getDelta(), 0.1);
     const now = performance.now();
+    const from = { x: this.pos.x, z: this.pos.z };
     this.stepPlayer(dt);
+    this.stepMe(dt, from);
     this.stepPeers(dt, now);
     this.stepBursts(now);
 
-    this.camera.position.set(this.pos.x, this.seat ? HALL.seatEye : HALL.eye, this.pos.z);
-    this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    this.updateCamera(dt);
 
     if (now - (this.lastTick || 0) > 250) {
       this.lastTick = now;
@@ -1030,10 +1129,10 @@ export class MuseumWorld {
     const last = this.lastSent;
     if (now - last.t < 250 || !this.onMotion) return;
     const sit = Boolean(this.seat);
-    const moved = Math.hypot(this.pos.x - last.x, this.pos.z - last.z) > 0.05 || Math.abs(this.yaw - last.yaw) > 0.08 || sit !== last.sit;
+    const moved = Math.hypot(this.pos.x - last.x, this.pos.z - last.z) > 0.05 || Math.abs(this.bodyYaw - last.yaw) > 0.08 || sit !== last.sit;
     if (!moved && now - last.t < 5000) return;
-    Object.assign(last, { t: now, x: this.pos.x, z: this.pos.z, yaw: this.yaw, sit });
-    this.onMotion(this.pos.x, this.pos.z, this.yaw, sit);
+    Object.assign(last, { t: now, x: this.pos.x, z: this.pos.z, yaw: this.bodyYaw, sit });
+    this.onMotion(this.pos.x, this.pos.z, this.bodyYaw, sit);
   }
 
   start() {
@@ -1060,6 +1159,7 @@ export class MuseumWorld {
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('resize', this.onResize);
     [...this.peers.keys()].forEach((id) => this.removePeer(id));
+    disposeAvatar(this.me);
     if (this.video) { this.video.pause(); this.video.removeAttribute('src'); this.video.load(); }
     this.pictureMeshes.forEach((m) => {
       m.userData.thumb?.dispose();

@@ -3,7 +3,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildLayout, hallAt, resolveCollisions, HALL } from '../src/app-museum/engine/layout.js';
+import { buildLayout, clearCameraDistance, hallAt, resolveCollisions, seatFront, HALL } from '../src/app-museum/engine/layout.js';
 import { MUSEUM_THEMES, MUSEUM_TIERS, museumExtendPrice, museumPublishPrice, museumTier } from '../src/lib/museumPlans.js';
 
 const photos = (n, aspect = 1.5) => Array.from({ length: n }, (_, i) => ({ aspect: i % 3 ? aspect : 0.75 }));
@@ -51,6 +51,29 @@ test('человек не выходит за стены при долгой с�
     resolveCollisions(pos, layout.colliders);
     assert.ok(Math.abs(pos.x) <= HALL.halfW + 0.01 && pos.z <= 0.01 && pos.z >= layout.totalEnd - 0.01);
   }
+});
+
+test('к каждому сиденью можно подойти: точка перед ним свободна', () => {
+  for (const n of [6, 12, 30, 45]) {
+    const layout = buildLayout(photos(n), true);
+    for (const bench of layout.benches) {
+      for (const seat of bench.seats) {
+        const front = seatFront(seat);
+        const before = { ...front };
+        resolveCollisions(front, layout.colliders);
+        assert.ok(Math.hypot(front.x - before.x, front.z - before.z) < 0.05, `n=${n}`);
+      }
+    }
+  }
+});
+
+test('камера не уходит за стену, а скамейка её не останавливает', () => {
+  const layout = buildLayout(photos(12), false);
+  const nearWall = clearCameraDistance({ x: 5, z: -14 }, { x: 1, z: 0 }, 2.75, layout.colliders);
+  assert.ok(nearWall < 0.6);
+  const bench = layout.benches[0];
+  const free = clearCameraDistance({ x: bench.x, z: bench.z - 2 }, { x: 0, z: 1 }, 2.75, layout.colliders);
+  assert.equal(free, 2.75);
 });
 
 test('номер зала считается от входа', () => {

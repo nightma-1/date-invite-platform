@@ -20,7 +20,7 @@ import { checkVideo, clearDraft, loadDraft, preparePhoto, removeFiles, saveDraft
 
 const MuseumExperience = lazy(() => import('./MuseumExperience.jsx'));
 const TONES = ['fit', 'romantic', 'sweet', 'funny', 'poetic'];
-const EMPTY = { recipient: '', author: '', dedication: '', signature: '', termDays: 30, tier: 'full', theme: 'classic', ambient: 'warm', finale: '', opensAt: '' };
+const EMPTY = { recipient: '', author: '', dedication: '', signature: '', termDays: 30, gender: '', tier: 'full', theme: 'classic', ambient: 'warm', finale: '', opensAt: '' };
 const TASHKENT_MS = 5 * 3600000;
 
 // В форме время ташкентское, в базе — точный момент
@@ -116,7 +116,7 @@ export default function MuseumBuilder() {
       if (isEdit) {
         const { data } = await supabase
           .from('invitations')
-          .select('id, recipient_name, status, expires_at, museum_content(*)')
+          .select('id, recipient_name, recipient_gender, status, expires_at, museum_content(*)')
           .eq('id', editId)
           .maybeSingle();
         if (cancelled) return;
@@ -124,7 +124,7 @@ export default function MuseumBuilder() {
         if (!c || data.status === 'expired' || c.purged_at) {
           setLocked(true);
         } else {
-          setForm({ ...EMPTY, recipient: data.recipient_name, author: c.author_name, dedication: c.dedication, signature: c.signature, termDays: c.term_days, tier: c.tier, theme: c.theme, ambient: c.ambient, finale: c.finale_question, opensAt: toLocal(c.opens_at) });
+          setForm({ ...EMPTY, recipient: data.recipient_name, gender: data.recipient_gender || '', author: c.author_name, dedication: c.dedication, signature: c.signature, termDays: c.term_days, tier: c.tier, theme: c.theme, ambient: c.ambient, finale: c.finale_question, opensAt: toLocal(c.opens_at) });
           setVoice(c.voice_url ? { url: c.voice_url } : null);
           setSong(c.song_url ? { url: c.song_url } : null);
           setPaid({ premium: c.theme !== 'classic', voice: Boolean(c.voice_url), song: Boolean(c.song_url) });
@@ -161,7 +161,7 @@ export default function MuseumBuilder() {
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const photosShort = Math.max(0, L.minPhotos - photos.length);
-  const textReady = form.recipient.trim() && form.author.trim() && form.dedication.trim();
+  const textReady = form.recipient.trim() && form.gender && form.author.trim() && form.dedication.trim();
   const tier = museumTier(form.tier);
   const overLimit = photos.length > tier.maxPhotos;
   const ready = textReady && photosShort === 0 && !overLimit;
@@ -227,6 +227,7 @@ export default function MuseumBuilder() {
       blobs,
       data: {
         recipientName: form.recipient.trim() || '…',
+        recipientGender: form.gender || null,
         authorName: form.author.trim(),
         dedication: form.dedication.trim() || '…',
         signature: form.signature.trim() || form.author.trim(),
@@ -279,7 +280,7 @@ export default function MuseumBuilder() {
 
     let id = savedId;
     if (id) {
-      const { error: invErr } = await supabase.from('invitations').update({ recipient_name: form.recipient.trim() }).eq('id', id);
+      const { error: invErr } = await supabase.from('invitations').update({ recipient_name: form.recipient.trim(), recipient_gender: form.gender }).eq('id', id);
       if (invErr) throw invErr;
       const { error: cErr } = await supabase.from('museum_content').update(content).eq('invitation_id', id);
       if (cErr) throw cErr;
@@ -287,7 +288,7 @@ export default function MuseumBuilder() {
       const slug = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => (b % 36).toString(36)).join('');
       const { data, error: invErr } = await supabase
         .from('invitations')
-        .insert({ user_id: userId, slug, kind: 'museum', recipient_name: form.recipient.trim(), status: 'draft' })
+        .insert({ user_id: userId, slug, kind: 'museum', recipient_name: form.recipient.trim(), recipient_gender: form.gender, status: 'draft' })
         .select('id')
         .single();
       if (invErr) throw invErr;
@@ -454,6 +455,12 @@ export default function MuseumBuilder() {
             <section style={ui.section}>
               <h2 style={ui.h2}>{t('museum.builder.names')}</h2>
               <label style={ui.label}>{t('museum.builder.recipient')}<input data-testid="recipient" style={ui.input} maxLength={L.name} value={form.recipient} onChange={set('recipient')} /></label>
+              <p style={{ ...ui.label, marginBottom: 6 }}>{t('museum.builder.forWhom')}</p>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+                {[['female', 'forHer'], ['male', 'forHim']].map(([key, label]) => (
+                  <button key={key} type="button" data-testid={`for-${key}`} aria-pressed={form.gender === key} onClick={() => setForm((f) => ({ ...f, gender: key }))} style={{ ...ui.ghost, flex: 1, background: form.gender === key ? T.pink : '#fff', color: form.gender === key ? '#fff' : T.pink }}>{t(`museum.builder.${label}`)}</button>
+                ))}
+              </div>
               <label style={{ ...ui.label, marginBottom: 0 }}>{t('museum.builder.author')}<input data-testid="author" style={ui.input} maxLength={L.name} value={form.author} onChange={set('author')} /></label>
             </section>
 

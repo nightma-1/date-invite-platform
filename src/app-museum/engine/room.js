@@ -19,7 +19,7 @@ function supabaseTransport(topic) {
     const list = Object.values(channel.presenceState()).map((v) => v[0]).filter(Boolean);
     handlers.presence?.(list);
   });
-  for (const event of ['pos', 'chat', 'film', 'heart']) {
+  for (const event of ['pos', 'chat', 'film', 'heart', 'wave']) {
     channel.on('broadcast', { event }, ({ payload }) => handlers.message?.(event, payload));
   }
   return {
@@ -76,7 +76,7 @@ function localTransport(topic) {
 
 const num = (v) => (Number.isFinite(v) ? v : 0);
 
-export function createRoom({ slug, name, local = false, handlers }) {
+export function createRoom({ slug, name, avatar, local = false, handlers }) {
   const id = crypto.randomUUID();
   const joinedAt = Date.now();
   const topic = `museum:${slug}`;
@@ -91,7 +91,13 @@ export function createRoom({ slug, name, local = false, handlers }) {
     const sorted = [...list].sort((a, b) => a.joinedAt - b.joinedAt || String(a.id).localeCompare(String(b.id)));
     const myPlace = sorted.findIndex((p) => p.id === id);
     admitted = myPlace >= 0 && myPlace < MAX_PLAYERS;
-    const players = sorted.slice(0, MAX_PLAYERS).map((p, i) => ({ id: p.id, name: String(p.name || '').slice(0, 24), color: COLORS[i % COLORS.length] }));
+    const players = sorted.slice(0, MAX_PLAYERS).map((p, i) => ({
+      id: p.id,
+      name: String(p.name || '').slice(0, 24),
+      color: COLORS[i % COLORS.length],
+      gender: p.gender === 'male' ? 'male' : 'female',
+      outfit: Number.isInteger(p.outfit) ? p.outfit : 0,
+    }));
     handlers.onPlayers({ players, admitted, me: id, queue: admitted ? 0 : myPlace - MAX_PLAYERS + 1 });
   });
 
@@ -100,10 +106,11 @@ export function createRoom({ slug, name, local = false, handlers }) {
     if (event === 'pos') handlers.onPos(p.id, { x: num(p.x), z: num(p.z), yaw: num(p.yaw), sit: Boolean(p.sit) });
     if (event === 'chat' && typeof p.text === 'string') handlers.onChat(p.id, p.text.slice(0, 200));
     if (event === 'film') handlers.onFilm({ playing: Boolean(p.playing), t: num(p.t) });
+    if (event === 'wave') handlers.onWave(p.id);
     if (event === 'heart') handlers.onHeart(Math.trunc(num(p.photo)), Math.trunc(num(p.count)));
   });
 
-  transport.start({ id, name, joinedAt }, (status) => handlers.onStatus(status));
+  transport.start({ id, name, joinedAt, gender: avatar?.gender, outfit: avatar?.outfit }, (status) => handlers.onStatus(status));
 
   return {
     id,
@@ -117,6 +124,9 @@ export function createRoom({ slug, name, local = false, handlers }) {
       lastChatAt = now;
       transport.send('chat', { id, text: clean });
       return true;
+    },
+    sendWave() {
+      if (admitted) transport.send('wave', { id });
     },
     sendHeart(photo, count) {
       if (admitted) transport.send('heart', { id, photo, count });

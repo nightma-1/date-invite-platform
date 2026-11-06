@@ -12,6 +12,7 @@ import { MuseumWorld } from './engine/MuseumWorld.js';
 import { buildLayout } from './engine/layout.js';
 import { createRoom } from './engine/room.js';
 import { createAmbient } from './engine/ambient.js';
+import { OUTFITS } from './engine/Avatar.js';
 import { makeStoryCard, shareBlob } from './storyCard.js';
 import { supabase } from '../lib/supabaseClient.js';
 import RunawayButton from '../components/ui/RunawayButton.jsx';
@@ -80,6 +81,34 @@ function Joystick({ onMove }) {
         transform: `translate(${knob.x}px, ${knob.y}px)`, pointerEvents: 'none',
       }} />
     </div>
+  );
+}
+
+function CharacterIcon({ gender, color }) {
+  const hair = gender === 'male' ? '#241812' : '#3a2318';
+  return (
+    <svg viewBox="0 0 80 120" width="64" height="96" aria-hidden="true">
+      {gender === 'female' && <rect x="24" y="14" width="32" height="44" rx="15" fill={hair} />}
+      <circle cx="40" cy="24" r="16" fill="#f1c9a8" />
+      <path d="M24 22a16 16 0 0 1 32 0c-8-6-22-6-32 0Z" fill={hair} />
+      <circle cx="34" cy="26" r="1.8" fill="#21131a" />
+      <circle cx="46" cy="26" r="1.8" fill="#21131a" />
+      {gender === 'female' ? (
+        <>
+          <path d="M31 44h18l9 44H22Z" fill={color} />
+          <rect x="30" y="86" width="7" height="24" rx="3.5" fill="#f1c9a8" />
+          <rect x="43" y="86" width="7" height="24" rx="3.5" fill="#f1c9a8" />
+        </>
+      ) : (
+        <>
+          <rect x="26" y="44" width="28" height="36" rx="10" fill={color} />
+          <rect x="28" y="74" width="10" height="38" rx="5" fill="#30394f" />
+          <rect x="42" y="74" width="10" height="38" rx="5" fill="#30394f" />
+        </>
+      )}
+      <rect x="27" y="108" width="12" height="7" rx="3.5" fill="#2a1f24" />
+      <rect x="41" y="108" width="12" height="7" rx="3.5" fill="#2a1f24" />
+    </svg>
   );
 }
 
@@ -164,6 +193,9 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
   const [book, setBook] = useState(data.guestbook || []);
   const [bookText, setBookText] = useState('');
   const [bookSent, setBookSent] = useState(false);
+  const [pickedGender, setPickedGender] = useState(null);
+  const [outfit, setOutfit] = useState(0);
+  const [cameraMode, setCameraMode] = useState('third');
   const [guestView, setGuestView] = useState(null);
   const [guestState, setGuestState] = useState('idle'); // idle | sending | done | failed
   const [liked, setLiked] = useState(() => new Set());
@@ -176,6 +208,9 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
   const touch = useMemo(() => window.matchMedia?.('(pointer: coarse)').matches, []);
   const isLive = mode === 'live';
   const namesRef = useRef(new Map());
+  // Получателю заранее отмечен его персонаж, автор и гости выбирают сами:
+  // ссылка одна на всех, и кто именно вошёл, сайт не знает.
+  const gender = pickedGender ?? (isOwner ? null : data.recipientGender ?? null);
 
   useEffect(() => {
     if (!entered || !webgl) return undefined;
@@ -194,6 +229,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
       const world = new MuseumWorld(canvasRef.current, {
         data,
         layout,
+        avatar: { gender, outfit },
         labels: {
           filmPoster: t('museum.world.filmPoster'),
           dedicationArt: {
@@ -218,10 +254,16 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
       Object.entries(data.hearts || {}).forEach(([i, n]) => world.setHeartCount(Number(i), n));
       setReady(true);
 
+      if (data.demoGuest) {
+        world.addPeer('demo-guest', data.demoGuest.name, data.demoGuest);
+        const seat = world.seats[0];
+        world.updatePeer('demo-guest', { x: seat.x, z: seat.z, yaw: seat.yaw, sit: true });
+      }
       if (!isLive) return;
       const r = createRoom({
         slug,
         name: name.trim() || '🙂',
+        avatar: { gender, outfit },
         local: localRoom,
         handlers: {
           onStatus: (status) => setRoom((s) => ({ ...s, status })),
@@ -229,7 +271,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
             setRoom((s) => ({ ...s, players, admitted, queue, me }));
             const ids = new Set(players.map((p) => p.id));
             namesRef.current = new Map(players.map((p) => [p.id, p]));
-            for (const p of players) if (p.id !== me) world.addPeer(p.id, p.name, p.color);
+            for (const p of players) if (p.id !== me) world.addPeer(p.id, p.name, p);
             for (const id of [...world.peers.keys()]) if (!ids.has(id)) world.removePeer(id);
             // Новичок сразу видит остальных и то, идёт ли фильм
             world.lastSent.t = 0;
@@ -243,6 +285,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
             setUnread((n) => n + 1);
           },
           onFilm: ({ playing, t: time }) => world.setFilmPlaying(playing, false, time),
+          onWave: (id) => world.peerWave(id),
           onHeart: (photo, count) => {
             world.heartBurst(photo);
             world.setHeartCount(photo, count);
@@ -329,6 +372,16 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
     setEntered(true);
     track(`museum_enter_${mode}`, {}, slug ? { slug } : {});
     if (isLive && !isOwner) supabase.rpc('museum_mark_entered', { p_slug: slug }).then(() => {});
+  }
+
+  function wave() {
+    worldRef.current?.wave();
+    roomRef.current?.sendWave();
+  }
+
+  function toggleCamera() {
+    const next = worldRef.current?.toggleCamera();
+    if (next) setCameraMode(next);
   }
 
   function toggleVoice() {
@@ -446,7 +499,26 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
                 />
               </label>
             )}
-            <button type="submit" style={{ width: '100%', minHeight: 54, marginTop: 20, border: 'none', borderRadius: 999, background: C.rose, color: '#fff', fontFamily: C.ui, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+            <fieldset style={{ margin: '22px 0 0', padding: 0, border: 'none', textAlign: 'left' }}>
+              <legend style={{ padding: 0, fontSize: 13, fontWeight: 600 }}>{t('museum.world.character')}</legend>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                {['female', 'male'].map((key) => {
+                  const on = gender === key;
+                  return (
+                    <button key={key} type="button" data-testid={`avatar-${key}`} aria-pressed={on} onClick={() => setPickedGender(key)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 6px', borderRadius: 14, border: `2px solid ${on ? C.rose : 'rgba(255,255,255,.22)'}`, background: on ? 'rgba(248,85,137,.16)' : 'rgba(255,255,255,.06)', color: '#fff', fontFamily: C.ui, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                      <CharacterIcon gender={key} color={OUTFITS[outfit]} />
+                      {t(key === 'female' ? 'museum.world.girl' : 'museum.world.boy')}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 10 }}>
+                {OUTFITS.map((color, i) => (
+                  <button key={color} type="button" data-testid={`outfit-${i}`} aria-label={t('museum.world.outfit', { n: i + 1 })} aria-pressed={outfit === i} onClick={() => setOutfit(i)} style={{ width: 34, height: 34, padding: 0, borderRadius: '50%', border: `3px solid ${outfit === i ? '#fff' : 'transparent'}`, background: color, cursor: 'pointer' }} />
+                ))}
+              </div>
+            </fieldset>
+            <button type="submit" disabled={!gender} style={{ width: '100%', minHeight: 54, marginTop: 20, opacity: gender ? 1 : 0.5, border: 'none', borderRadius: 999, background: C.rose, color: '#fff', fontFamily: C.ui, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
               {t('museum.world.enter')}
             </button>
             {notes[mode] && <p style={{ margin: '16px 0 0', fontSize: 13, lineHeight: 1.5, opacity: 0.72 }}>{notes[mode]}</p>}
@@ -511,6 +583,12 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
           <Joystick onMove={(x, y) => worldRef.current?.setMove(x, y)} />
 
           <div style={{ position: 'absolute', right: 16, bottom: 'calc(28px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" data-testid="wave" aria-label={t('museum.world.wave')} style={pill} onClick={wave}>👋</button>
+              <button type="button" data-testid="camera" style={pill} onClick={toggleCamera}>
+                {t(cameraMode === 'third' ? 'museum.world.cameraFirst' : 'museum.world.cameraThird')}
+              </button>
+            </div>
             {hud.nearEntrance && data.voiceUrl && (
               <button type="button" data-testid="voice" style={{ ...pill, background: C.berry }} onClick={toggleVoice}>
                 {voiceOn ? t('museum.world.voiceStop') : t('museum.world.voicePlay')}
@@ -524,7 +602,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
                 {hud.filmPlaying ? t('museum.world.pauseFilm') : t('museum.world.playFilm')}
               </button>
             )}
-            {(hud.canSit || hud.sitting) && (
+            {(hud.canSit || hud.sitting) && !hud.seatBusy && (
               <button type="button" data-testid="sit" style={pill} onClick={() => (hud.sitting ? worldRef.current?.stand() : worldRef.current?.sit())}>
                 {hud.sitting ? t('museum.world.stand') : t('museum.world.sit')}
               </button>
