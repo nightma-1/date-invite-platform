@@ -16,6 +16,10 @@ import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 export default function StepQuestion() {
   const { t } = useTranslation();
   const { state, dispatch } = useBuilder();
+  // Подсвечиваем поле имени, только пока оно пустое после попытки оплатить.
+  const nameMissing = Boolean(state.nameMissing) && !String(
+    state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName || ''
+  ).trim();
   const tokens = getTemplateTokens(state.templateId);
   const config = state.steps.find((s) => s.step_type === 'question').configuration_json;
   const fileInputRef = useRef(null);
@@ -144,11 +148,21 @@ export default function StepQuestion() {
       <SectionCard number="4" title={t('steps.question.textTitle')}>
         <FieldLabel>{t('steps.question.recipientName')}</FieldLabel>
         <Inp
+          id="builder-recipient-name"
           type="text"
+          autoComplete="off"
           value={config.recipientName}
           onChange={(e) => update({ recipientName: e.target.value })}
           placeholder={t('steps.question.recipientNamePlaceholder')}
+          aria-invalid={nameMissing || undefined}
+          aria-describedby={nameMissing ? 'builder-recipient-name-error' : undefined}
+          style={nameMissing ? { borderColor: '#C0392B', boxShadow: '0 0 0 3px rgba(192,57,43,0.15)' } : undefined}
         />
+        {nameMissing && (
+          <p id="builder-recipient-name-error" role="alert" style={{ color: '#C0392B', fontSize: 13, fontFamily: T.font, margin: '6px 0 0' }}>
+            {t('builder.nameRequired')}
+          </p>
+        )}
 
         <FieldLabel style={{ marginTop: 12 }}>{t('steps.question.yourQuestion')}</FieldLabel>
         <TxtArea

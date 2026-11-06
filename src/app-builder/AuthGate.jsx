@@ -6,15 +6,54 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
+import { track } from '../lib/analytics.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
-export default function AuthGate({ onAuthenticated }) {
+// Вход через Telegram уводит человека со страницы на сайт
+// провайдера и возвращает обратно уже с сессией. Telegram подключён в Supabase
+// как свой OIDC-провайдер с идентификатором custom:telegram.
+const OAUTH_PROVIDERS = [
+  { id: 'custom:telegram', key: 'withTelegram', bg: '#2AABEE', color: '#fff', border: '#2AABEE' },
+];
+
+// Адрес, куда вернуть человека после входа: текущая страница, но без
+// следов прошлой неудачной попытки. Если оставить ?error=… от предыдущего
+// раза, Supabase вернёт ключи входа вместе со старой ошибкой, и клиент
+// увидит ошибку и не войдёт.
+function cleanReturnUrl() {
+  const url = new URL(window.location.href);
+  url.hash = '';
+  ['error', 'error_code', 'error_description', 'code', 'state'].forEach((k) => url.searchParams.delete(k));
+  return url.toString();
+}
+
+function TelegramIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M21.9 4.3 18.6 19.9c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.3-8.4c.4-.4-.1-.6-.6-.2L6 13.4l-4.9-1.5c-1.1-.3-1.1-1.1.2-1.6L20.5 2.9c.9-.3 1.7.2 1.4 1.4Z" />
+    </svg>
+  );
+}
+
+export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialError = null }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState('signin');
-  const [error, setError] = useState(null);
+  // Вернулись из Telegram с ошибкой (отменили вход, Telegram не ответил):
+  // показываем понятный текст и убираем ?error=… из адреса.
+  const [error, setError] = useState(() => {
+    if (initialError) return initialError;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has('error')) return null;
+      window.history.replaceState(null, '', cleanReturnUrl());
+      return t('auth.oauthError');
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   const inputStyle = {
@@ -29,6 +68,7 @@ export default function AuthGate({ onAuthenticated }) {
     setError(null);
     if (!email || !password) { setError(t('auth.fillFields')); return; }
     setLoading(true);
+    track('auth_start', { mode });
     try {
       const { data, error: authError } = mode === 'signin'
         ? await supabase.auth.signInWithPassword({ email, password })
@@ -52,10 +92,33 @@ export default function AuthGate({ onAuthenticated }) {
       if (!data.session) {
         throw new Error(t('auth.sessionError'));
       }
+      track('auth_success', { mode });
       onAuthenticated(data.session.user);
     } catch (err) {
+      track('auth_error', { mode });
       setError(err.message || t('auth.genericError'));
     } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleOAuth(provider) {
+    setError(null);
+    setLoading(true);
+    track('auth_start', { mode: 'oauth', provider });
+    try {
+      // Запоминаем, что человек собирался сделать (например, оплатить), —
+      // после возврата из Telegram страница загрузится заново.
+      if (onBeforeRedirect) onBeforeRedirect(provider);
+      const { error: authError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: cleanReturnUrl() },
+      });
+      if (authError) throw authError;
+      // Дальше браузер уходит на страницу провайдера.
+    } catch (err) {
+      track('auth_error', { mode: 'oauth', provider });
+      setError(err.message || t('auth.genericError'));
       setLoading(false);
     }
   }
@@ -79,6 +142,33 @@ export default function AuthGate({ onAuthenticated }) {
         <h2 style={{ fontFamily: '"Cormorant Garamond", serif', color: '#2A1F2B', fontSize: 22, fontWeight: 700, margin: 0 }}>
           {mode === 'signin' ? t('auth.signinTitle') : t('auth.signupTitle')}
         </h2>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+        {OAUTH_PROVIDERS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            disabled={loading}
+            onClick={() => handleOAuth(p.id)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              background: p.bg, color: p.color, border: `1.5px solid ${p.border}`,
+              padding: '11px', borderRadius: 6,
+              fontFamily: '"Manrope", sans-serif', fontWeight: 700, fontSize: 15,
+              cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+            }}
+          >
+            <TelegramIcon />
+            {t(`auth.${p.key}`)}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, color: '#6B4D5A', fontFamily: '"Manrope", sans-serif', fontSize: 12.5 }}>
+        <span style={{ flex: 1, height: 1, background: '#2A1F2B1A' }} />
+        {t('auth.orEmail')}
+        <span style={{ flex: 1, height: 1, background: '#2A1F2B1A' }} />
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

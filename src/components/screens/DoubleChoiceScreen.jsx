@@ -4,8 +4,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 function ChoiceSection({ title, options, allowMultiple, tokens, selected, onToggle }) {
+  const { t } = useTranslation();
   return (
     <div style={{ background: tokens.card, borderRadius: 16, padding: 24, textAlign: 'left' }}>
       <h2 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
@@ -44,7 +46,7 @@ function ChoiceSection({ title, options, allowMultiple, tokens, selected, onTogg
       </div>
       {allowMultiple && (
         <p style={{ marginTop: 12, fontSize: 12, color: tokens.inkMuted || tokens.ink, opacity: 0.55, fontFamily: tokens.fontUI }}>
-          Можно выбрать несколько вариантов
+          {t('screens.multipleHint')}
         </p>
       )}
     </div>
@@ -56,6 +58,7 @@ export default function DoubleChoiceScreen({
   foodTitle, foodOptions = [], foodAllowMultiple,
   tokens, onContinue,
 }) {
+  const { t } = useTranslation();
   const [place, setPlace] = useState([]);
   const [food, setFood] = useState([]);
 
@@ -79,15 +82,15 @@ export default function DoubleChoiceScreen({
       transition={{ duration: 0.4 }}
     >
       <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>
-        Теперь самое интересное 😏
+        {t('screens.doubleTitle')}
       </h1>
       <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 13.5, opacity: 0.75, textAlign: 'center', marginBottom: 20 }}>
-        Куда хочешь пойти и что будем есть?
+        {t('screens.doubleSubtitle')}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <ChoiceSection
-          title={placeTitle || 'Куда пойти?'}
+          title={placeTitle || t('screens.placeTitle')}
           options={placeOptions}
           allowMultiple={placeAllowMultiple}
           tokens={tokens}
@@ -95,7 +98,7 @@ export default function DoubleChoiceScreen({
           onToggle={togglePlace}
         />
         <ChoiceSection
-          title={foodTitle || 'Что будем есть?'}
+          title={foodTitle || t('screens.foodTitle')}
           options={foodOptions}
           allowMultiple={foodAllowMultiple}
           tokens={tokens}
@@ -120,7 +123,7 @@ export default function DoubleChoiceScreen({
           boxShadow: canContinue ? `0 14px 30px -8px ${tokens.berry}60` : 'none',
         }}
       >
-        Договорились →
+        {t('screens.choiceContinue')}
       </motion.button>
     </motion.div>
   );

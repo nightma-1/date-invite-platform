@@ -5,7 +5,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import SmartMedia from '../ui/SmartMedia.jsx';
+import { track } from '../../lib/analytics.js';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
+import { useTranslation } from 'react-i18next';
 
 const FALL_HEART_ICONS = ['❤️', '💗', '✨'];
 
@@ -48,12 +50,107 @@ function FallingHearts() {
   );
 }
 
-export default function FinalScreen({ title, description, summary, mediaUrl, tokens, onSubmit, submitting, submitted, cardShape = 'classic' }) {
+/**
+ * После ответа получатель — самый тёплый зритель Senti. Даём ей две вещи,
+ * обе по желанию и без давления:
+ *   1. Карточку для сторис. На ней ни её имени, ни имени того, кто
+ *      пригласил, — только конверт и счёт попыток поймать «Нет».
+ *      Делиться или нет — её решение.
+ *   2. Тихую ссылку «собрать своё» — с UTM, чтобы в аналитике было видно,
+ *      сколько людей пришло от получателей.
+ * В превью конструктора не показываем: там смотрит автор, а не получатель.
+ */
+function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
+  const { t } = useTranslation();
+  const [sharing, setSharing] = useState(false);
+  const [hint, setHint] = useState(null);
+
+  async function shareStory() {
+    setSharing(true);
+    setHint(null);
+    track('recipient_story_click', { no_attempts: noAttempts }, { slug });
+    const params = new URLSearchParams({ kind: 'story', t: templateKey || 'romantic', a: String(noAttempts || 0) });
+    try {
+      const res = await fetch(`/api/og/image?${params}`);
+      if (!res.ok) throw new Error(`story ${res.status}`);
+      const blob = await res.blob();
+      const file = new File([blob], 'senti-story.png', { type: 'image/png' });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        track('recipient_story_shared', {}, { slug });
+      } else {
+        // Десктоп или старый браузер — просто сохраняем картинку
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = 'senti-story.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(href), 4000);
+        setHint(t('screens.storySaved'));
+      }
+    } catch (e) {
+      // Закрыла окно «Поделиться» — это не ошибка
+      if (e?.name !== 'AbortError') setHint(t('screens.storyFailed'));
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.4, duration: 0.5 }}
+      style={{ marginTop: 22, borderTop: `1px solid ${tokens.ink}14`, paddingTop: 18 }}
+    >
+      <button
+        type="button"
+        onClick={shareStory}
+        disabled={sharing}
+        style={{
+          background: tokens.card || '#fff', color: tokens.ink,
+          border: `1.5px solid ${tokens.ink}25`, borderRadius: 100,
+          padding: '11px 22px', fontFamily: tokens.fontUI, fontWeight: 700, fontSize: 14,
+          cursor: sharing ? 'default' : 'pointer', opacity: sharing ? 0.6 : 1,
+        }}
+      >
+        {sharing ? t('screens.storyPreparing') : t('screens.storyShare')}
+      </button>
+      <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 12, opacity: 0.65, marginTop: 8 }}>
+        {hint || t('screens.storyHint')}
+      </p>
+
+      <a
+        href="/?utm_source=senti&utm_medium=recipient&utm_campaign=final_screen"
+        target="_blank"
+        rel="noreferrer"
+        onClick={() => track('recipient_cta_click', {}, { slug })}
+        style={{
+          display: 'inline-block', marginTop: 16,
+          color: tokens.berry, fontFamily: tokens.fontUI, fontSize: 13, fontWeight: 600,
+          textDecoration: 'underline', textUnderlineOffset: 3,
+        }}
+      >
+        {t('screens.makeYourOwn')}
+      </a>
+    </motion.div>
+  );
+}
+
+export default function FinalScreen({
+  title, description, summary, mediaUrl, tokens, onSubmit, submitting, submitted, cardShape = 'classic',
+  // Для экрана после ответа (см. AfterAnswer). isPreview — автор смотрит черновик.
+  templateKey, noAttempts = 0, slug, isPreview = false,
+}) {
+  const { t } = useTranslation();
   const [localError, setLocalError] = useState(null);
 
   async function handleSubmit() {
     setLocalError(null);
-    try { await onSubmit(); } catch { setLocalError('Не получилось отправить. Попробуй ещё раз.'); }
+    try { await onSubmit(); } catch { setLocalError(t('screens.submitFailed')); }
   }
 
   return (
@@ -73,11 +170,14 @@ export default function FinalScreen({ title, description, summary, mediaUrl, tok
           <FallingHearts />
           <div style={{ fontSize: 56, marginBottom: 12 }}>🎉</div>
           <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-            Ответ отправлен!
+            {t('screens.sentTitle')}
           </h1>
           <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, opacity: 0.8 }}>
-            Он уже знает. Ждите встречи ❤️
+            {t('screens.sentText')}
           </p>
+          {!isPreview && (
+            <AfterAnswer tokens={tokens} templateKey={templateKey} noAttempts={noAttempts} slug={slug} />
+          )}
         </motion.div>
       ) : (
         <>
@@ -92,10 +192,10 @@ export default function FinalScreen({ title, description, summary, mediaUrl, tok
             <div style={{ fontSize: 48, marginBottom: 12 }}>💌</div>
           ))}
           <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-            {title || 'Ну всё, теперь пути назад нет 😄❤️'}
+            {title || t('screens.finalTitle')}
           </h1>
           <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, lineHeight: 1.6, marginBottom: 16, opacity: 0.85 }}>
-            {description || 'Наше свидание официально запланировано!'}
+            {description || t('screens.finalDescription')}
           </p>
 
           {summary?.length > 0 && (
@@ -126,7 +226,7 @@ export default function FinalScreen({ title, description, summary, mediaUrl, tok
               boxShadow: submitting ? 'none' : `0 14px 30px -8px ${tokens.berry}60`,
             }}
           >
-            {submitting ? 'Отправляем…' : 'Отправить подтверждение 💌'}
+            {submitting ? t('screens.submitting') : t('screens.submit')}
           </motion.button>
 
           {localError && (

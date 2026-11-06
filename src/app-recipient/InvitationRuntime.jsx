@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
+import { track } from '../lib/analytics.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import QuestionScreen, { DEFAULT_NO_PHRASES } from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
@@ -21,7 +22,16 @@ import FinalScreen from '../components/screens/FinalScreen.jsx';
 // категории, теперь два отдельных ('choice_place' + 'choice_food').
 const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'choice_block', 'choice_place', 'choice_food', 'final']);
 
-export default function InvitationRuntime() {
+/**
+ * previewData — режим превью для конструктора: вместо загрузки по slug рантайм
+ * получает уже готовое приглашение из черновика ({ invitation, content, steps },
+ * см. previewInvitation.js). Специально переиспользуем ЭТОТ компонент, а не
+ * пишем второй рендерер: отдельное превью через месяц разошлось бы с настоящим
+ * приглашением и начало бы врать автору. В этом режиме ничего не пишется в базу
+ * и не уходит в Telegram — автор смотрит, а не отвечает сам себе.
+ */
+export default function InvitationRuntime({ previewData = null }) {
+  const isPreview = Boolean(previewData);
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   // Форма карточки выбирается в конструкторе и хранится в invitations.card_shape.
@@ -77,9 +87,23 @@ export default function InvitationRuntime() {
   const [answers, setAnswers] = useState({ selectedDate: null, selectedTime: null, selections: {} });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [noAttempts, setNoAttempts] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+
+    // В превью всё уже есть на руках: ни запроса, ни отметки о просмотре.
+    if (previewData) {
+      setInvitation(previewData.invitation);
+      setContent(previewData.content);
+      setSteps(
+        [...previewData.steps]
+          .filter((s) => s.enabled && RENDERABLE_STEP_TYPES.has(s.step_type))
+          .sort((a, b) => a.step_order - b.step_order)
+      );
+      setState({ status: 'ready' });
+      return undefined;
+    }
 
     async function load() {
       const { data: inv, error: invError } = await supabase
@@ -93,10 +117,12 @@ export default function InvitationRuntime() {
 
       if (invError || !inv) {
         setState({ status: 'not_found' });
+        track('invite_not_found', {}, { slug });
         return;
       }
       if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
         setState({ status: 'expired' });
+        track('invite_expired', {}, { slug });
         return;
       }
 
@@ -109,6 +135,18 @@ export default function InvitationRuntime() {
       );
       setState({ status: 'ready' });
 
+      // Просмотр получателем — отдельное событие аналитики: в самой таблице
+      // invitations есть только first_viewed_at/last_viewed_at, по ним нельзя
+      // посчитать, сколько раз и сколько разных людей открывали ссылку.
+      track('invite_view', { template: inv.template_key }, { slug });
+
+      // Автор открыл свою же ссылку проверить, как она выглядит, — это не
+      // просмотр получателя. Иначе бот пишет ему «она открыла», хотя открыл
+      // он сам, и настоящее первое открытие потом приходит как «снова».
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (sessionData?.session?.user?.id && sessionData.session.user.id === inv.user_id) return;
+
       // Не блокируем рендер результатом — это уведомление, а не критичный путь
       supabase.rpc('mark_invitation_viewed', { p_slug: slug }).then(({ error }) => {
         if (error) console.error('mark_invitation_viewed failed', error);
@@ -119,13 +157,21 @@ export default function InvitationRuntime() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, previewData]);
 
   const tokens = useMemo(() => getTemplateTokens(invitation?.template_key), [invitation]);
   const cardShapeParam = searchParams.get('card');
   const cardShape = ['arch', 'envelope', 'polaroid', 'blob'].includes(cardShapeParam)
     ? cardShapeParam
     : (invitation?.card_shape || 'classic');
+
+  // По шагам получателя видно, где приглашения бросают, не досмотрев
+  useEffect(() => {
+    const step = steps[activeIndex];
+    if (state.status !== 'ready' || !step) return;
+    track('invite_step', { index: activeIndex, step: step.step_type }, { slug });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, state.status, steps.length]);
 
   function goNext() {
     setActiveIndex((i) => Math.min(i + 1, steps.length - 1));
@@ -147,33 +193,31 @@ export default function InvitationRuntime() {
   }
 
   async function handleFinalSubmit() {
+    // В превью ответ никуда не отправляем: иначе автор сам себе пришлёт
+    // "она сказала да" в Telegram и испортит себе же сюрприз в дашборде.
+    if (isPreview) {
+      setSubmitted(true);
+      return;
+    }
     setSubmitting(true);
     try {
-      // На invitation_id стоит unique-ограничение (один ответ на
-      // приглашение), так что повторная отправка — например, если
-      // получатель вернулся по той же ссылке и прошёл шаги заново —
-      // должна обновить существующий ответ, а не упасть с ошибкой конфликта.
-      //
-      // ВАЖНО: не supabase upsert()/ON CONFLICT — Postgres требует, чтобы
-      // у роли было SELECT-разрешение (через RLS) на уже существующую
-      // строку, иначе конфликт использовался бы как канал для проверки
-      // "есть ли уже такая строка" в обход приватности. У анонимного
-      // получателя такого доступа нет (и не должно быть — это чужой ответ),
-      // поэтому upsert падал с "new row violates row-level security policy",
-      // даже с корректными insert/update-политиками. Явные insert → (при
-      // конфликте) update этого не требуют.
-      const payload = {
-        invitation_id: invitation.id,
-        answered_yes: true,
-        selected_date: answers.selectedDate,
-        selected_time: answers.selectedTime,
-        selections: answers.selections,
-      };
-      let { error } = await supabase.from('responses').insert(payload);
-      if (error?.code === '23505') {
-        ({ error } = await supabase.from('responses').update(payload).eq('invitation_id', invitation.id));
+      // Ответ сохраняем одной серверной функцией: она сама создаёт или
+      // обновляет ответ. Раньше здесь был insert, а при повторном ответе —
+      // update, но у анонимного получателя нет права читать ответы, и такой
+      // update молча не находил строку: повторный ответ терялся. Подробнее —
+      // миграция submit_response_rpc.
+      const { data: saved, error } = await supabase.rpc('submit_response', {
+        p_slug: slug,
+        p_selected_date: answers.selectedDate || null,
+        p_selected_time: answers.selectedTime || null,
+        p_selections: answers.selections || {},
+        p_no_attempts: noAttempts,
+      });
+      if (error || saved !== true) {
+        console.error('response submit failed', error || 'invitation not available');
+        throw error || new Error('invitation not available');
       }
-      if (error) { console.error('response submit failed', error); throw error; }
+      track('invite_submit', { no_attempts: noAttempts }, { slug });
       setSubmitted(true);
     } finally {
       setSubmitting(false);
@@ -200,7 +244,8 @@ export default function InvitationRuntime() {
     <div
       ref={sceneRef}
       style={{
-        minHeight: '100vh',
+        // В превью высоту задаёт рамка телефона вокруг, а не экран браузера.
+        minHeight: isPreview ? '100%' : '100vh',
         background: `linear-gradient(165deg, ${tokens.bg} 0%, ${tokens.bg} 55%, ${tokens.card === '#FFFFFF' ? '#ffeef5' : tokens.bgDark} 100%)`,
         position: 'relative',
         overflow: 'hidden',
@@ -251,7 +296,8 @@ export default function InvitationRuntime() {
           onClick={goPrev}
           aria-label="Назад"
           style={{
-            position: 'fixed', top: 18, left: 18, zIndex: 2,
+            // fixed прилип бы к окну браузера и уехал из рамки телефона
+            position: isPreview ? 'absolute' : 'fixed', top: 18, left: 18, zIndex: 2,
             width: 42, height: 42, borderRadius: '50%',
             border: `1px solid ${tokens.ink}20`,
             background: tokens.card, color: tokens.berry,
@@ -279,6 +325,7 @@ export default function InvitationRuntime() {
           recipientGender={invitation.recipient_gender}
           tokens={tokens}
           onYes={goNext}
+          onNoAttempt={() => setNoAttempts((n) => Math.min(n + 1, 999))}
           cardShape={cardShape}
           stepIndex={activeIndex}
           stepCount={steps.length}
@@ -366,6 +413,10 @@ export default function InvitationRuntime() {
           submitted={submitted}
           onSubmit={handleFinalSubmit}
           cardShape={cardShape}
+          templateKey={invitation.template_key}
+          noAttempts={noAttempts}
+          slug={slug}
+          isPreview={isPreview}
         />
       )}
       </div>

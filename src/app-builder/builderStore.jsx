@@ -5,6 +5,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
+import { isEditLocked } from '../lib/editWindow.js';
 import { listDefaultGifs } from '../lib/mediaLibrary.js';
 
 const STORAGE_PREFIX = 'date-invite-draft:';
@@ -15,7 +16,7 @@ export const DEFAULT_STEPS = [
   // конструктор (см. эффект APPLY_DEFAULT_MEDIA ниже). Раньше здесь были
   // зашитые в код URL, из-за которых на долю секунды мелькала СТАРАЯ
   // картинка перед тем, как подставлялась актуальная.
-  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: 'Имя', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
+  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: '', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
   { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!', mediaUrl: null } },
   // Дата и время — один шаг с двумя полями, получатель тоже видит их на одном экране
   { step_type: 'date', step_order: 2, enabled: true, configuration_json: { mode: 'recipient_picks', title: 'И так... Когда ты свободен?', buttonText: 'Выбери дату и время 💌' } },
@@ -106,6 +107,7 @@ async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplate
     recipientGender: inv.recipient_gender || null,
     editInvitationId: invitationId,
     slug: inv.slug,
+    editLocked: isEditLocked(inv),
     loading: false,
   };
 }
@@ -159,7 +161,7 @@ function draftReducer(state, action) {
     case 'SET_GENDER':
       return { ...state, recipientGender: action.gender, steps: genderizeSteps(state.steps, action.gender) };
     case 'SET_ACTIVE_STEP':
-      return { ...state, activeStepIndex: action.index };
+      return { ...state, activeStepIndex: action.index, nameMissing: action.nameMissing || false };
     case 'TOGGLE_STEP':
       return {
         ...state,

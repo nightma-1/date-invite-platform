@@ -2,18 +2,18 @@
  * © 2026 Senti. Все права защищены.
  */
 
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import SmartMedia from '../ui/SmartMedia.jsx';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
 
 export default function ReactionScreen({ title, text, mediaUrl, recipientGender, tokens, onContinue, cardShape = 'classic' }) {
+  const { t } = useTranslation();
   // Заголовок обращён к получателю ("ты сказала") — род от пола получателя.
   // Текст написан от лица отправителя ("я была готова") — предполагаем
   // гетеросексуальную пару, поэтому род отправителя обратный полу получателя.
-  const defaultTitle = recipientGender === 'male' ? 'Ого… ты сказал ДА?! 😱' : 'Ого… ты сказала ДА?! 😱';
-  const defaultText = recipientGender === 'male'
-    ? 'Я безумно рада! Теперь у меня есть повод подготовиться к нашему свиданию ❤️'
-    : 'Я безумно рад! Теперь у меня есть повод подготовиться к нашему свиданию ❤️';
+  const defaultTitle = recipientGender === 'male' ? t('screens.reactionTitleMale') : t('screens.reactionTitleFemale');
+  const defaultText = recipientGender === 'male' ? t('screens.reactionTextToMale') : t('screens.reactionTextToFemale');
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -65,7 +65,7 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
           boxShadow: `0 14px 30px -8px ${tokens.berry}60`,
         }}
       >
-        Тогда продолжаем →
+        {t('screens.reactionContinue')}
       </motion.button>
     </QuestionCardFrame>
     </motion.div>

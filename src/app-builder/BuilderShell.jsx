@@ -2,7 +2,7 @@
  * © 2026 Senti. Все права защищены.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -14,16 +14,21 @@ import StepChoicePlaceAndFood from './steps/StepChoicePlaceAndFood.jsx';
 import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
 import { publishDraft } from './publishDraft.js';
+import { buildPreviewInvitation } from './previewInvitation.js';
+import PreviewOverlay from './PreviewOverlay.jsx';
 import { updateInvitationDraft } from './updateInvitation.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
+import { track, trackBeforeLeaving } from '../lib/analytics.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
 import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
+import { inviteShareUrl, isPlaceholderName, normalizeName } from '../lib/shareLink.js';
 
 const STEP_COMPONENTS = {
   question: StepQuestion,
@@ -144,6 +149,61 @@ export default function BuilderShell() {
   const [publishError, setPublishError] = useState(null);
   const [publishResult, setPublishResult] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  // Прогон приглашения целиком перед оплатой. Собираем объект в момент
+  // открытия, чтобы превью показывало текущее состояние черновика.
+  const [previewData, setPreviewData] = useState(null);
+  // Ошибка входа через Telegram, с которой человек вернулся на сайт.
+  const [authError, setAuthError] = useState(null);
+
+  // Аналитика воронки. Хуки объявлены до ранних return'ов ниже — иначе
+  // React ругается на разное число хуков между рендерами.
+  useEffect(() => {
+    track('builder_start', { edit: Boolean(state.editInvitationId), template: state.templateId });
+    // Один раз на вход в конструктор, а не на каждую перерисовку
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // По этим событиям видно, на каком шаге люди бросают конструктор
+  useEffect(() => {
+    if (state.loading || !state.recipientGender || !activeStep) return;
+    track('builder_step', { index: state.activeStepIndex, step: activeStep.step_type });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.activeStepIndex, state.loading, state.recipientGender]);
+
+  // Возврат после входа через Telegram. Перед уходом на сайт
+  // провайдера AuthGate запоминает, что человек собирался сделать, — здесь
+  // продолжаем с того же места: сразу ведём на оплату (или сохраняем правки),
+  // а не оставляем его снова на первом шаге.
+  useEffect(() => {
+    if (state.loading) return;
+    let pending = null;
+    try {
+      const raw = window.localStorage.getItem(resumeKey());
+      if (raw) {
+        window.localStorage.removeItem(resumeKey());
+        pending = JSON.parse(raw);
+      }
+    } catch { /* localStorage недоступен — продолжить не получится, человек нажмёт ещё раз */ }
+    if (!pending || Date.now() - (pending.at || 0) > 30 * 60 * 1000) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) {
+        track('auth_success', { mode: 'oauth', provider: pending.provider });
+        await runPublish(data.session.user.id, pending.method || 'invoice');
+      } else {
+        // Вернулись без сессии: человек отменил вход или провайдер вернул ошибку.
+        track('auth_error', { mode: 'oauth', provider: pending.provider });
+        setPendingPaymentMethod(pending.method || 'invoice');
+        setAuthError(t('auth.oauthError'));
+        setShowAuthGate(true);
+      }
+    })();
+    return () => { cancelled = true; };
+    // Один раз, когда черновик готов
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.loading]);
 
   const canGoBack = state.activeStepIndex > 0;
   const canGoNext = state.activeStepIndex < orderedStepsForWizard.length - 1;
@@ -166,6 +226,31 @@ export default function BuilderShell() {
         fontSize: 14,
       }}>
         {t('builder.loadingInvitation')}
+      </div>
+    );
+  }
+
+  // Срок правки (3 дня с публикации) вышел — база всё равно не даст
+  // сохранить, поэтому не пускаем в конструктор и объясняем почему.
+  if (state.editInvitationId && state.editLocked) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: 360, fontFamily: T.font }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🔒</div>
+          <h1 style={{ fontWeight: 700, fontSize: 20, color: T.darkPurple, marginBottom: 8 }}>
+            {t('builder.editLockedTitle')}
+          </h1>
+          <p style={{ color: T.muted, fontSize: 13, lineHeight: 1.5, marginBottom: 20 }}>
+            {t('builder.editLockedText')}
+          </p>
+          <a href="/dashboard" style={{ color: T.pink, fontSize: 14, fontWeight: 700 }}>
+            {t('builder.goToDashboard')}
+          </a>
+        </div>
       </div>
     );
   }
@@ -241,7 +326,10 @@ export default function BuilderShell() {
                 type="button"
                 whileHover={{ y: -3, borderColor: T.pink }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => dispatch({ type: 'SET_GENDER', gender: g.value })}
+                onClick={() => {
+                  track('builder_gender', { gender: g.value });
+                  dispatch({ type: 'SET_GENDER', gender: g.value });
+                }}
                 style={{
                   flex: 1,
                   background: 'white',
@@ -275,8 +363,46 @@ export default function BuilderShell() {
     );
   }
 
+  function resumeKey() {
+    return `senti:resume:${window.location.pathname}`;
+  }
+
+  function rememberResume(provider) {
+    try {
+      window.localStorage.setItem(resumeKey(), JSON.stringify({
+        provider, method: pendingPaymentMethod, at: Date.now(),
+      }));
+    } catch { /* без localStorage после входа просто нажмут кнопку ещё раз */ }
+  }
+
+  function focusRecipientName(attempt = 0) {
+    // Шаг перерисовывается с анимацией — ждём, пока поле появится в DOM.
+    const el = document.getElementById('builder-recipient-name');
+    if (!el) {
+      if (attempt < 20) setTimeout(() => focusRecipientName(attempt + 1), 50);
+      return;
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.focus({ preventScroll: true });
+  }
+
   async function handlePublish() {
     setPublishError(null);
+    // Без имени получателя превью ссылки в Telegram выйдет «Имя, это тебе».
+    // Возвращаем на шаг с именем, а не публикуем заглушку.
+    const questionName = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName;
+    if (!normalizeName(questionName) || isPlaceholderName(questionName)) {
+      const idx = orderedStepsForWizard.findIndex((s) => s.step_type === 'question');
+      if (idx >= 0) dispatch({ type: 'SET_ACTIVE_STEP', index: idx, nameMissing: true });
+      setPublishError(t('builder.nameRequired'));
+      track('publish_blocked_no_name');
+      // Поле имени — в середине длинного первого шага, а текст ошибки — в
+      // самом низу. Без прокрутки человек видел только «вернуло на первую
+      // страницу» и не понимал почему. Ведём прямо к полю и ставим курсор.
+      focusRecipientName();
+      return;
+    }
+    track('builder_publish_click', { edit: Boolean(state.editInvitationId), template: state.templateId });
     // Редактирование опубликованного приглашения — платить повторно не
     // нужно, сразу сохраняем изменения, как и раньше.
     if (state.editInvitationId) {
@@ -294,6 +420,7 @@ export default function BuilderShell() {
   async function handleChoosePaymentMethod(method) {
     setShowPaymentChoice(false);
     setPublishError(null);
+    track('payment_method_choose', { method });
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) {
       setPendingPaymentMethod(method);
@@ -308,6 +435,7 @@ export default function BuilderShell() {
     try {
       if (state.editInvitationId) {
         const { invitationId, slug } = await updateInvitationDraft(state, userId, state.editInvitationId);
+        track('invitation_edited', {}, { slug });
         setPublishResult({ invitationId, slug, edited: true });
         return;
       }
@@ -316,6 +444,7 @@ export default function BuilderShell() {
       // происходит в /api/click/webhook.js после реального списания —
       // отсюда мы просто редиректим на страницу оплаты и ничего не ждём.
       const { invitationId } = await publishDraft(state, userId);
+      track('draft_created', { template: state.templateId, shape: state.cardShape || 'classic' });
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
       const res = await fetch('/api/click/create', {
@@ -327,8 +456,12 @@ export default function BuilderShell() {
       if (!res.ok || !data.paymentUrl) {
         throw new Error(data.error || t('builder.publishGenericError'));
       }
+      // Ждём отправку события: сразу после этой строки страница уходит на
+      // Click, и незавершённый запрос браузер просто отменил бы.
+      await trackBeforeLeaving('payment_redirect', { method });
       window.location.href = data.paymentUrl;
     } catch (err) {
+      track('publish_error', { message: String(err.message || '').slice(0, 120) });
       setPublishError(err.message || t('builder.publishGenericError'));
     } finally {
       setPublishing(false);
@@ -405,14 +538,21 @@ export default function BuilderShell() {
       }}>
         <DecorativeBlobs />
         <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <AuthGate onAuthenticated={(user) => { setShowAuthGate(false); runPublish(user.id, pendingPaymentMethod); }} />
+          <AuthGate
+            initialError={authError}
+            onBeforeRedirect={rememberResume}
+            onAuthenticated={(user) => { setShowAuthGate(false); setAuthError(null); runPublish(user.id, pendingPaymentMethod); }}
+          />
         </div>
       </div>
     );
   }
 
   if (publishResult) {
-    const shareUrl = `${window.location.origin}/i/${publishResult.slug}`;
+    // После правки имени ссылка получает новую метку ?v= — мессенджер
+    // заново загрузит превью (см. src/lib/shareLink.js)
+    const questionName = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName;
+    const shareUrl = inviteShareUrl(publishResult.slug, normalizeName(questionName), state.templateId);
     return (
       <div style={{
         minHeight: '100vh',
@@ -640,8 +780,51 @@ export default function BuilderShell() {
         </AnimatePresence>
 
         {publishError && (
-          <p style={{ color: '#C0392B', fontSize: 13, marginTop: 12, fontFamily: T.font }}>
-            {publishError}
+          <div style={{ marginTop: 12 }}>
+            <p style={{ color: '#C0392B', fontSize: 13, fontFamily: T.font }}>
+              {publishError}
+            </p>
+            {/* Публикация сорвалась у самой оплаты — здесь человеку нужен
+                живой ответ, а не только текст ошибки. */}
+            <SupportTrigger
+              variant="quiet"
+              defaultTopic="payment"
+              label={t('support.paymentHelp')}
+              style={{ marginTop: 6, color: T.pink, fontWeight: 600 }}
+            />
+          </div>
+        )}
+
+        {/* Последний шаг — перед кнопкой оплаты. Намеренно тихая ссылка под
+            контентом, а не кнопка рядом с «Оплатить»: заметный блок про
+            проблемы у самой оплаты скорее посеет сомнение, чем поможет. */}
+        {/* Прогон перед оплатой: до него человек платил, ни разу не увидев
+            свою работу целиком — боковая превьюшка показывает по одному
+            экрану и без переходов. Кнопка намеренно не обязательный шаг
+            визарда: лишний экран в воронке стоит конверсии, поэтому уверенный
+            платит сразу, а сомневающийся сначала смотрит. */}
+        {isLastStep && (
+          <button
+            type="button"
+            onClick={() => setPreviewData(buildPreviewInvitation(state))}
+            style={{
+              marginTop: 20, width: '100%', height: 50, borderRadius: 100,
+              border: `1.5px solid ${T.pinkBorder}`, background: 'white', color: T.pink,
+              fontFamily: T.font, fontWeight: 700, fontSize: 15, cursor: 'pointer',
+            }}
+          >
+            {t('preview.openButton')}
+          </button>
+        )}
+
+        {isLastStep && !publishError && (
+          <p style={{ marginTop: 20, textAlign: 'center', fontSize: 12.5, color: T.muted, fontFamily: T.font }}>
+            {t('support.beforePayPrompt')}{' '}
+            <SupportTrigger
+              variant="quiet"
+              label={t('support.dashboardPromptLink')}
+              style={{ fontSize: 12.5, color: T.pink, fontWeight: 600 }}
+            />
           </p>
         )}
       </div>
@@ -709,6 +892,19 @@ export default function BuilderShell() {
         </motion.button>
       </div>
       </div>
+
+      {previewData && (
+        <PreviewOverlay
+          previewData={previewData}
+          busy={publishing}
+          confirmLabel={state.editInvitationId ? t('preview.confirmSave') : t('preview.confirmPublish')}
+          onClose={() => setPreviewData(null)}
+          onConfirm={() => {
+            setPreviewData(null);
+            handlePublish();
+          }}
+        />
+      )}
     </div>
   );
 }

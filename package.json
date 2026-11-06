@@ -6,14 +6,17 @@
   "license": "UNLICENSED",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/register-telegram-webhook.mjs",
+    "build": "vite build && node scripts/register-telegram-webhook.mjs && node scripts/register-support-webhook.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "@vercel/og": "0.8.5",
     "framer-motion": "^11.3.0",
     "i18next": "^26.4.2",
     "i18next-browser-languagedetector": "^8.2.1",
+    "lottie-web": "^5.13.0",
+    "pako": "^2.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^17.0.15",

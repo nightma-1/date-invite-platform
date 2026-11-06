@@ -2,13 +2,18 @@
  * © 2026 Senti. Все права защищены.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-export default function RunawayButton({ phrases, containerRef, style = {} }) {
+export default function RunawayButton({ phrases, containerRef, style = {}, onDodge }) {
+  const { t } = useTranslation();
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
+  // Одно касание на телефоне вызывает и touchstart, и pointerenter, и click —
+  // для счётчика попыток это одна попытка, а не три.
+  const lastCountedAt = useRef(0);
 
   function dodge(event) {
     event.preventDefault();
@@ -23,9 +28,15 @@ export default function RunawayButton({ phrases, containerRef, style = {} }) {
 
     setPos({ x: Math.round(Math.random() * maxX), y: Math.round(Math.random() * maxY) });
     setPhraseIndex((i) => Math.min(i + 1, (phrases?.length ?? 1) - 1));
+
+    const now = Date.now();
+    if (now - lastCountedAt.current > 300) {
+      lastCountedAt.current = now;
+      onDodge?.();
+    }
   }
 
-  const phraseList = phrases || ['Нет', 'Подумаю', 'Может быть', 'Неееет', 'Не поймаешь!'];
+  const phraseList = phrases || t('questionScreen.noPhrases', { returnObjects: true });
 
   return (
     <motion.button
@@ -43,7 +54,7 @@ export default function RunawayButton({ phrases, containerRef, style = {} }) {
         top: pos ? pos.y : 'auto',
         userSelect: 'none',
       }}
-      aria-label="Кнопка «Нет» — она убегает"
+      aria-label={t('screens.noButtonAria')}
     >
       {phraseList[phraseIndex]}
     </motion.button>

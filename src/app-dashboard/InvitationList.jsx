@@ -10,7 +10,10 @@ import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
+import { isEditLocked } from '../lib/editWindow.js';
+import { inviteShareUrl } from '../lib/shareLink.js';
 
 const t = getTemplateTokens('romantic');
 
@@ -43,8 +46,79 @@ function decodeSelections(inv, response, fallbackTitle) {
     .filter(Boolean);
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * Жизнь приглашения одной-двумя строками: когда отправили, сколько раз
+ * открыли и сколько ещё работает ссылка. Срок — 7 дней с публикации
+ * (триггер set_publication_deadlines), после этого ссылка не открывается.
+ */
+function InvitationTimeline({ inv, now, tr, tokens, lang }) {
+  if (inv.status !== 'published' && inv.status !== 'expired') return null;
+  const publishedAt = inv.published_at ? new Date(inv.published_at).getTime() : null;
+  const expiresAt = inv.expires_at ? new Date(inv.expires_at).getTime() : null;
+
+  const parts = [];
+  if (publishedAt) {
+    const days = Math.floor((now - publishedAt) / DAY_MS);
+    parts.push(days < 1 ? tr('dashboard.sentToday') : tr('dashboard.sentDaysAgo', { count: days }));
+  }
+  const views = inv.view_count || 0;
+  parts.push(views > 0 ? tr('dashboard.views', { count: views }) : tr('dashboard.viewsNone'));
+
+  let expiryText = null;
+  let urgent = false;
+  if (expiresAt) {
+    const left = expiresAt - now;
+    if (inv.status === 'expired' || left <= 0) {
+      const date = new Date(expiresAt).toLocaleDateString(lang, { day: 'numeric', month: 'long' });
+      expiryText = tr('dashboard.expiredOn', { date });
+    } else if (left < HOUR_MS) {
+      expiryText = tr('dashboard.expiresSoon');
+      urgent = true;
+    } else if (left < DAY_MS) {
+      expiryText = tr('dashboard.expiresInHours', { count: Math.floor(left / HOUR_MS) });
+      urgent = true;
+    } else {
+      // «ещё 6 дней», даже если осталось 6 дней 23 часа — округляем вниз,
+      // чтобы не обещать лишнего
+      expiryText = tr('dashboard.expiresInDays', { count: Math.floor(left / DAY_MS) });
+    }
+  }
+
+  // Срок правки: 3 дня с публикации (edit_until)
+  let editText = null;
+  if (inv.status === 'published' && inv.edit_until) {
+    const editLeft = new Date(inv.edit_until).getTime() - now;
+    if (editLeft <= 0) editText = tr('dashboard.editClosed');
+    else if (editLeft < DAY_MS) editText = tr('dashboard.editLeftHours', { count: Math.max(1, Math.floor(editLeft / HOUR_MS)) });
+    else editText = tr('dashboard.editLeftDays', { count: Math.floor(editLeft / DAY_MS) });
+  }
+
+  return (
+    <div className="mb-2" style={{ fontFamily: tokens.fontUI }}>
+      <p className="text-xs" style={{ color: tokens.ink, opacity: 0.55 }}>{parts.join(' · ')}</p>
+      {editText && (
+        <p className="text-xs" style={{ color: tokens.ink, opacity: 0.55 }}>✏️ {editText}</p>
+      )}
+      {expiryText && (
+        <p className="text-xs" style={{ color: urgent ? tokens.berry : tokens.ink, opacity: urgent ? 1 : 0.55, fontWeight: urgent ? 600 : 400 }}>
+          ⏳ {expiryText}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function InvitationList() {
-  const { t: tr } = useTranslation();
+  const { t: tr, i18n } = useTranslation();
+  // Тикает раз в минуту, чтобы «осталось 3 часа» не застывало на открытой вкладке
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const STATUS_LABELS = tr('dashboard.status', { returnObjects: true });
   const [session, setSession] = useState(undefined);
   const [invitations, setInvitations] = useState([]);
@@ -98,8 +172,10 @@ export default function InvitationList() {
     }
   }
 
-  function copyLink(slug) {
-    const url = `${window.location.origin}/i/${slug}`;
+  function copyLink(inv) {
+    const slug = inv.slug;
+    // С меткой версии превью — см. src/lib/shareLink.js
+    const url = inviteShareUrl(slug, inv.recipient_name, inv.template_key);
     navigator.clipboard?.writeText(url);
     setCopiedSlug(slug);
     setTimeout(() => setCopiedSlug((s) => (s === slug ? null : s)), 2000);
@@ -153,7 +229,7 @@ export default function InvitationList() {
       if (ids.length > 0) {
         const { data: respData, error: respErr } = await supabase
           .from('responses')
-          .select('invitation_id, answered_yes, selected_date, selected_time, selections, created_at')
+          .select('invitation_id, answered_yes, selected_date, selected_time, selections, created_at, answer_count')
           .in('invitation_id', ids);
         if (respErr) {
           console.error('responses load failed', respErr);
@@ -184,8 +260,19 @@ export default function InvitationList() {
 
     load();
     loadProfile();
-    return () => { cancelled = true; };
+    // Человек уходит в бота, жмёт «Start» и возвращается на вкладку —
+    // перепроверяем, привязался ли Telegram, чтобы карточка исчезла сама.
+    const onFocus = () => { loadProfile(); };
+    window.addEventListener('focus', onFocus);
+    return () => { cancelled = true; window.removeEventListener('focus', onFocus); };
   }, [session]);
+
+  // Вошёл через Telegram — значит, Telegram у человека под рукой. Зовём
+  // включить уведомления крупной карточкой, а не тихой строкой.
+  const signedInWithTelegram = Boolean(
+    session?.user?.identities?.some((i) => i.provider === 'custom:telegram')
+    || session?.user?.app_metadata?.provider === 'custom:telegram'
+  );
 
   if (session === undefined) return <p className="p-8 text-center text-sm opacity-60">{tr('dashboard.loading')}</p>;
 
@@ -218,7 +305,25 @@ export default function InvitationList() {
           {tr('dashboard.title')}
         </h1>
 
-        {telegramLinked === false && (
+        {telegramLinked === false && signedInWithTelegram && (
+          <div className="mb-8 rounded-2xl px-5 py-5" style={{ background: '#2AABEE', color: '#fff' }}>
+            <p style={{ margin: 0, fontFamily: t.fontUI, fontSize: 16, fontWeight: 700 }}>
+              {tr('dashboard.telegramPromptTitle')}
+            </p>
+            <p style={{ margin: '6px 0 14px', fontFamily: t.fontUI, fontSize: 13.5, lineHeight: 1.45, opacity: 0.92 }}>
+              {tr('dashboard.telegramPromptText')}
+            </p>
+            <button
+              type="button"
+              onClick={connectTelegram}
+              className="w-full rounded-full px-4 py-3"
+              style={{ background: '#fff', color: '#1E6FA8', border: 'none', cursor: 'pointer', fontFamily: t.fontUI, fontSize: 15, fontWeight: 700 }}
+            >
+              {tr('dashboard.telegramPromptAction')}
+            </button>
+          </div>
+        )}
+        {telegramLinked === false && !signedInWithTelegram && (
           <button
             type="button"
             onClick={connectTelegram}
@@ -264,12 +369,16 @@ export default function InvitationList() {
                       {STATUS_LABELS[inv.status] || inv.status}
                     </span>
                   </div>
-                  <p className="mb-2 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>/i/{inv.slug}</p>
+                  <p className="mb-1 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>/i/{inv.slug}</p>
+                  <InvitationTimeline inv={inv} now={now} tr={tr} tokens={t} lang={i18n.language} />
                   {response ? (
                     <p className="text-sm" style={{ color: t.berry, fontFamily: t.fontUI }}>
                       {response.answered_yes ? tr('dashboard.answeredYes') : tr('dashboard.answeredNo')}
                       {response.selected_date && ` · ${response.selected_date}`}
-                      {response.selected_time && ` ${response.selected_time}`}
+                      {response.selected_time && ` ${String(response.selected_time).slice(0, 5)}`}
+                      {response.answer_count > 1 && (
+                        <span style={{ opacity: 0.6 }}> · {tr('dashboard.answersCount', { count: response.answer_count })}</span>
+                      )}
                     </p>
                   ) : (
                     <p className="text-sm" style={{ color: t.ink, opacity: 0.4, fontFamily: t.fontUI }}>{tr('dashboard.noAnswerYet')}</p>
@@ -327,6 +436,7 @@ export default function InvitationList() {
                         </button>
                       </>
                     )}
+                    {!isEditLocked(inv, now) && (
                     <Link
                       to={`/builder/edit/${inv.id}`}
                       className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline"
@@ -334,10 +444,11 @@ export default function InvitationList() {
                     >
                       {tr('dashboard.edit')}
                     </Link>
+                    )}
                     {inv.status === 'published' && (
                       <button
                         type="button"
-                        onClick={() => copyLink(inv.slug)}
+                        onClick={() => copyLink(inv)}
                         className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
                         style={{
                           background: copiedSlug === inv.slug ? t.berry : t.berry + '15',
@@ -367,6 +478,19 @@ export default function InvitationList() {
             );
           })}
         </div>
+
+        {/* Вход в поддержку внизу кабинета: сюда человек возвращается, когда
+            что-то пошло не так с уже созданным приглашением. */}
+        {/* Приглушаем цветом, а не opacity: прозрачность у родителя гасила бы
+            и ссылку внутри. */}
+        <p className="mt-10 text-center text-xs" style={{ color: T.muted, fontFamily: t.fontUI }}>
+          {tr('support.dashboardPrompt')}{' '}
+          <SupportTrigger
+            variant="quiet"
+            label={tr('support.dashboardPromptLink')}
+            style={{ color: t.berry, fontWeight: 600, fontSize: 12 }}
+          />
+        </p>
       </div>
     </div>
   );

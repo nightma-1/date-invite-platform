@@ -13,6 +13,9 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
+import { track } from '../lib/analytics.js';
+import { inviteShareUrl } from '../lib/shareLink.js';
+import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 
 const POLL_INTERVAL_MS = 2500;
@@ -23,8 +26,11 @@ export default function PaymentStatus() {
   const { invitationId } = useParams();
   const [status, setStatus] = useState('checking'); // checking | published | timeout | notfound
   const [slug, setSlug] = useState(null);
+  const [previewInfo, setPreviewInfo] = useState({ name: '', templateKey: '' });
   const [linkCopied, setLinkCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  // null — ещё не знаем (не показываем ничего, чтобы блок не мигал)
+  const [telegramLinked, setTelegramLinked] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,7 +40,7 @@ export default function PaymentStatus() {
       attempt += 1;
       const { data, error } = await supabase
         .from('invitations')
-        .select('status, slug')
+        .select('status, slug, recipient_name, template_key')
         .eq('id', invitationId)
         .maybeSingle();
 
@@ -49,12 +55,19 @@ export default function PaymentStatus() {
 
       if (data.status === 'published') {
         setSlug(data.slug);
+        setPreviewInfo({ name: data.recipient_name, templateKey: data.template_key });
         setStatus('published');
+        // Человек вернулся с оплаты и увидел опубликованное приглашение —
+        // это и есть «успешно дошёл до конца» в воронке.
+        track('payment_success', {}, { slug: data.slug });
         return;
       }
 
       if (attempt >= MAX_ATTEMPTS) {
         setStatus('timeout');
+        // Оплата ушла, а вебхук так и не пришёл — такие случаи важно видеть
+        // в админке, а не узнавать о них только из поддержки.
+        track('payment_timeout');
         return;
       }
 
@@ -64,6 +77,51 @@ export default function PaymentStatus() {
     poll();
     return () => { cancelled = true; };
   }, [invitationId]);
+
+  // Самый удачный момент предложить бота — человек только что получил
+  // ссылку и сейчас её отправит. В кабинете это предложение видят не все.
+  useEffect(() => {
+    if (status !== 'published') return undefined;
+    let cancelled = false;
+    async function checkLinked() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (!userId) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('telegram_chat_id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (!cancelled) setTelegramLinked(!!data?.telegram_chat_id);
+    }
+    checkLinked();
+    // Человек ушёл в Telegram, нажал «Start» и вернулся — обновляем статус
+    window.addEventListener('focus', checkLinked);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', checkLinked);
+    };
+  }, [status]);
+
+  async function connectTelegram() {
+    // Окно открываем сразу в обработчике клика, иначе браузер заблокирует попап
+    const win = window.open('', '_blank');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const res = await fetch('/api/telegram/connect', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${sessionData.session?.access_token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || 'telegram connect failed');
+      track('telegram_connect_click', { from: 'payment_success' });
+      if (win) win.location.href = data.url;
+      else window.location.href = data.url;
+    } catch (e) {
+      win?.close();
+      console.error('telegram connect failed', e);
+    }
+  }
 
   async function retryPayment(method = 'invoice') {
     setRetrying(true);
@@ -86,7 +144,7 @@ export default function PaymentStatus() {
     setRetrying(false);
   }
 
-  const shareUrl = slug ? `${window.location.origin}/i/${slug}` : null;
+  const shareUrl = slug ? inviteShareUrl(slug, previewInfo.name, previewInfo.templateKey) : null;
 
   return (
     <div style={{
@@ -152,6 +210,35 @@ export default function PaymentStatus() {
               </div>
             )}
 
+            {telegramLinked === false && (
+              <div style={{
+                background: '#EAF6FF', border: '1.5px solid #B3E0FF', borderRadius: 16,
+                padding: '14px 16px', marginBottom: 16, textAlign: 'left',
+              }}>
+                <p style={{ fontFamily: T.font, fontWeight: 700, fontSize: 14, color: '#1E6FA8', marginBottom: 4 }}>
+                  {t('payment.tgTitle')}
+                </p>
+                <p style={{ fontFamily: T.font, fontSize: 12.5, color: '#1E6FA8', opacity: 0.85, lineHeight: 1.45, marginBottom: 10 }}>
+                  {t('payment.tgText')}
+                </p>
+                <button
+                  type="button"
+                  onClick={connectTelegram}
+                  style={{
+                    background: '#229ED9', color: '#fff', border: 'none', borderRadius: 100,
+                    padding: '9px 18px', fontFamily: T.font, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  {t('payment.tgAction')}
+                </button>
+              </div>
+            )}
+            {telegramLinked === true && (
+              <p style={{ fontFamily: T.font, fontSize: 12, color: T.muted, opacity: 0.7, marginBottom: 14 }}>
+                {t('payment.tgDone')}
+              </p>
+            )}
+
             {slug && (
               <a
                 href={`/i/${slug}`}
@@ -207,6 +294,15 @@ export default function PaymentStatus() {
             >
               {retrying ? t('payment.retrying') : t('payment.retryButtonCard')}
             </button>
+            {/* Деньги списались, а приглашение не опубликовалось — ровно тот
+                случай, когда человеку нужен живой человек, а не ещё одна
+                кнопка «попробовать снова». */}
+            <SupportTrigger
+              variant="card"
+              defaultTopic="payment"
+              label={t('support.paymentHelp')}
+              style={{ marginBottom: 12 }}
+            />
             <Link to="/dashboard" style={{ display: 'block', fontFamily: T.font, fontSize: 13, color: T.muted, textDecoration: 'underline' }}>
               {t('builder.goToDashboard')}
             </Link>
@@ -230,6 +326,9 @@ export default function PaymentStatus() {
                 {t('builder.goToDashboard')}
               </button>
             </Link>
+            <p style={{ marginTop: 14, fontFamily: T.font, fontSize: 13, color: T.muted }}>
+              <SupportTrigger variant="quiet" defaultTopic="payment" label={t('support.paymentHelp')} />
+            </p>
           </>
         )}
       </motion.div>

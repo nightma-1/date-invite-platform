@@ -9,6 +9,7 @@
 
 import { motion } from 'framer-motion';
 import SmartMedia from '../ui/SmartMedia.jsx';
+import { useTranslation } from 'react-i18next';
 
 export const CARD_SHAPES = ['classic', 'arch', 'envelope', 'polaroid', 'blob'];
 
@@ -57,6 +58,7 @@ export function ArchFrame({ tokens, children }) {
 }
 
 export function EnvelopeFrame({ tokens, children }) {
+  const { t } = useTranslation();
   const accentGrad = `linear-gradient(135deg, ${tokens.berry}, ${tokens.amber || tokens.berry})`;
   return (
     // Один общий контейнер со скруглением и overflow:hidden — раньше
@@ -85,7 +87,7 @@ export function EnvelopeFrame({ tokens, children }) {
           margin: '0 0 18px', fontFamily: tokens.fontUI, fontSize: 11, fontWeight: 700,
           letterSpacing: '.06em', textTransform: 'uppercase', color: tokens.berry, opacity: 0.8,
         }}>
-          Тебе письмо 💌
+          {t('screens.letterForYou')}
         </p>
         {children}
       </div>

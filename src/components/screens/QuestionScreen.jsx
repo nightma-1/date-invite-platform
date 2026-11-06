@@ -33,6 +33,8 @@ export default function QuestionScreen({
   noPhrases,
   recipientGender,
   tokens, onYes,
+  // Сколько раз пытались нажать «Нет» — уходит автору в Telegram вместе с ответом
+  onNoAttempt,
   // Временный переключатель формы карточки для живого сравнения на проде —
   // ?card=arch|envelope|polaroid|blob (см. InvitationRuntime.jsx). Уберём,
   // когда определимся с финальным вариантом.
@@ -158,10 +160,10 @@ export default function QuestionScreen({
               )}
 
               <motion.h1 variants={itemVariants} style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 27, fontWeight: 700, marginBottom: 8, letterSpacing: '-0.01em' }}>
-                {recipientName || 'Привет'}
+                {recipientName || t('screens.hello')}
               </motion.h1>
               <motion.p variants={itemVariants} style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 16, lineHeight: 1.55, marginBottom: 32, opacity: 0.9, maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
-                {questionText || 'Пойдёшь со мной на свидание?'}
+                {questionText || t('screens.questionDefault')}
               </motion.p>
 
               <motion.div
@@ -285,6 +287,7 @@ export default function QuestionScreen({
                 <RunawayButton
                   phrases={effectiveNoPhrases}
                   containerRef={stageRef}
+                  onDodge={onNoAttempt}
                   style={{
                     border: `1.5px solid ${tokens.ink}25`,
                     color: tokens.inkMuted || tokens.ink,

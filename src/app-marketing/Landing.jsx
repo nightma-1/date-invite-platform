@@ -14,7 +14,10 @@ import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
 import { T } from '../app-builder/BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
-import { listDefaultGifs } from '../lib/mediaLibrary.js';
+import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
+import { listDefaultGifs, getCachedDefaultGifs, preloadMedia } from '../lib/mediaLibrary.js';
+import { LANDING_DEMO_KEY, getCachedSiteContent, loadSiteContent } from '../lib/siteContent.js';
+import { track } from '../lib/analytics.js';
 
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
 // всему сценарию (вопрос → реакция → дата → выбор → финал) на примерных
@@ -22,7 +25,30 @@ import { listDefaultGifs } from '../lib/mediaLibrary.js';
 // его адресат. Ничего никуда не отправляется — это витрина, а не реальное
 // приглашение.
 function LandingPreviewDemo() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  // Тексты образца владелец правит в админке (раздел «Образец на главной»).
+  // Пустое поле — текст по умолчанию из переводов.
+  const [demoContent, setDemoContent] = useState(() => getCachedSiteContent(LANDING_DEMO_KEY) || {});
+  useEffect(() => {
+    let cancelled = false;
+    loadSiteContent(LANDING_DEMO_KEY)
+      .then((value) => { if (!cancelled) setDemoContent(value || {}); })
+      .catch(() => {}); // нет связи — остаёмся на кэше/дефолтах
+    return () => { cancelled = true; };
+  }, []);
+  const lang = (i18n.resolvedLanguage || 'ru').slice(0, 2);
+  const custom = demoContent?.[lang] || {};
+  const text = (field, i18nKey) => {
+    const v = typeof custom[field] === 'string' ? custom[field].trim() : '';
+    return v || t(i18nKey);
+  };
+  const options = (field, i18nKey) => (
+    Array.isArray(custom[field]) && custom[field].length > 0
+      ? custom[field]
+      : t(i18nKey, { returnObjects: true })
+  );
+  const demoGender = custom.recipientGender === 'male' ? 'male' : 'female';
   const tokens = getTemplateTokens('romantic');
   const [step, setStep] = useState(0);
   const [collected, setCollected] = useState({ date: null, time: null });
@@ -31,17 +57,35 @@ function LandingPreviewDemo() {
   // Пусто, пока не загрузится актуальный дефолт из админки — раньше здесь
   // стояла зашитая в код СТАРАЯ картинка, которая на долю секунды мелькала
   // перед тем, как подставлялась текущая.
-  const [stepMedia, setStepMedia] = useState({});
+  //
+  // Чтобы карточка не стояла пустой, а гифка не «впрыгивала» через секунду:
+  //   1) адреса берём из кэша прошлого захода — повторный визит мгновенный;
+  //   2) все гифки сценария грузим заранее, а не на каждом шаге;
+  //   3) карточку плавно показываем, когда готова гифка первого экрана
+  //      (но не дольше 1.5 с — медленная сеть не должна прятать демо).
+  const [stepMedia, setStepMedia] = useState(() => getCachedDefaultGifs() || {});
+  const [mediaReady, setMediaReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    const reveal = () => { if (!cancelled) setMediaReady(true); };
+    const fallback = setTimeout(reveal, 1500);
+
+    const cached = getCachedDefaultGifs();
+    if (cached?.question) preloadMedia(cached.question).then(reveal);
+
     listDefaultGifs()
       .then((defaults) => {
         if (cancelled || !defaults) return;
-        setStepMedia((prev) => ({ ...prev, ...defaults }));
+        Object.values(defaults).forEach((url) => { preloadMedia(url); });
+        preloadMedia(defaults.question).then(() => {
+          if (cancelled) return;
+          setStepMedia((prev) => ({ ...prev, ...defaults }));
+          reveal();
+        });
       })
-      .catch(() => {}); // тихо — просто без картинки на превью
-    return () => { cancelled = true; };
+      .catch(reveal); // тихо — просто без картинки на превью
+    return () => { cancelled = true; clearTimeout(fallback); };
   }, []);
 
   const STEP_COUNT = 5;
@@ -58,10 +102,12 @@ function LandingPreviewDemo() {
     await new Promise((resolve) => setTimeout(resolve, 900));
     setSubmitting(false);
     setSubmitted(true);
+    // Человек прошёл демо до конца — самый «тёплый» посетитель лендинга
+    track('landing_demo_finish');
   }
 
-  const placeOptions = t('landing.demo.placeOptions', { returnObjects: true });
-  const foodOptions = t('landing.demo.foodOptions', { returnObjects: true });
+  const placeOptions = options('placeOptions', 'landing.demo.placeOptions');
+  const foodOptions = options('foodOptions', 'landing.demo.foodOptions');
   const summaryLines = [
     collected.date ? `📅 ${collected.date}` : null,
     collected.time ? `🕒 ${collected.time}` : null,
@@ -83,6 +129,11 @@ function LandingPreviewDemo() {
         ))}
       </div>
 
+      <motion.div
+        initial={false}
+        animate={{ opacity: mediaReady ? 1 : 0, y: mediaReady ? 0 : 8 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      >
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
@@ -93,19 +144,21 @@ function LandingPreviewDemo() {
         >
           {step === 0 && (
             <QuestionScreen
-              recipientName={t('landing.previewRecipient')}
-              questionText={t('landing.previewQuestion')}
-              recipientGender="female"
+              recipientName={text('recipientName', 'landing.previewRecipient')}
+              questionText={text('question', 'landing.previewQuestion')}
+              yesText={text('yesText', 'questionScreen.yesDefault')}
+              recipientGender={demoGender}
               mediaUrl={stepMedia.question}
               cardShape="polaroid"
               tokens={tokens}
-              onYes={() => setStep(1)}
+              onYes={() => { setStep(1); track('landing_demo_start'); }}
             />
           )}
           {step === 1 && (
             <ReactionScreen
-              title={t('landing.demo.reactionTitle')}
-              text={t('landing.demo.reactionText')}
+              title={text('reactionTitle', 'landing.demo.reactionTitle')}
+              text={text('reactionText', 'landing.demo.reactionText')}
+              recipientGender={demoGender}
               mediaUrl={stepMedia.reaction}
               cardShape="polaroid"
               tokens={tokens}
@@ -114,7 +167,7 @@ function LandingPreviewDemo() {
           )}
           {step === 2 && (
             <DateTimeScreen
-              title={t('landing.demo.dateTitle')}
+              title={text('dateTitle', 'landing.demo.dateTitle')}
               mediaUrl={stepMedia.date}
               cardShape="polaroid"
               tokens={tokens}
@@ -123,9 +176,9 @@ function LandingPreviewDemo() {
           )}
           {step === 3 && (
             <DoubleChoiceScreen
-              placeTitle={t('landing.demo.placeTitle')}
+              placeTitle={text('placeTitle', 'landing.demo.placeTitle')}
               placeOptions={placeOptions}
-              foodTitle={t('landing.demo.foodTitle')}
+              foodTitle={text('foodTitle', 'landing.demo.foodTitle')}
               foodOptions={foodOptions}
               tokens={tokens}
               onContinue={() => setStep(4)}
@@ -133,8 +186,8 @@ function LandingPreviewDemo() {
           )}
           {step === 4 && (
             <FinalScreen
-              title={t('landing.demo.finalTitle')}
-              description={t('landing.demo.finalDescription')}
+              title={text('finalTitle', 'landing.demo.finalTitle')}
+              description={text('finalDescription', 'landing.demo.finalDescription')}
               summary={summaryLines}
               mediaUrl={stepMedia.final}
               cardShape="polaroid"
@@ -146,6 +199,7 @@ function LandingPreviewDemo() {
           )}
         </motion.div>
       </AnimatePresence>
+      </motion.div>
 
       <p style={{ textAlign: 'center', fontSize: 12, color: T.muted, marginTop: 12 }}>
         {step === 0 && !submitted ? t('landing.previewHint') : null}
@@ -250,12 +304,12 @@ export default function Landing() {
                 {t('landing.heroSubtitle')}
               </p>
               <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
-                <Link to="/builder">
+                <Link to="/builder" onClick={() => track('landing_cta_click', { place: 'hero' })}>
                   <ShimmerButton whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>
                     {t('landing.createBtn')}
                   </ShimmerButton>
                 </Link>
-                <Link to="/dashboard">
+                <Link to="/dashboard" onClick={() => track('landing_dashboard_click', { place: 'hero' })}>
                   <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} style={ghostBtn}>
                     {t('landing.myInvitationsBtn')}
                   </motion.button>
@@ -292,17 +346,30 @@ export default function Landing() {
       <section style={{ background: `linear-gradient(160deg, ${T.darkPurple}, #1a0f1a)`, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: T.pink, opacity: 0.15, pointerEvents: 'none' }} />
         <div className="mx-auto max-w-[480px] px-5 py-14 text-center sm:py-16" style={{ position: 'relative', zIndex: 1 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 12 }}>
-            {t('landing.priceTag')}
-          </p>
-          <p className="text-[44px] sm:text-[56px]" style={{ fontFamily: T.font, color: '#fff', fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>
-            19 000
-          </p>
-          <p style={{ color: '#fff', opacity: 0.55, fontSize: 18, marginBottom: 24, fontFamily: T.font }}>{t('landing.priceCurrency')}</p>
-          <div style={{ color: '#fff', opacity: 0.8, fontSize: 14, marginBottom: 28, lineHeight: 2.2, fontFamily: T.font }}>
+          {/* Сначала ценность, потом цифра: человек читает, что получает,
+              и только затем видит цену — рядом со сравнением с кофе. */}
+          <h2 style={{ fontFamily: T.font, color: '#fff', fontSize: 24, fontWeight: 700, lineHeight: 1.25, marginBottom: 18 }}>
+            {t('landing.priceValueTitle')}
+          </h2>
+          <div style={{ color: '#fff', opacity: 0.8, fontSize: 14, marginBottom: 26, lineHeight: 2.1, fontFamily: T.font }}>
             {priceFeatures.map((f, i) => <p key={i}>{f}</p>)}
           </div>
-          <Link to="/builder">
+
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: 22, marginBottom: 26 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 10 }}>
+              {t('landing.priceTag')}
+            </p>
+            {/* Цена нарочно не «кричит»: умеренный размер, «сум» в той же
+                строке. Крупная цифра на всю ширину воспринимается дороже. */}
+            <p style={{ fontFamily: T.font, color: '#fff', lineHeight: 1, marginBottom: 10 }}>
+              <span className="text-[30px] sm:text-[34px]" style={{ fontWeight: 600 }}>19 000</span>
+              <span style={{ fontSize: 15, opacity: 0.6, marginLeft: 6 }}>{t('landing.priceCurrency')}</span>
+            </p>
+            <p style={{ color: '#fff', opacity: 0.7, fontSize: 14, fontFamily: T.font }}>
+              {t('landing.priceCompare')}
+            </p>
+          </div>
+          <Link to="/builder" onClick={() => track('landing_cta_click', { place: 'price' })}>
             <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }} style={primaryBtn}>
               {t('landing.createBtn')}
             </motion.button>
@@ -337,6 +404,17 @@ export default function Landing() {
             </AnimatePresence>
           </div>
         ))}
+
+        {/* Человек, долиставший FAQ до конца и не нашедший ответа, — главный
+            кандидат в поддержку. Не прячем это в футер. */}
+        <p style={{ marginTop: 22, fontSize: 14, color: T.muted, fontFamily: T.font, lineHeight: 1.6 }}>
+          {t('support.faqPrompt')}{' '}
+          <SupportTrigger
+            variant="quiet"
+            label={t('support.faqPromptLink')}
+            style={{ color: T.pink, fontWeight: 700, fontSize: 14 }}
+          />
+        </p>
       </section>
 
       {/* FOOTER */}
@@ -346,6 +424,7 @@ export default function Landing() {
           <div className="flex flex-wrap items-center justify-center gap-5">
             <Link to="/builder" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.create')}</Link>
             <Link to="/dashboard" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.myInvitations')}</Link>
+            <SupportTrigger variant="link" />
             <LanguageSwitcher />
           </div>
         </div>
