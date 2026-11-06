@@ -211,7 +211,8 @@ export class MuseumWorld {
 
     // У каждого своё место у входа, иначе двое появляются в одной точке
     this.pos = { x: layout.spawn.x + (Math.random() - 0.5) * 3.4, z: layout.spawn.z - Math.random() * 1.2 };
-    this.yaw = layout.spawn.yaw;
+    // Откуда бы человек ни начал, первым он видит посвящение
+    this.yaw = Math.atan2(this.pos.x, 5.23 + this.pos.z);
     this.pitch = 0;
     this.move = { x: 0, y: 0 };
     this.keys = new Set();
