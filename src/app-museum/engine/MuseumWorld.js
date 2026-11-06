@@ -209,7 +209,8 @@ export class MuseumWorld {
     this.camera = new THREE.PerspectiveCamera(66, 1, 0.08, 90);
     this.scene.add(new THREE.HemisphereLight('#fff4e6', '#5a3440', 2.4));
 
-    this.pos = { x: layout.spawn.x, z: layout.spawn.z };
+    // У каждого своё место у входа, иначе двое появляются в одной точке
+    this.pos = { x: layout.spawn.x + (Math.random() - 0.5) * 3.4, z: layout.spawn.z - Math.random() * 1.2 };
     this.yaw = layout.spawn.yaw;
     this.pitch = 0;
     this.move = { x: 0, y: 0 };
@@ -749,6 +750,8 @@ export class MuseumWorld {
     const blend = 1 - Math.exp(-dt * 8);
     for (const p of this.peers.values()) {
       const g = p.group;
+      // Вплотную к камере фигуру не рисуем: иначе экран закрывает её голова
+      g.visible = p.seen && Math.hypot(g.position.x - this.pos.x, g.position.z - this.pos.z) > 0.6;
       const dx = p.target.x - g.position.x;
       const dz = p.target.z - g.position.z;
       const moving = Math.hypot(dx, dz) > 0.03;
