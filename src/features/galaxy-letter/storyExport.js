@@ -18,11 +18,8 @@ export const STORY_H = 1920;
 const SAFE_TOP = 270;
 const SAFE_BOTTOM = 1560;
 
-export const FRAMES = [
-  { id: 'galaxy', label: 'Галактика', hint: 'ничего не раскрывает' },
-  { id: 'envelope', label: 'Конверт', hint: 'только имя' },
-  { id: 'portrait', label: 'Портрет', hint: 'видно лицо' },
-];
+// Подписи кадров живут в переводах (galaxy.frame*), здесь только порядок.
+export const FRAMES = [{ id: 'galaxy' }, { id: 'envelope' }, { id: 'portrait' }];
 
 function roundRect(g, x, y, w, h, r) {
   g.beginPath();
@@ -134,7 +131,7 @@ export function paintEnvelope(g, pal, recipientName) {
  * Подписи и призыв. Всё в безопасной зоне: верх и низ кадра съедает
  * интерфейс Инстаграма.
  */
-export function paintCaptions(g, pal, { caption, subcaption, frame }, alpha = 1) {
+export function paintCaptions(g, pal, { caption, subcaption, frame, texts = {} }, alpha = 1) {
   g.save();
   g.globalAlpha = alpha;
   g.textAlign = 'center';
@@ -159,7 +156,7 @@ export function paintCaptions(g, pal, { caption, subcaption, frame }, alpha = 1)
     y += 70;
     g.fillStyle = 'rgba(255,255,255,0.6)';
     g.font = '500 40px "Caveat", cursive';
-    g.fillText('внутри — целая галактика', STORY_W / 2, y);
+    g.fillText(texts.insideGalaxy || 'внутри — целая галактика', STORY_W / 2, y);
   }
 
   // призыв: ради него сторис и существует — иначе посмотрели и забыли
@@ -177,12 +174,12 @@ export function paintCaptions(g, pal, { caption, subcaption, frame }, alpha = 1)
   g.fillStyle = '#ffffff';
   g.font = '700 38px "Manrope", sans-serif';
   g.textBaseline = 'middle';
-  g.fillText('сделай такое же · senti.uz', STORY_W / 2, by + bh / 2 + 2);
+  g.fillText(texts.cta || 'сделай такое же · senti.uz', STORY_W / 2, by + bh / 2 + 2);
   g.restore();
 }
 
 /** Готовая картинка 9:16 для выбранного кадра. */
-export async function composeStory({ pal, canvases, frame, caption, subcaption, recipientName }) {
+export async function composeStory({ pal, canvases, frame, caption, subcaption, recipientName, texts = {} }) {
   const out = document.createElement('canvas');
   out.width = STORY_W; out.height = STORY_H;
   const g = out.getContext('2d');
@@ -195,9 +192,10 @@ export async function composeStory({ pal, canvases, frame, caption, subcaption, 
   }
   try { await document.fonts.ready; } catch { /* шрифты уже готовы или недоступны */ }
   paintCaptions(g, pal, {
-    caption: frame === 'envelope' ? `${recipientName || ''}, тебе письмо`.trim() : caption,
+    caption: frame === 'envelope' ? (texts.envelopeFor || `${recipientName || ''}, тебе письмо`).trim() : caption,
     subcaption: frame === 'envelope' ? '' : subcaption,
     frame,
+    texts,
   });
   return out;
 }
@@ -214,7 +212,7 @@ export function pickVideoType() {
  * и имя. Пишем в отдельный холст, куда каждый кадр переносим живую сцену,
  * поэтому в ролик попадает ровно то, что человек видел.
  */
-export async function recordStory({ pal, canvases, field, caption, subcaption, audioTrack, onProgress }) {
+export async function recordStory({ pal, canvases, field, caption, subcaption, audioTrack, texts = {}, onProgress }) {
   const type = pickVideoType();
   if (!type) return null;
 
@@ -250,7 +248,7 @@ export async function recordStory({ pal, canvases, field, caption, subcaption, a
       paintSky(g, pal);
       paintScene(g, canvases);
       const textIn = Math.max(0, Math.min(1, (t - (HOLD + MORPH * 0.82)) / 600));
-      if (textIn > 0) paintCaptions(g, pal, { caption, subcaption, frame: 'portrait' }, textIn);
+      if (textIn > 0) paintCaptions(g, pal, { caption, subcaption, frame: 'portrait', texts }, textIn);
 
       onProgress?.(Math.min(1, t / TOTAL));
       if (t < TOTAL) requestAnimationFrame(frame);

@@ -6,14 +6,16 @@
  * никого не заставляем.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
 const WORD_MS = 78;
 
 export default function LetterScene({
   heading, paragraphs, signature, palette,
-  buttonText = 'нажми, там сюрприз 🤍', onContinue, onRead,
+  buttonText, onContinue, onRead,
 }) {
+  const { t } = useTranslation();
   const lines = paragraphs && paragraphs.length > 0 ? paragraphs : [
     'Я много раз пытался сказать тебе это красиво.',
     'Поэтому я собрал его на всех языках мира.',
@@ -120,7 +122,7 @@ export default function LetterScene({
               cursor: 'pointer', boxShadow: `0 12px 26px -8px ${accent.glow}`,
             }}
           >
-            {buttonText}
+            {buttonText || t('galaxy.letterButton')}
           </motion.button>
         )}
       </motion.div>

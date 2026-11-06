@@ -27,6 +27,7 @@ export default function GalaxyLetterLabPage() {
   const [cropZoom, setCropZoom] = useState(1);
   const [cropX, setCropX] = useState(0.5);
   const [cropY, setCropY] = useState(0.42);
+  const [answersText, setAnswersText] = useState('дата | 15 ноября\nвремя | 19:00\nместо | кофейня на Регистане\nеда | суши');
   const [runKey, setRunKey] = useState(0);
 
   function handleFile(e) {
@@ -82,6 +83,10 @@ export default function GalaxyLetterLabPage() {
           <input type="range" min="0" max="1" step="0.01" value={cropY}
             onChange={(e) => setCropY(+e.target.value)} style={{ width: '100%' }} />
         </Field>
+        <Field label="Ответы получателя (метка | значение)">
+          <textarea value={answersText} onChange={(e) => setAnswersText(e.target.value)} rows={4}
+            style={{ ...inputStyle, resize: 'vertical' }} />
+        </Field>
         <Field label="Палитра космоса">
           <select value={paletteId} onChange={(e) => setPaletteId(e.target.value)} style={inputStyle}>
             {PALETTE_LIST.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
@@ -127,6 +132,10 @@ export default function GalaxyLetterLabPage() {
           finalCaption={finalCaption}
           finalSubcaption={finalSubcaption}
           paletteId={paletteId}
+          answerStars={answersText.split('\n').map((l) => {
+            const [label, value] = l.split('|').map((x) => x.trim());
+            return value ? { label, value } : null;
+          }).filter(Boolean)}
           cropZoom={cropZoom}
           cropX={cropX}
           cropY={cropY}

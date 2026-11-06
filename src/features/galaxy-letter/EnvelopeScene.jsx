@@ -8,11 +8,13 @@
  * Пауза между «нажал» и «увидел» — это и есть предвкушение.
  */
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
 const PAPER = 'linear-gradient(158deg,#fffdfc 0%,#fdf6f4 46%,#f4e9ee 100%)';
 
 export default function EnvelopeScene({ recipientName, palette, reducedMotion = false, onOpen }) {
+  const { t } = useTranslation();
   const [opening, setOpening] = useState(false);
   const seal = palette?.seal || ['#ff9ebd', '#d4466f'];
   const initial = (recipientName || 'S').trim().charAt(0).toUpperCase();
@@ -44,7 +46,7 @@ export default function EnvelopeScene({ recipientName, palette, reducedMotion = 
       <motion.button
         type="button"
         onClick={handleOpen}
-        aria-label="Открыть письмо"
+        aria-label={t('galaxy.openLetter')}
         whileTap={{ scale: opening ? 1 : 0.97 }}
         animate={opening ? { y: -4, scale: 1.04 } : (reducedMotion ? { y: 0 } : { y: [0, -7, 0] })}
         transition={opening
@@ -175,9 +177,9 @@ export default function EnvelopeScene({ recipientName, palette, reducedMotion = 
           color: '#ffeef5', opacity: 0.92, textAlign: 'center',
         }}
       >
-        {recipientName ? `${recipientName}, тебе письмо` : 'тебе письмо'}
+        {recipientName ? t('galaxy.envelopeFor', { name: recipientName }) : t('galaxy.envelopeForNoName')}
         <div style={{ fontSize: 16, color: palette?.soft || '#ffd9e5', opacity: 0.75, marginTop: 2 }}>
-          {opening ? 'открываю…' : 'открой это'}
+          {opening ? t('galaxy.opening') : t('galaxy.openIt')}
         </div>
       </motion.div>
     </motion.div>

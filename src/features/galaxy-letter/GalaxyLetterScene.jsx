@@ -14,6 +14,7 @@
  * тестовый маршрут (см. GalaxyLetterLabPage.jsx), пока фича не готова.
  */
 import { useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Starfield from './Starfield.jsx';
 import TextParticleField from './TextParticleField.jsx';
@@ -23,6 +24,7 @@ import { getPalette } from './palettes.js';
 import { composeStory, recordStory, pickVideoType, FRAMES } from './storyExport.js';
 import useParallax from './useParallax.js';
 import useAmbientSound from './useAmbientSound.js';
+import AnswerConstellation from './AnswerConstellation.jsx';
 
 const STAGES = ['envelope', 'letter', 'cosmos'];
 
@@ -46,9 +48,12 @@ export default function GalaxyLetterScene({
   cropX,
   cropY,
   sound = true,
+  // Ответы получателя: [{ label, value }] — становятся именными звёздами
+  answerStars = [],
   onEvent,
   onRestartRequest,
 }) {
+  const { t } = useTranslation();
   const pal = getPalette(paletteId);
   const [stageIndex, setStageIndex] = useState(0);
   const [cosmosPhase, setCosmosPhase] = useState('galaxy');
@@ -67,6 +72,11 @@ export default function GalaxyLetterScene({
   const reduced = !!useReducedMotion();
   const parallax = useParallax({ enabled: !reduced, strength: 1 });
   const audio = useAmbientSound();
+  const storyTexts = {
+    insideGalaxy: t('galaxy.insideGalaxy'),
+    cta: t('galaxy.cta'),
+    envelopeFor: recipientName ? t('galaxy.envelopeFor', { name: recipientName }) : t('galaxy.envelopeForNoName'),
+  };
   const say = (name, props) => { try { onEvent?.(name, props); } catch { /* метрика не должна ломать сцену */ } };
 
   const next = () => setStageIndex((i) => Math.min(i + 1, STAGES.length - 1));
@@ -119,6 +129,7 @@ export default function GalaxyLetterScene({
     caption: finalCaption,
     subcaption: finalSubcaption,
     recipientName,
+    texts: storyTexts,
   })), [pal, sceneCanvases, finalCaption, finalSubcaption, recipientName, withPhase]);
 
   function download(href, name) {
@@ -148,6 +159,7 @@ export default function GalaxyLetterScene({
         caption: finalCaption,
         subcaption: finalSubcaption,
         audioTrack: sound ? audio.captureTrack() : null,
+        texts: storyTexts,
       });
       if (!res) { setVideoFailed(true); return; }
       const url = URL.createObjectURL(res.blob);
@@ -232,6 +244,14 @@ export default function GalaxyLetterScene({
               onProgressSettle={handleSettle}
             />
 
+            {/* ответы получателя как созвездие — только в фазе галактики */}
+            <AnswerConstellation
+              stars={answerStars}
+              palette={pal}
+              reducedMotion={reduced}
+              visible={cosmosPhase === 'galaxy'}
+            />
+
             <AnimatePresence>
               {cosmosPhase === 'galaxy' && (
                 <motion.div
@@ -244,7 +264,7 @@ export default function GalaxyLetterScene({
                   }}
                 >
                   <div style={{ fontFamily: '"Manrope", sans-serif', color: pal.soft, fontSize: 12, opacity: 0.75 }}>
-                    покрути галактику в любую сторону
+                    {t('galaxy.spinHint')}
                   </div>
                   <motion.button
                     type="button"
@@ -257,7 +277,7 @@ export default function GalaxyLetterScene({
                       cursor: 'pointer', boxShadow: `0 12px 30px -6px ${pal.accent.glow}`,
                     }}
                   >
-                    Нажми!
+                    {t('galaxy.pressMe')}
                   </motion.button>
                 </motion.div>
               )}
@@ -308,7 +328,7 @@ export default function GalaxyLetterScene({
                       </motion.div>
                     )}
                     <div style={{ fontFamily: '"Manrope", sans-serif', fontSize: 10.5, color: pal.soft, opacity: 0.45, marginTop: 10 }}>
-                      проведи пальцем вбок, и она снова станет галактикой
+                      {t('galaxy.swipeBack')}
                     </div>
                   </div>
                   )}
@@ -326,7 +346,7 @@ export default function GalaxyLetterScene({
                         }}
                       >
                         <div style={{ fontFamily: '"Manrope", sans-serif', fontSize: 11, color: pal.soft, opacity: 0.6, marginBottom: 8 }}>
-                          что выложить
+                          {t('galaxy.whatToPost')}
                         </div>
                         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
                           {FRAMES.map((f) => (
@@ -340,8 +360,8 @@ export default function GalaxyLetterScene({
                                 color: '#fff', fontFamily: '"Manrope", sans-serif', fontSize: 11.5, fontWeight: 600,
                               }}
                             >
-                              {f.label}
-                              <div style={{ fontSize: 8.5, fontWeight: 400, opacity: 0.55, marginTop: 2 }}>{f.hint}</div>
+                              {t(`galaxy.frame${f.id[0].toUpperCase()}${f.id.slice(1)}`)}
+                              <div style={{ fontSize: 8.5, fontWeight: 400, opacity: 0.55, marginTop: 2 }}>{t(`galaxy.frame${f.id[0].toUpperCase()}${f.id.slice(1)}Hint`)}</div>
                             </button>
                           ))}
                         </div>
@@ -355,7 +375,7 @@ export default function GalaxyLetterScene({
                               cursor: busy ? 'default' : 'pointer', opacity: busy === 'video' ? 0.6 : 1,
                             }}
                           >
-                            {busy === 'video' ? 'пишу видео…' : '▶ Видео 6 сек'}
+                            {busy === 'video' ? t('galaxy.recording') : t('galaxy.video')}
                           </button>
                           <button
                             type="button" onClick={() => saveFrame(frame)} disabled={!!busy}
@@ -366,12 +386,12 @@ export default function GalaxyLetterScene({
                               cursor: busy ? 'default' : 'pointer', opacity: busy === frame ? 0.6 : 1,
                             }}
                           >
-                            {busy === frame ? 'готовлю…' : 'Картинка'}
+                            {busy === frame ? t('galaxy.preparing') : t('galaxy.picture')}
                           </button>
                         </div>
                         {(videoFailed || !pickVideoType()) && (
                           <div style={{ fontFamily: '"Manrope", sans-serif', fontSize: 10, color: pal.soft, opacity: 0.6, marginTop: 8 }}>
-                            Этот браузер не умеет записывать видео — сохрани картинку.
+                            {t('galaxy.noVideo')}
                           </div>
                         )}
                       </motion.div>
@@ -388,7 +408,7 @@ export default function GalaxyLetterScene({
                         cursor: 'pointer', boxShadow: `0 12px 28px -8px ${pal.accent.glow}`,
                       }}
                     >
-                      Поделиться
+                      {t('galaxy.share')}
                     </button>
                     <button
                       type="button" onClick={() => setPicker((v) => !v)}
@@ -399,7 +419,7 @@ export default function GalaxyLetterScene({
                         cursor: 'pointer',
                       }}
                     >
-                      {picker ? 'Свернуть' : 'Сохранить себе'}
+                      {picker ? t('galaxy.collapse') : t('galaxy.save')}
                     </button>
                   </div>
                 </motion.div>
@@ -413,7 +433,7 @@ export default function GalaxyLetterScene({
         <button
           type="button"
           onClick={audio.toggleMute}
-          aria-label={audio.muted ? 'Включить звук' : 'Выключить звук'}
+          aria-label={audio.muted ? t('galaxy.soundOn') : t('galaxy.soundOff')}
           style={{
             position: 'absolute', top: 14, left: 14, zIndex: 3,
             width: 32, height: 32, borderRadius: 999, cursor: 'pointer',
@@ -437,7 +457,7 @@ export default function GalaxyLetterScene({
             fontFamily: '"Manrope", sans-serif', cursor: 'pointer',
           }}
         >
-          ↺ сначала
+          {t('galaxy.restart')}
         </button>
       )}
     </div>

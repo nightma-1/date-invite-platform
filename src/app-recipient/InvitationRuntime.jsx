@@ -5,6 +5,7 @@
 
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
 import { getTemplateTokens } from '../templates/registry.js';
@@ -92,6 +93,7 @@ export default function InvitationRuntime({ previewData = null }) {
   const [steps, setSteps] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [answers, setAnswers] = useState({ selectedDate: null, selectedTime: null, selections: {} });
+  const { t: tr } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -102,6 +104,30 @@ export default function InvitationRuntime({ previewData = null }) {
   // Цвет космоса берём из шаблона приглашения, чтобы письмо и галактика
   // были одного настроения, а не жили отдельными аттракционами.
   const galaxyPaletteId = paletteIdFor({ templateId: invitation?.template_key, mood: invitation?.mood });
+  // Ответы получателя → именные звёзды в галактике. Галактика у всех
+  // одинаковая, а дата, время и выбранные места принадлежат только этой
+  // паре: человек находит в небе то, что сам выбрал минуту назад.
+  const answerStars = useMemo(() => {
+    if (!galaxyConfig) return [];
+    const out = [];
+    if (answers.selectedDate) out.push({ label: tr('galaxy.answerDate'), value: answers.selectedDate });
+    if (answers.selectedTime) out.push({ label: tr('galaxy.answerTime'), value: answers.selectedTime });
+    Object.entries(answers.selections || {}).forEach(([stepId, ids]) => {
+      const step = steps.find((st) => String(st.id) === String(stepId));
+      const options = step?.configuration_json?.options || [];
+      const picked = (Array.isArray(ids) ? ids : [ids])
+        .map((id) => options.find((o) => o.id === id)?.label)
+        .filter(Boolean);
+      if (picked.length) {
+        out.push({
+          label: step?.configuration_json?.title || tr('galaxy.answerChoice'),
+          value: picked.join(' · '),
+        });
+      }
+    });
+    return out;
+  }, [galaxyConfig, answers, steps, tr]);
+
   const galaxyParagraphs = useMemo(
     () => String(galaxyConfig?.paragraphs || '').split('\n').map((l) => l.trim()).filter(Boolean),
     [galaxyConfig?.paragraphs],
@@ -435,6 +461,7 @@ export default function InvitationRuntime({ previewData = null }) {
             cropX={galaxyConfig.cropX}
             cropY={galaxyConfig.cropY}
             paletteId={galaxyPaletteId}
+            answerStars={answerStars}
             onEvent={(name, props) => track(name, { ...props, slug })}
           />
         </Suspense>
