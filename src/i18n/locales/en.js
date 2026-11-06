@@ -14,6 +14,7 @@ export default {
     letterButton: 'tap, there is a surprise 🤍',
     spinHint: 'spin the galaxy any way you like',
     pressMe: 'Tap me!',
+    swipeBackConstellation: 'swipe sideways and the constellation becomes a galaxy again',
     swipeBack: 'swipe sideways and she becomes a galaxy again',
     share: 'Share',
     save: 'Save it',

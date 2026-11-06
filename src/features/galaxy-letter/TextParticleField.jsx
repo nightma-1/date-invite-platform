@@ -23,6 +23,7 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { pickLoveWords, primaryIndices, PRIMARY_LANGS } from './loveWords.js';
 import { getPalette } from './palettes.js';
+import { constellationNodes } from './constellation.js';
 
 const SPRITE_FONT = 28;
 const ARMS = 2;
@@ -140,7 +141,9 @@ function analysePhoto(img, crop) {
 
 const TextParticleField = forwardRef(function TextParticleField(
   { photoUrl, paletteId = 'senti', cropZoom = 1, cropX = 0.5, cropY = 0.42,
-    parallaxX = 0, parallaxY = 0, reducedMotion = false, count, interactive = true, onProgressSettle },
+    parallaxX = 0, parallaxY = 0, reducedMotion = false, count, interactive = true,
+    // 'portrait' — лицо из слов, 'constellation' — созвездие из нескольких фото
+    mode = 'portrait', memoryCount = 0, onProgressSettle },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -158,6 +161,8 @@ const TextParticleField = forwardRef(function TextParticleField(
   const viewRef = useRef({ yaw: 0, tilt: TILT0, vYaw: 0, vTilt: 0 });
   const dragRef = useRef(null);
   const [photoReady, setPhotoReady] = useState(false);
+  // к свайпу «назад в галактику» готовы и без фото — если собирается созвездие
+  const ready = mode === 'constellation' ? memoryCount > 0 : photoReady;
   const pal = getPalette(paletteId);
   const parallaxRef = useRef({ x: 0, y: 0 });
 
@@ -410,6 +415,54 @@ const TextParticleField = forwardRef(function TextParticleField(
     return { slots, fontPx, bmp: buildPortraitBitmap(pw, ph, fontPx), ox, oy, pw, ph };
   }
 
+  /**
+   * Раскладка созвездия: слова ложатся вдоль линий между узлами и кольцом
+   * вокруг каждого узла, оставляя середину узла свободной — туда встанет
+   * фотография. Частицы, которым места не хватило, растворяются, и это
+   * правильно: созвездие должно быть разрежённым, иначе оно не читается.
+   */
+  function buildConstellationLayout(width, height) {
+    const sprites = spritesRef.current;
+    if (!sprites) return null;
+    const nodes = constellationNodes(memoryCount).map((n) => ({ x: n.x * width, y: n.y * height }));
+    const fontPx = Math.max(3, Math.min(5, width / 95));
+    const row = sprites[1];
+    const slots = [];
+    const put = (x, y, b) => slots.push({ x, y, b, w: Math.floor(r1() * row.length) });
+
+    // линии: три слегка разбросанных прохода, чтобы луч не был «проводом»
+    for (let i = 0; i < nodes.length - 1; i++) {
+      const a = nodes[i]; const c = nodes[i + 1];
+      const len = Math.hypot(c.x - a.x, c.y - a.y);
+      const nx = -(c.y - a.y) / len; const ny = (c.x - a.x) / len;
+      const steps = Math.max(2, Math.round(len / 4));
+      for (let k = 0; k <= steps; k++) {
+        const t = k / steps;
+        for (let pass = 0; pass < 3; pass++) {
+          const off = gauss() * 3.4;
+          put(a.x + (c.x - a.x) * t + nx * off, a.y + (c.y - a.y) * t + ny * off, 0.8 + r1() * 0.2);
+        }
+      }
+    }
+    // кольцо вокруг узла — оправа для фотографии
+    const ring = Math.max(34, Math.min(52, width * 0.1));
+    nodes.forEach((n) => {
+      for (let k = 0; k < 90; k++) {
+        const a = r1() * Math.PI * 2;
+        const rr = ring + gauss() * 5;
+        put(n.x + Math.cos(a) * rr, n.y + Math.sin(a) * rr, 0.85 + r1() * 0.15);
+      }
+    });
+
+    for (let i = slots.length - 1; i > 0; i--) {
+      const j = Math.floor(r1() * (i + 1));
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+    }
+    const list = particlesRef.current;
+    for (let i = 0; i < list.length; i++) list[i].slot = i < slots.length ? slots[i] : null;
+    return { slots, fontPx, bmp: null, nodes, ring };
+  }
+
   useImperativeHandle(ref, () => ({
     animateTo(target, duration = 2200) {
       const start = progressRef.current;
@@ -475,8 +528,11 @@ const TextParticleField = forwardRef(function TextParticleField(
 
       const p = progressRef.current;
       const key = `${Math.round(width)}x${Math.round(height)}`;
-      if (photoRef.current && layoutKeyRef.current !== key) {
-        layoutRef.current = buildLayout(width, height);
+      const wantsLayout = mode === 'constellation' ? memoryCount > 0 : !!photoRef.current;
+      if (wantsLayout && layoutKeyRef.current !== key) {
+        layoutRef.current = mode === 'constellation'
+          ? buildConstellationLayout(width, height)
+          : buildLayout(width, height);
         layoutKeyRef.current = key;
       }
       const layout = layoutRef.current;
@@ -547,7 +603,10 @@ const TextParticleField = forwardRef(function TextParticleField(
       const spin = spinRef.current;
       const glow = glowRef.current;
       const fontP = layout ? layout.fontPx : 3;
-      const bmpA = smooth((p - 0.62) / 0.33);
+      // Частицы гаснут только там, где их подменяет готовый растр портрета.
+      // В созвездии растра нет — гасить нечего, иначе линии превращаются в
+      // еле заметную муть.
+      const bmpA = layout && layout.bmp ? smooth((p - 0.62) / 0.33) : 0;
 
       const drawn = Math.round(list.length * drawRatio);
       for (let i = 0; i < drawn; i++) {
@@ -646,7 +705,7 @@ const TextParticleField = forwardRef(function TextParticleField(
     const dx = e.clientX - d.x;
     const dy = e.clientY - d.y;
     d.moved += Math.abs(dx) + Math.abs(dy);
-    if (photoReady && progressRef.current > 0.02) {
+    if (ready && progressRef.current > 0.02) {
       // на портрете горизонтальный свайп возвращает в галактику
       progressRef.current = Math.min(1, Math.max(0, d.p - (e.clientX - d.x) / (w * 0.8)));
       return;
@@ -670,7 +729,7 @@ const TextParticleField = forwardRef(function TextParticleField(
   function up() {
     if (!interactive || !dragRef.current) return;
     dragRef.current = null;
-    if (photoReady && progressRef.current > 0.02 && progressRef.current < 1) {
+    if (ready && progressRef.current > 0.02 && progressRef.current < 1) {
       const target = progressRef.current > 0.5 ? 1 : 0;
       const start = progressRef.current;
       const t0 = performance.now();

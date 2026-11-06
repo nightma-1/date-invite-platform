@@ -25,6 +25,7 @@ import { composeStory, recordStory, pickVideoType, FRAMES } from './storyExport.
 import useParallax from './useParallax.js';
 import useAmbientSound from './useAmbientSound.js';
 import AnswerConstellation from './AnswerConstellation.jsx';
+import MemoryPhotos from './MemoryPhotos.jsx';
 
 const STAGES = ['envelope', 'letter', 'cosmos'];
 
@@ -50,11 +51,16 @@ export default function GalaxyLetterScene({
   sound = true,
   // Ответы получателя: [{ label, value }] — становятся именными звёздами
   answerStars = [],
+  // Второй вариант финала: вместо портрета — созвездие из снимков
+  // [{ url, caption, date }]. Если он задан, портрет не собирается.
+  memories = [],
   onEvent,
   onRestartRequest,
 }) {
   const { t } = useTranslation();
   const pal = getPalette(paletteId);
+  const memoryItems = (memories || []).filter((m) => m && m.url).slice(0, 7);
+  const finalMode = memoryItems.length ? 'constellation' : 'portrait';
   const [stageIndex, setStageIndex] = useState(0);
   const [cosmosPhase, setCosmosPhase] = useState('galaxy');
   const [busy, setBusy] = useState(null);
@@ -240,11 +246,20 @@ export default function GalaxyLetterScene({
               parallaxX={parallax.x}
               parallaxY={parallax.y}
               reducedMotion={reduced}
+              mode={finalMode}
+              memoryCount={memoryItems.length}
               interactive
               onProgressSettle={handleSettle}
             />
 
             {/* ответы получателя как созвездие — только в фазе галактики */}
+            <MemoryPhotos
+              memories={memoryItems}
+              palette={pal}
+              reducedMotion={reduced}
+              visible={cosmosPhase === 'portrait'}
+            />
+
             <AnswerConstellation
               stars={answerStars}
               palette={pal}
@@ -328,7 +343,7 @@ export default function GalaxyLetterScene({
                       </motion.div>
                     )}
                     <div style={{ fontFamily: '"Manrope", sans-serif', fontSize: 10.5, color: pal.soft, opacity: 0.45, marginTop: 10 }}>
-                      {t('galaxy.swipeBack')}
+                      {t(finalMode === 'constellation' ? 'galaxy.swipeBackConstellation' : 'galaxy.swipeBack')}
                     </div>
                   </div>
                   )}

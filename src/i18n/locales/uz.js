@@ -14,6 +14,7 @@ export default {
     letterButton: 'bos, u yerda syurpriz 🤍',
     spinHint: 'galaktikani xohlagan tomonga aylantir',
     pressMe: 'Bos!',
+    swipeBackConstellation: 'barmoqni yon tomonga suring — yulduz turkumi yana galaktikaga aylanadi',
     swipeBack: 'barmog‘ingni yonga sur — u yana galaktikaga aylanadi',
     share: 'Ulashish',
     save: 'O‘zimga saqlash',

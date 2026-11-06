@@ -28,6 +28,8 @@ export default function GalaxyLetterLabPage() {
   const [cropX, setCropX] = useState(0.5);
   const [cropY, setCropY] = useState(0.42);
   const [answersText, setAnswersText] = useState('дата | 15 ноября\nвремя | 19:00\nместо | кофейня на Регистане\nеда | суши');
+  const [memories, setMemories] = useState([]);
+  const [memoryCaptions, setMemoryCaptions] = useState('первая встреча\nтвой смех\nнаше море');
   const [runKey, setRunKey] = useState(0);
 
   function handleFile(e) {
@@ -83,6 +85,14 @@ export default function GalaxyLetterLabPage() {
           <input type="range" min="0" max="1" step="0.01" value={cropY}
             onChange={(e) => setCropY(+e.target.value)} style={{ width: '100%' }} />
         </Field>
+        <Field label="Созвездие: несколько фото (вместо портрета)">
+          <input type="file" accept="image/*" multiple style={{ fontSize: 12, color: '#cfc9ff' }}
+            onChange={(e) => setMemories(Array.from(e.target.files || []).slice(0, 7).map((file) => URL.createObjectURL(file)))} />
+        </Field>
+        <Field label="Подписи к фото (строка = фото)">
+          <textarea value={memoryCaptions} onChange={(e) => setMemoryCaptions(e.target.value)} rows={3}
+            style={{ ...inputStyle, resize: 'vertical' }} />
+        </Field>
         <Field label="Ответы получателя (метка | значение)">
           <textarea value={answersText} onChange={(e) => setAnswersText(e.target.value)} rows={4}
             style={{ ...inputStyle, resize: 'vertical' }} />
@@ -132,6 +142,7 @@ export default function GalaxyLetterLabPage() {
           finalCaption={finalCaption}
           finalSubcaption={finalSubcaption}
           paletteId={paletteId}
+          memories={memories.map((url, i) => ({ url, caption: memoryCaptions.split('\n')[i]?.trim() || '' }))}
           answerStars={answersText.split('\n').map((l) => {
             const [label, value] = l.split('|').map((x) => x.trim());
             return value ? { label, value } : null;
