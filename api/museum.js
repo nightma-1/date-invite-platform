@@ -4,9 +4,11 @@
  * Серверная часть «Нашего музея». Один файл на два действия, потому что на
  * бесплатном тарифе Vercel число серверных функций ограничено.
  *   ?action=write   — текст посвящения через Claude API (только для вошедших)
- *   ?action=cleanup — ежедневная чистка файлов музеев с истёкшим сроком (Vercel Cron)
+ *   ?action=guest-photo — фото от гостя (проверяет ссылку и лимиты, файл кладёт сервер)
+ *   ?action=cleanup — ежедневная чистка файлов закончившихся музеев и старых черновиков (Vercel Cron)
  */
 
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit, clientIp } from './_lib/rateLimit.js';
 
@@ -84,6 +86,49 @@ function pathOf(url) {
   return at < 0 ? null : decodeURIComponent(String(url).slice(at + marker.length));
 }
 
+async function guestPhoto(req, res) {
+  if (!rateLimit(`museum-guest:${clientIp(req)}`, { max: 5, windowMs: 60_000 })) {
+    return res.status(429).json({ error: 'слишком много запросов' });
+  }
+  const { slug, author, image, w, h } = req.body || {};
+  const name = clean(author, 24);
+  const width = Number(w);
+  const height = Number(h);
+  if (typeof slug !== 'string' || !name || typeof image !== 'string' || !(width > 0) || !(height > 0)) {
+    return res.status(400).json({ error: 'неверные данные' });
+  }
+  const bytes = Buffer.from(image, 'base64');
+  // Только настоящий JPEG и не больше 3 МБ: браузер уже ужал фото
+  if (bytes.length > 3 * 1024 * 1024 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+    return res.status(400).json({ error: 'неверный файл' });
+  }
+  const db = admin();
+  const { data: id, error: slotError } = await db.rpc('museum_guest_slot', { p_slug: slug });
+  if (slotError || !id) return res.status(409).json({ error: 'сейчас нельзя добавить фото' });
+
+  const path = `guests/${id}/${crypto.randomUUID()}.jpg`;
+  const { error: uploadError } = await db.storage.from(BUCKET).upload(path, bytes, { contentType: 'image/jpeg', cacheControl: '31536000' });
+  if (uploadError) {
+    console.error('museum/guest-photo: upload failed', uploadError);
+    return res.status(500).json({ error: 'не удалось сохранить фото' });
+  }
+  const url = db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  const { error: addError } = await db.rpc('museum_add_guest_photo', { p_id: id, p_url: url, p_author: name, p_w: width, p_h: height });
+  if (addError) {
+    console.error('museum/guest-photo: insert failed', addError);
+    await db.storage.from(BUCKET).remove([path]);
+    return res.status(500).json({ error: 'не удалось сохранить фото' });
+  }
+  return res.status(200).json({ url });
+}
+
+function contentPaths(row) {
+  return [
+    ...(row.photos || []).flatMap((p) => [pathOf(p.full), pathOf(p.thumb)]),
+    pathOf(row.video_url), pathOf(row.voice_url), pathOf(row.song_url),
+  ].filter(Boolean);
+}
+
 async function cleanup(req, res) {
   if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'unauthorized' });
@@ -104,7 +149,8 @@ async function cleanup(req, res) {
 
   let purged = 0;
   for (const row of data || []) {
-    const paths = [...row.photos.flatMap((p) => [pathOf(p.full), pathOf(p.thumb)]), pathOf(row.video_url), pathOf(row.voice_url), pathOf(row.song_url)].filter(Boolean);
+    const { data: guests } = await db.from('museum_guest_photos').select('url').eq('invitation_id', row.invitation_id);
+    const paths = [...contentPaths(row), ...(guests || []).map((g) => pathOf(g.url)).filter(Boolean)];
     const { error: removeError } = await db.storage.from(BUCKET).remove(paths);
     if (removeError) {
       console.error('museum/cleanup: remove failed', row.invitation_id, removeError);
@@ -113,12 +159,34 @@ async function cleanup(req, res) {
     await db.from('museum_content').update({ photos: [], video_url: null, voice_url: null, song_url: null, purged_at: new Date().toISOString() }).eq('invitation_id', row.invitation_id);
     purged += 1;
   }
-  return res.status(200).json({ purged });
+
+  // Черновики без оплаты живут 30 дней. Строки с оплатой не трогаем никогда.
+  const draftCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data: drafts } = await db
+    .from('invitations')
+    .select('id, museum_content(photos, video_url, voice_url, song_url), payments(status)')
+    .eq('kind', 'museum')
+    .eq('status', 'draft')
+    .lt('created_at', draftCutoff)
+    .limit(50);
+  let draftsRemoved = 0;
+  for (const draft of drafts || []) {
+    if ((draft.payments || []).some((p) => p.status === 'paid')) continue;
+    const paths = draft.museum_content ? contentPaths(draft.museum_content) : [];
+    if (paths.length) {
+      const { error: removeError } = await db.storage.from(BUCKET).remove(paths);
+      if (removeError) continue;
+    }
+    await db.from('invitations').delete().eq('id', draft.id);
+    draftsRemoved += 1;
+  }
+  return res.status(200).json({ purged, draftsRemoved });
 }
 
 export default async function handler(req, res) {
   const action = req.query?.action;
   if (action === 'write' && req.method === 'POST') return write(req, res);
+  if (action === 'guest-photo' && req.method === 'POST') return guestPhoto(req, res);
   if (action === 'cleanup' && req.method === 'GET') return cleanup(req, res);
   return res.status(404).json({ error: 'not found' });
 }

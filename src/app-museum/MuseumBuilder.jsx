@@ -15,6 +15,7 @@ import AuthGate from '../app-builder/AuthGate.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { MUSEUM_ADDONS, MUSEUM_LIMITS as L, MUSEUM_TERMS, MUSEUM_THEMES, MUSEUM_TIERS, museumPublishPrice, museumTier } from '../lib/museumPlans.js';
 import VoiceRecorder from './VoiceRecorder.jsx';
+import { track } from '../lib/analytics.js';
 import { checkVideo, clearDraft, loadDraft, preparePhoto, removeFiles, saveDraft, uploadMedia } from './museumMedia.js';
 
 const MuseumExperience = lazy(() => import('./MuseumExperience.jsx'));
@@ -53,6 +54,7 @@ function PhotoCard({ photo, index, count, onMove, onMain, onRemove, onEdit, t })
       <div style={{ position: 'relative', aspectRatio: '1' }}>
         <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         {(photo.caption || photo.date) && <span style={{ position: 'absolute', left: 6, bottom: 6, width: 8, height: 8, borderRadius: '50%', background: T.pink, boxShadow: '0 0 0 2px #fff' }} />}
+        {photo.warn && <span title={t(`museum.builder.warn.${photo.warn}`)} style={{ position: 'absolute', right: 6, bottom: 6, width: 20, height: 20, borderRadius: '50%', background: '#f2b84b', color: T.darkPurple, fontSize: 12, fontWeight: 700, textAlign: 'center', lineHeight: '20px' }}>!</span>}
         {index === 0 && <span style={{ position: 'absolute', left: 6, top: 6, padding: '3px 8px', borderRadius: 999, background: T.pink, color: '#fff', fontSize: 10, fontWeight: 700 }}>{t('museum.builder.main')}</span>}
         <button type="button" aria-label={t('museum.builder.remove')} onClick={onRemove} style={{ position: 'absolute', right: 4, top: 4, width: 32, height: 32, border: 'none', borderRadius: '50%', background: 'rgba(32,12,22,.72)', color: '#fff', fontSize: 16, cursor: 'pointer' }}>×</button>
       </div>
@@ -80,8 +82,9 @@ export default function MuseumBuilder() {
   const [editing, setEditing] = useState(null);
   const [paid, setPaid] = useState(null); // при правке: что уже оплачено
   const [book, setBook] = useState([]);
+  const [guestPhotos, setGuestPhotos] = useState([]);
   const [savedId, setSavedId] = useState(null);
-  const [folder] = useState(() => crypto.randomUUID());
+  const [folder, setFolder] = useState(() => crypto.randomUUID());
   const [loaded, setLoaded] = useState(false);
   const [locked, setLocked] = useState(false);
   const [session, setSession] = useState(undefined);
@@ -95,6 +98,11 @@ export default function MuseumBuilder() {
   const fileInput = useRef(null);
   const videoInput = useRef(null);
   const songInput = useRef(null);
+
+  useEffect(() => {
+    if (!isEdit) track('museum_builder_view');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -120,6 +128,7 @@ export default function MuseumBuilder() {
           setVoice(c.voice_url ? { url: c.voice_url } : null);
           setSong(c.song_url ? { url: c.song_url } : null);
           setPaid({ premium: c.theme !== 'classic', voice: Boolean(c.voice_url), song: Boolean(c.song_url) });
+          supabase.from('museum_guest_photos').select('id, url, author').eq('invitation_id', data.id).eq('hidden', false).then(({ data: rows }) => setGuestPhotos(rows || []));
           supabase.from('museum_guestbook').select('id, author, message').eq('invitation_id', data.id).order('created_at', { ascending: false }).then(({ data: rows }) => setBook(rows || []));
           setPhotos(c.photos.map((p) => ({ ...p, id: p.full })));
           setVideo(c.video_url ? { url: c.video_url } : null);
@@ -136,6 +145,7 @@ export default function MuseumBuilder() {
           setVoice(draft.voice || null);
           setSong(draft.song || null);
           setSavedId(draft.savedId || null);
+          if (draft.folder) setFolder(draft.folder);
         }
       }
       setLoaded(true);
@@ -145,9 +155,9 @@ export default function MuseumBuilder() {
 
   useEffect(() => {
     if (!loaded || isEdit) return undefined;
-    const id = setTimeout(() => saveDraft({ form, photos, video, voice, song, savedId }), 500);
+    const id = setTimeout(() => saveDraft({ form, photos, video, voice, song, savedId, folder }), 500);
     return () => clearTimeout(id);
-  }, [form, photos, video, voice, song, savedId, loaded, isEdit]);
+  }, [form, photos, video, voice, song, savedId, folder, loaded, isEdit]);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const photosShort = Math.max(0, L.minPhotos - photos.length);
@@ -172,6 +182,7 @@ export default function MuseumBuilder() {
       }
     }
     setPhotos((p) => [...p, ...added]);
+    if (added.length) track('museum_photos_added', { count: added.length });
     setBusy(null);
   }
 
@@ -204,6 +215,7 @@ export default function MuseumBuilder() {
   }
 
   function openPreview() {
+    track('museum_preview');
     const blobs = [];
     const url = (blob) => {
       const u = URL.createObjectURL(blob);
@@ -240,7 +252,8 @@ export default function MuseumBuilder() {
     const film = video && tier.video ? { ...video } : null;
     const voiceFile = voice ? { ...voice } : null;
     const songFile = song ? { ...song } : null;
-    await uploadMedia({ userId, folder, photos: items, video: film, voice: voiceFile, song: songFile, onProgress: (done, total) => setBusy({ kind: 'upload', done, total }) });
+    await uploadMedia({ userId, folder, photos: items, video: film, voice: voiceFile, song: songFile, onProgress: (done, total) => setBusy({ kind: 'upload', done, total }),
+      onPhotoDone: (done) => setPhotos((list) => list.map((p) => (p.id === done.id ? { ...p, full: done.full, thumb: done.thumb, fullBlob: undefined, thumbBlob: undefined } : p))) });
     setPhotos(items.map(({ fullBlob, thumbBlob, ...rest }) => rest));
     setVideo(film?.url ? { url: film.url } : null);
     setVoice(voiceFile?.url ? { url: voiceFile.url } : null);
@@ -254,6 +267,7 @@ export default function MuseumBuilder() {
       video_url: film?.url || null,
       voice_url: voiceFile?.url || null,
       song_url: songFile?.url || null,
+      lang: ['ru', 'uz', 'en'].includes(i18n.language?.slice(0, 2)) ? i18n.language.slice(0, 2) : 'ru',
       ambient: form.ambient,
       theme: form.theme,
       tier: form.tier,
@@ -310,6 +324,7 @@ export default function MuseumBuilder() {
       setAskLogin(true);
       return;
     }
+    track('museum_pay_click', { tier: form.tier, theme: form.theme, term: Number(form.termDays), price });
     let id;
     try {
       id = await persist();
@@ -371,6 +386,11 @@ export default function MuseumBuilder() {
     setSavedId(null);
   }
 
+  async function hideGuestPhoto(id) {
+    const { error: hideError } = await supabase.from('museum_guest_photos').update({ hidden: true }).eq('id', id);
+    if (!hideError) setGuestPhotos((list) => list.filter((x) => x.id !== id));
+  }
+
   async function removeBookEntry(id) {
     const { error: delError } = await supabase.from('museum_guestbook').delete().eq('id', id);
     if (!delError) setBook((b) => b.filter((x) => x.id !== id));
@@ -400,7 +420,7 @@ export default function MuseumBuilder() {
       <DecorativeBlobs />
       <main style={{ position: 'relative', zIndex: 1, maxWidth: 620, margin: '0 auto', padding: '20px 16px 60px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <Link to={isEdit ? '/dashboard' : '/'} style={{ fontSize: 13, color: T.muted }}>{t('museum.common.back')}</Link>
+          <Link to={isEdit ? '/dashboard' : '/museum'} style={{ fontSize: 13, color: T.muted }}>{t('museum.common.back')}</Link>
           <LanguageSwitcher />
         </div>
 
@@ -408,7 +428,7 @@ export default function MuseumBuilder() {
           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: T.pink }}>{t('museum.builder.kicker')}</p>
           <h1 style={{ margin: '6px 0 8px', fontSize: 30, lineHeight: 1.15, color: T.darkPurple }}>{t(isEdit ? 'museum.builder.editTitle' : 'museum.builder.title')}</h1>
           <p style={{ ...ui.hint, fontSize: 15, marginBottom: 12 }}>{t(isEdit ? 'museum.builder.editLead' : 'museum.builder.lead')}</p>
-          {!isEdit && <Link to="/lab/museum/demo" style={{ ...ui.ghost, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>{t('museum.builder.demo')}</Link>}
+          {!isEdit && <Link to="/museum/demo" style={{ ...ui.ghost, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>{t('museum.builder.demo')}</Link>}
         </header>
 
         {locked ? <p style={ui.section}>{t('museum.builder.locked')}</p> : (
@@ -503,6 +523,7 @@ export default function MuseumBuilder() {
                 </span>
               </div>
 
+              {photos.some((p) => p.warn) && <p style={{ ...ui.hint, margin: '10px 0 0', color: '#8a5a12' }}>{t(`museum.builder.warn.${photos.find((p) => p.warn).warn}`)}</p>}
               {overLimit && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: '#a12a22' }}>{t('museum.builder.tooMany', { max: tier.maxPhotos })}</p>}
 
               {tier.video && (<>
@@ -581,6 +602,21 @@ export default function MuseumBuilder() {
               <p style={ui.hint}>{t('museum.builder.openingHint')}</p>
               <input data-testid="opens-at" type="datetime-local" style={ui.input} value={form.opensAt} onChange={set('opensAt')} />
             </section>
+
+            {isEdit && guestPhotos.length > 0 && (
+              <section style={ui.section}>
+                <h2 style={ui.h2}>{t('museum.builder.guestPhotos')}</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
+                  {guestPhotos.map((g) => (
+                    <div key={g.id}>
+                      <img src={g.url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 10, display: 'block' }} />
+                      <p style={{ margin: '4px 0', fontSize: 12, color: T.muted }}>{g.author}</p>
+                      <button type="button" onClick={() => hideGuestPhoto(g.id)} style={{ ...ui.tiny, width: '100%' }}>{t('museum.builder.hide')}</button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {isEdit && (
               <section style={ui.section}>

@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { MUSEUM_PUBLIC } from '../lib/museumPlans.js';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -326,6 +327,16 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {MUSEUM_PUBLIC && (
+        <section className="mx-auto max-w-[1040px] px-5 pt-12">
+          <Link to="/museum" style={{ display: 'block', padding: 24, borderRadius: 24, textDecoration: 'none', color: '#fff8f0', background: 'linear-gradient(150deg, #7c2c4a, #2b1320)' }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#d9b26f' }}>{t('museumPromo.kicker')}</p>
+            <h2 style={{ margin: '8px 0', fontSize: 26, lineHeight: 1.2 }}>{t('museumPromo.title')}</h2>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, opacity: 0.85 }}>{t('museumPromo.text')}</p>
+          </Link>
+        </section>
+      )}
 
       {/* ШАГИ */}
       <section className="mx-auto max-w-[1040px] px-5 py-14 sm:py-16">

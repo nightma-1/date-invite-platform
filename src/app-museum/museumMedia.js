@@ -23,6 +23,20 @@ function scaled(img, max, quality) {
   });
 }
 
+/** Предупреждаем заранее: в большой раме слабое фото видно сильнее, чем на телефоне. */
+function qualityWarning(img) {
+  if (Math.min(img.naturalWidth, img.naturalHeight) < 500) return 'small';
+  const c = document.createElement('canvas');
+  c.width = 24;
+  c.height = 24;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, 24, 24);
+  const { data } = g.getImageData(0, 0, 24, 24);
+  let sum = 0;
+  for (let i = 0; i < data.length; i += 4) sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+  return sum / (data.length / 4) < 42 ? 'dark' : null;
+}
+
 export async function preparePhoto(file) {
   const url = URL.createObjectURL(file);
   try {
@@ -33,7 +47,7 @@ export async function preparePhoto(file) {
       el.src = url;
     });
     const [fullBlob, thumbBlob] = await Promise.all([scaled(img, 1600, 0.84), scaled(img, 320, 0.72)]);
-    return { id: crypto.randomUUID(), fullBlob, thumbBlob, w: img.naturalWidth, h: img.naturalHeight };
+    return { id: crypto.randomUUID(), fullBlob, thumbBlob, w: img.naturalWidth, h: img.naturalHeight, warn: qualityWarning(img) };
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -108,13 +122,19 @@ export async function clearDraft() {
 
 async function put(userId, folder, name, blob, contentType) {
   const path = `${userId}/${folder}/${name}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType, cacheControl: '31536000', upsert: false });
-  if (error) throw error;
+  // Плохой интернет: повторяем, а файл, дошедший в прошлой попытке, считаем загруженным
+  for (let attempt = 1; ; attempt += 1) {
+    const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType, cacheControl: '31536000', upsert: false });
+    const alreadyThere = error && (String(error.statusCode) === '409' || /exists|duplicate/i.test(error.message || ''));
+    if (!error || alreadyThere) break;
+    if (attempt >= 3) throw error;
+    await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+  }
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 /** Загружает всё, чего ещё нет на сервере. Повторный запуск докачает только новое. */
-export async function uploadMedia({ userId, folder, photos, video, voice, song, onProgress }) {
+export async function uploadMedia({ userId, folder, photos, video, voice, song, onProgress, onPhotoDone }) {
   const pending = photos.filter((p) => !p.full);
   const total = pending.length + [video, voice, song].filter((m) => m?.blob).length;
   let done = 0;
@@ -129,6 +149,7 @@ export async function uploadMedia({ userId, folder, photos, video, voice, song, 
       ]);
       p.full = full;
       p.thumb = thumb;
+      onPhotoDone?.(p); // уже загруженное переживает обрыв и закрытие страницы
       done += 1;
       onProgress?.(done, total);
     }

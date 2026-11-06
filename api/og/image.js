@@ -12,7 +12,7 @@
 
 import { ImageResponse } from '@vercel/og';
 import { fetchPublicInvitation } from '../_lib/publicInvitation.js';
-import { inviteCard, storyCard, loadOgFonts, hasPalette } from '../_lib/ogCards.js';
+import { inviteCard, museumCard, storyCard, loadOgFonts, hasPalette } from '../_lib/ogCards.js';
 
 // Node-рантайм, а не edge: в edge-функциях этого (не Next.js) проекта
 // запрещена компиляция WebAssembly, а отрисовка PNG на нём держится.
@@ -41,7 +41,7 @@ export async function GET(request) {
     if (!inv) {
       return Response.redirect(`${origin}/og-default.png`, 302);
     }
-    return new ImageResponse(inviteCard({ name: inv.recipient_name, templateKey: inv.template_key }), {
+    return new ImageResponse(inv.kind === 'museum' ? museumCard({ name: inv.recipient_name }) : inviteCard({ name: inv.recipient_name, templateKey: inv.template_key }), {
       width: 1200, height: 630, fonts,
       headers: {
         'cache-control': 'public, max-age=600, s-maxage=86400, stale-while-revalidate=604800',

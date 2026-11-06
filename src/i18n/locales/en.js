@@ -2,6 +2,12 @@
  * © 2026 Senti. English translation.
  */
 export default {
+  museumPromo: {
+    kicker: 'New: our museum',
+    title: 'A museum of your photos',
+    text: 'A 3D gallery you walk through together, each on your own phone.',
+  },
+
   nav: {
     create: 'Create',
     myInvitations: 'My invitations',

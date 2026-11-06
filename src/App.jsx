@@ -15,9 +15,10 @@ import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
 
-// «Наш музей» пока скрыт: только прямые адреса /lab, без ссылок на сайте.
+// «Наш музей»: на сайте ссылки появятся, когда MUSEUM_PUBLIC станет true.
 const MuseumBuilder = lazy(() => import('./app-museum/MuseumBuilder.jsx'));
 const MuseumDemo = lazy(() => import('./app-museum/MuseumDemo.jsx'));
+const MuseumAbout = lazy(() => import('./app-museum/MuseumAbout.jsx'));
 
 function Lazy({ children }) {
   return <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#2b1320' }} />}>{children}</Suspense>;
@@ -86,9 +87,12 @@ export default function App() {
         <Route path="/i/:slug" element={<InvitationRuntime />} />
         <Route path="/dashboard" element={<InvitationList />} />
         <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />
-        <Route path="/lab/museum" element={<Lazy><MuseumBuilder /></Lazy>} />
+        <Route path="/museum" element={<Lazy><MuseumAbout /></Lazy>} />
+        <Route path="/museum/create" element={<Lazy><MuseumBuilder /></Lazy>} />
+        <Route path="/museum/demo" element={<Lazy><MuseumDemo /></Lazy>} />
+        <Route path="/museum/edit/:invitationId" element={<Lazy><MuseumBuilder /></Lazy>} />
+        <Route path="/lab/museum" element={<Navigate to="/museum/create" replace />} />
         <Route path="/lab/museum/demo" element={<Lazy><MuseumDemo /></Lazy>} />
-        <Route path="/lab/museum/edit/:invitationId" element={<Lazy><MuseumBuilder /></Lazy>} />
         <Route path={ADMIN_PATH} element={<AdminPanel />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

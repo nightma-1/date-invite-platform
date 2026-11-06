@@ -162,6 +162,34 @@ export function inviteCard({ name, templateKey }) {
   );
 }
 
+// Карточка музея в чате: только имя, ни одного личного фото
+export function museumCard({ name }) {
+  const n = cleanName(name);
+  const nameSize = n.length <= 8 ? 96 : n.length <= 14 ? 78 : 60;
+  const frame = (w, h, tilt, tint) => h_frame(w, h, tilt, tint);
+  return h('div', {
+    width: 1200, height: 630, position: 'relative', overflow: 'hidden',
+    background: 'linear-gradient(150deg, #7c2c4a 0%, #2b1320 75%)',
+    fontFamily: FONT, padding: '56px 72px', alignItems: 'center',
+  },
+    h('div', { position: 'absolute', top: 48, left: 72 }, wordmark('#d9b26f')),
+    h('div', { flexDirection: 'column', flex: 1, paddingRight: 30 },
+      n ? h('div', { fontSize: nameSize, fontWeight: 700, color: '#fff8f0', lineHeight: 1.1 }, `${n},`) : null,
+      h('div', { fontSize: n ? 58 : 84, fontWeight: 700, color: '#fff8f0', lineHeight: 1.15, marginTop: 6 }, n ? 'для тебя целый музей' : 'Целый музей для тебя'),
+      h('div', { fontSize: 30, color: '#e6c9d2', marginTop: 28, lineHeight: 1.4 }, 'Открой, когда будет время'),
+    ),
+    h('div', { width: 340, height: 420, position: 'relative', justifyContent: 'center', alignItems: 'center' },
+      frame(240, 300, -6, '#f2b84b'),
+    ),
+  );
+}
+
+function h_frame(w, height, tilt, tint) {
+  return h('div', {
+    width: w, height, background: '#fbf6ee', border: '10px solid #c79a58', padding: 16, transform: `rotate(${tilt}deg)`,
+  }, h('div', { flex: 1, background: `linear-gradient(170deg, ${tint}, #c23b62)` }));
+}
+
 export function defaultCard() {
   const p = PALETTES.romantic;
   return h('div', {

@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/register-telegram-webhook.mjs && node scripts/register-support-webhook.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/museum.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

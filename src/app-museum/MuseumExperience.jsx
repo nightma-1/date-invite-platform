@@ -15,9 +15,11 @@ import { createAmbient } from './engine/ambient.js';
 import { makeStoryCard, shareBlob } from './storyCard.js';
 import { supabase } from '../lib/supabaseClient.js';
 import RunawayButton from '../components/ui/RunawayButton.jsx';
+import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { track } from '../lib/analytics.js';
+import { preparePhoto } from './museumMedia.js';
 
-// До запуска ведёт в скрытый конструктор. При запуске поменять на публичный адрес.
-const MAKE_YOURS_URL = '/lab/museum?utm_source=museum&utm_medium=recipient';
+const MAKE_YOURS_URL = '/museum?utm_source=museum&utm_medium=recipient';
 const NO_LIMIT = 6;
 
 const C = {
@@ -88,6 +90,7 @@ function Finale({ question, author, live, slug, onClose, onAnswered, t }) {
   const yes = async () => {
     setDone(true);
     onAnswered();
+    track('museum_finale_yes', { tries });
     if (live) await supabase.rpc('submit_response', { p_slug: slug, p_no_attempts: tries });
   };
   const btn = { ...pill, minWidth: 96, background: '#fff', color: C.ink };
@@ -125,7 +128,16 @@ function FallbackGallery({ data, text }) {
   );
 }
 
-export default function MuseumExperience({ data, mode = 'live', slug, onExit, localRoom = false }) {
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+export default function MuseumExperience({ data, mode = 'live', slug, onExit, localRoom = false, isOwner = false }) {
   const { t } = useTranslation();
   const canvasRef = useRef(null);
   const worldRef = useRef(null);
@@ -152,6 +164,11 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
   const [book, setBook] = useState(data.guestbook || []);
   const [bookText, setBookText] = useState('');
   const [bookSent, setBookSent] = useState(false);
+  const [guestView, setGuestView] = useState(null);
+  const [guestState, setGuestState] = useState('idle'); // idle | sending | done | failed
+  const [liked, setLiked] = useState(() => new Set());
+  const seenHalls = useRef(new Set());
+  const guestInput = useRef(null);
   const musicRef = useRef(null);
   const answeredRef = useRef(false);
   const voiceRef = useRef(null);
@@ -187,6 +204,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
           },
         },
         onPhotoTap: (i) => setViewer(i),
+        onGuestTap: (i) => setGuestView(i),
         onHud: setHud,
         onProgress: setProgress,
         onContextLost: () => setLost(true),
@@ -259,8 +277,17 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
   }, [muted, voiceOn, hud.filmPlaying]);
 
   useEffect(() => {
-    if (hud.nearHero && data.finaleQuestion && finale === 'waiting') setFinale('open');
+    if (hud.nearHero && data.finaleQuestion && finale === 'waiting') {
+      setFinale('open');
+      track('museum_finale_seen');
+    }
   }, [hud.nearHero, data.finaleQuestion, finale]);
+
+  useEffect(() => {
+    if (!hud.hall || seenHalls.current.has(hud.hall)) return;
+    seenHalls.current.add(hud.hall);
+    track('museum_hall', { hall: hud.hall });
+  }, [hud.hall]);
 
   useEffect(() => {
     const onVisibility = () => {
@@ -300,6 +327,8 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
       voiceRef.current = voice;
     }
     setEntered(true);
+    track(`museum_enter_${mode}`, {}, slug ? { slug } : {});
+    if (isLive && !isOwner) supabase.rpc('museum_mark_entered', { p_slug: slug }).then(() => {});
   }
 
   function toggleVoice() {
@@ -316,6 +345,8 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
   }
 
   async function giveHeart(photo) {
+    if (liked.has(photo)) return; // одно сердечко с устройства на фото
+    setLiked((set) => new Set(set).add(photo));
     const world = worldRef.current;
     let count = (hearts[photo] || 0) + 1;
     if (isLive) {
@@ -334,15 +365,37 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
     if (!message) return;
     const author = name.trim() || t('museum.world.guest');
     if (isLive) await supabase.rpc('museum_sign', { p_slug: slug, p_author: author, p_message: message });
+    track('museum_book_sign');
     setBook((b) => [{ author, message }, ...b]);
     setBookText('');
     setBookSent(true);
   }
 
   async function shareStory() {
+    track('museum_story');
     const hero = data.photos[0];
     const blob = await makeStoryCard({ photoUrl: hero?.full, title: t('museum.world.storyTitle'), footer: 'senti.uz' });
     if (blob) await shareBlob(blob, 'senti-museum.png');
+  }
+
+  async function addGuestPhoto(file) {
+    if (!file) return;
+    setGuestState('sending');
+    try {
+      const prepared = await preparePhoto(file);
+      if (isLive) {
+        const res = await fetch('/api/museum?action=guest-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug, author: name.trim() || t('museum.world.guest'), image: await blobToBase64(prepared.fullBlob), w: prepared.w, h: prepared.h }),
+        });
+        if (!res.ok) throw new Error('guest photo failed');
+      }
+      track('museum_guest_photo');
+      setGuestState('done');
+    } catch {
+      setGuestState('failed');
+    }
   }
 
   function leave() {
@@ -361,6 +414,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
   if (!webgl) return <FallbackGallery data={data} text={t('museum.world.noWebgl')} />;
 
   const others = room.players.filter((p) => p.id !== room.me);
+  const hallTotal = worldRef.current?.layout.hallCount || 1;
   const notes = { preview: t('museum.world.previewNote'), demo: t('museum.world.demoNote') };
 
   return (
@@ -373,6 +427,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
             style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}
             onSubmit={enter}
           >
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}><LanguageSwitcher /></div>
             <p style={{ margin: 0, color: C.gold, fontSize: 13, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' }}>{t('museum.world.coverKicker')}</p>
             <h1 style={{ margin: '14px 0 8px', fontFamily: C.display, fontSize: 'clamp(38px, 9vw, 54px)', lineHeight: 1.05, fontWeight: 700 }}>
               {t('museum.world.coverTitle', { name: data.recipientName })}
@@ -417,9 +472,9 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', pointerEvents: 'auto' }}>
               <button type="button" data-testid="exit" style={pill} onClick={leave}>{t('museum.world.exit')}</button>
               {isLive && room.players.map((p) => (
-                <span key={p.id} style={{ ...pill, cursor: 'default', display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 0, padding: '8px 12px', fontSize: 13 }}>
+                <button key={p.id} type="button" disabled={p.id === room.me} title={p.id === room.me ? undefined : t('museum.world.followHint')} onClick={() => worldRef.current?.follow(p.id)} style={{ ...pill, cursor: p.id === room.me ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 0, padding: '8px 12px', fontSize: 13 }}>
                   <i style={{ width: 9, height: 9, borderRadius: '50%', background: p.color }} />{p.name}
-                </span>
+                </button>
               ))}
             </div>
             <div style={{ display: 'flex', gap: 6, pointerEvents: 'auto' }}>
@@ -434,6 +489,17 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
               )}
             </div>
           </div>
+
+          {hud.hall > 0 && (
+            <span data-testid="hall" style={{ position: 'absolute', left: '50%', top: 'calc(66px + env(safe-area-inset-top))', transform: 'translateX(-50%)', padding: '5px 12px', borderRadius: 999, background: C.glass, color: '#fff', fontSize: 12, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+              {t('museum.world.hallOf', { hall: hud.hall, total: hallTotal })}
+            </span>
+          )}
+          {hud.following && (
+            <button type="button" onClick={() => worldRef.current?.follow(null)} style={{ ...pill, position: 'absolute', left: '50%', bottom: 'calc(24px + env(safe-area-inset-bottom))', transform: 'translateX(-50%)', background: C.berry, whiteSpace: 'nowrap' }}>
+              {t('museum.world.following', { name: room.players.find((p) => p.id === hud.following)?.name || '' })}
+            </button>
+          )}
 
           {isLive && room.status === 'offline' && (
             <p style={{ ...pill, position: 'absolute', top: 72, left: 12, right: 12, margin: 0, borderRadius: 14, minHeight: 0, cursor: 'default', textAlign: 'center', fontWeight: 500, fontSize: 13 }}>{t('museum.world.roomOffline')}</p>
@@ -516,9 +582,16 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
             </p>
           )}
           <button type="button" data-testid="heart" onClick={(e) => { e.stopPropagation(); giveHeart(viewer); }} style={{ ...pill, flexShrink: 0, background: C.rose }}>
-            ♥ {hearts[viewer] || t('museum.world.heart')}
+            ♥ {hearts[viewer] || t('museum.world.heart')}{liked.has(viewer) ? ' ✓' : ''}
           </button>
         </div>
+      )}
+
+      {guestView !== null && (
+        <button type="button" aria-label={t('museum.common.close')} onClick={() => setGuestView(null)} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, border: 'none', background: 'rgba(15,5,10,.92)', color: C.cream, fontFamily: C.ui, fontSize: 14, cursor: 'zoom-out' }}>
+          <img src={data.guestPhotos[guestView].url} alt="" style={{ maxWidth: '100%', minHeight: 0, objectFit: 'contain', borderRadius: 4 }} />
+          {t('museum.world.guestFrom', { name: data.guestPhotos[guestView].author })}
+        </button>
       )}
 
       {ended && (
@@ -528,7 +601,12 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
             <p style={{ margin: '0 0 20px', fontSize: 15, lineHeight: 1.5, opacity: 0.8 }}>{t('museum.world.endText')}</p>
             <div style={{ display: 'grid', gap: 8, marginBottom: 26 }}>
               <button type="button" data-testid="story" onClick={shareStory} style={{ ...pill, background: C.rose }}>{t('museum.world.story')}</button>
-              <a href={MAKE_YOURS_URL} data-testid="make-yours" style={{ ...pill, background: 'rgba(255,255,255,.14)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>{t('museum.world.makeYours')}</a>
+              <a href={MAKE_YOURS_URL} data-testid="make-yours" onClick={() => track('museum_make_yours')} style={{ ...pill, background: 'rgba(255,255,255,.14)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>{t('museum.world.makeYours')}</a>
+              <input ref={guestInput} data-testid="guest-input" type="file" accept="image/*" hidden onChange={(e) => { addGuestPhoto(e.target.files[0]); e.target.value = ''; }} />
+              {guestState === 'done'
+                ? <p style={{ margin: 0, color: C.gold, fontSize: 14 }}>{t('museum.world.guestDone')}</p>
+                : <button type="button" data-testid="guest-add" disabled={guestState === 'sending'} onClick={() => guestInput.current.click()} style={{ ...pill, background: 'rgba(255,255,255,.14)' }}>{guestState === 'sending' ? '…' : t('museum.world.guestAdd')}</button>}
+              {guestState === 'failed' && <p role="alert" style={{ margin: 0, fontSize: 13, color: '#ffc4c4' }}>{t('museum.world.guestFailed')}</p>}
               <button type="button" onClick={() => setEnded(false)} style={{ ...pill, background: 'transparent' }}>{t('museum.world.backInside')}</button>
             </div>
 

@@ -119,12 +119,15 @@ export default function InvitationRuntime({ previewData = null }) {
       if (cancelled) return;
 
       if (invError || !inv) {
-        setState({ status: 'not_found' });
+        // Закончившийся музей не виден как строка, но текст ему нужен свой
+        const { data: museumState } = await supabase.rpc('museum_status', { p_slug: slug });
+        if (cancelled) return;
+        setState({ status: museumState === 'expired' ? 'museum_expired' : 'not_found' });
         track('invite_not_found', {}, { slug });
         return;
       }
       if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
-        setState({ status: 'expired' });
+        setState({ status: inv.kind === 'museum' ? 'museum_expired' : 'expired' });
         track('invite_expired', {}, { slug });
         return;
       }
@@ -137,6 +140,9 @@ export default function InvitationRuntime({ previewData = null }) {
           .sort((a, b) => a.step_order - b.step_order)
       );
       setState({ status: 'ready' });
+
+      // Музей сам отмечает вход: открытая ссылка ещё не значит, что человек внутри
+      if (inv.kind === 'museum') return;
 
       // Просмотр получателем — отдельное событие аналитики: в самой таблице
       // invitations есть только first_viewed_at/last_viewed_at, по ним нельзя
@@ -233,9 +239,12 @@ export default function InvitationRuntime({ previewData = null }) {
   if (invitation?.kind === 'museum') {
     return (
       <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#2b1320' }} />}>
-        <MuseumRecipient slug={invitation.slug} />
+        <MuseumRecipient slug={invitation.slug} ownerId={invitation.user_id} />
       </Suspense>
     );
+  }
+  if (state.status === 'museum_expired') {
+    return <CenteredMessage text="🖼 Срок этого музея закончился. Его может продлить тот, кто его собрал." tokens={tokens} />;
   }
   if (state.status === 'not_found') {
     return <CenteredMessage text="Кажется, ссылка больше не работает." tokens={tokens} />;

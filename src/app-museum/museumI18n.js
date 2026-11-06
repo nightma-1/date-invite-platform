@@ -324,7 +324,21 @@ const en = {
 
 const extra = {
   ru: {
+    about: {
+      kicker: 'Наш музей', title: 'Музей из ваших фото', lead: 'Вы вместе идёте по залам, где висят ваши лучшие дни. Каждый со своего телефона, даже из разных городов.',
+      create: 'Собрать музей', demo: 'Посмотреть демо', howTitle: 'Как это работает', insideTitle: 'Что внутри', priceTitle: 'Сколько стоит',
+      priceNote: 'В цену входит 1 месяц. Срок можно увеличить, а темы, голос и свою песню добавить по желанию.',
+      steps: [
+        { title: 'Выберите фото', text: 'От 6 до 45 штук. Первое станет главным экспонатом.' },
+        { title: 'Добавьте слова', text: 'Посвящение у входа, подписи к фото, голос и музыка.' },
+        { title: 'Отправьте ссылку', text: 'Ничего не надо скачивать, музей открывается в браузере.' },
+        { title: 'Зайдите вместе', text: 'До четырёх человек гуляют, садятся на скамейки и переписываются.' },
+      ],
+      features: ['Фильм на экране галереи', 'Подпись к каждому фото', 'Голосовое послание у входа', 'Вопрос в конце с убегающей кнопкой «Нет»', 'Открытие ровно в нужный момент', 'Книга отзывов и фото от гостей'],
+    },
     world: {
+      hallOf: 'Зал {{hall}} из {{total}}', following: 'Идёте за {{name}} · отменить', followHint: 'Нажми, чтобы идти за этим человеком',
+      guestAdd: 'Добавить своё фото', guestDone: 'Фото появится в музее у входа', guestFailed: 'Не получилось добавить фото', guestFrom: 'От {{name}}',
       soundOn: 'Включить звук', soundOff: 'Выключить звук', voicePlay: 'Послушать послание', voiceStop: 'Остановить',
       yes: 'Да', later: 'Может, позже', finaleYes: '{{name}} уже знает', finaleAgain: 'Вопрос из музея',
       noPhrases: ['Нет', 'Точно?', 'Подумай ещё', 'Ну пожалуйста', 'Последний шанс', 'Совсем никак?'],
@@ -336,7 +350,9 @@ const extra = {
       waitTitle: '{{name}}, тебя ждёт сюрприз', waitText: 'Откроется {{date}}. Эта страница откроет его сама.',
       days: 'дней', hours: 'часов', minutes: 'минут', seconds: 'секунд',
     },
+    dashboard: { answered: 'Ответ «да» в финале', noAnswer: 'Ответа в финале пока нет' },
     builder: {
+      warn: { dark: 'Фото будет выглядеть тускло: оно очень тёмное', small: 'Фото маленькое и в большой раме будет размытым' }, guestPhotos: 'Фото гостей', hide: 'Скрыть',
       format: 'Формат', tiers: { lite: 'Лёгкий', full: 'Полный' }, tierLite: 'До 15 фото, без фильма', tierFull: 'До 45 фото и фильм',
       tooMany: 'В этом формате до {{max}} фото. Уберите лишние или выберите «Полный».',
       theme: 'Оформление залов', themes: { classic: 'Классика', night: 'Ночной', garden: 'Сад', samarkand: 'Самарканд', valentine: 'Валентинка' },
@@ -354,7 +370,21 @@ const extra = {
     },
   },
   uz: {
+    about: {
+      kicker: 'Bizning muzey', title: 'Rasmlaringizdan muzey', lead: 'Eng yaxshi kunlaringiz osilgan zallar bo‘ylab birga yurasiz. Har kim o‘z telefonidan, hatto boshqa-boshqa shaharlardan.',
+      create: 'Muzey yaratish', demo: 'Demoni ko‘rish', howTitle: 'Qanday ishlaydi', insideTitle: 'Ichida nima bor', priceTitle: 'Narxi',
+      priceNote: 'Narxga 1 oy kiradi. Muddatni uzaytirish, mavzu, ovoz va qo‘shiq qo‘shish mumkin.',
+      steps: [
+        { title: 'Rasmlarni tanlang', text: '6 tadan 45 tagacha. Birinchisi asosiy eksponat bo‘ladi.' },
+        { title: 'So‘z qo‘shing', text: 'Kirishdagi bag‘ishlov, rasm izohlari, ovoz va musiqa.' },
+        { title: 'Havolani yuboring', text: 'Hech narsa yuklab olish shart emas, muzey brauzerda ochiladi.' },
+        { title: 'Birga kiring', text: 'To‘rt kishigacha aylanadi, o‘rindiqlarda o‘tiradi va yozishadi.' },
+      ],
+      features: ['Galereya ekranida film', 'Har bir rasmga izoh', 'Kirishda ovozli xabar', 'Oxirida qochadigan «Yo‘q» tugmali savol', 'Aynan kerakli paytda ochilish', 'Taassurotlar kitobi va mehmonlar rasmlari'],
+    },
     world: {
+      hallOf: '{{total}} tadan {{hall}}-zal', following: '{{name}} ortidan ketyapsiz · bekor qilish', followHint: 'Bu odam ortidan yurish uchun bos',
+      guestAdd: 'O‘z rasmingni qo‘shish', guestDone: 'Rasm muzey kirishida paydo bo‘ladi', guestFailed: 'Rasmni qo‘shib bo‘lmadi', guestFrom: '{{name}}dan',
       soundOn: 'Ovozni yoqish', soundOff: 'Ovozni o‘chirish', voicePlay: 'Xabarni tinglash', voiceStop: 'To‘xtatish',
       yes: 'Ha', later: 'Balki keyinroq', finaleYes: '{{name}} allaqachon biladi', finaleAgain: 'Muzeydagi savol',
       noPhrases: ['Yo‘q', 'Rostdanmi?', 'Yana o‘ylab ko‘r', 'Iltimos', 'Oxirgi imkoniyat', 'Umuman yo‘qmi?'],
@@ -366,7 +396,9 @@ const extra = {
       waitTitle: '{{name}}, seni syurpriz kutmoqda', waitText: '{{date}} da ochiladi. Bu sahifa uni o‘zi ochadi.',
       days: 'kun', hours: 'soat', minutes: 'daqiqa', seconds: 'soniya',
     },
+    dashboard: { answered: 'Oxirida «ha» deb javob berdi', noAnswer: 'Oxirgi savolga hali javob yo‘q' },
     builder: {
+      warn: { dark: 'Rasm xira ko‘rinadi: u juda qorong‘i', small: 'Rasm kichik, katta ramkada xira bo‘ladi' }, guestPhotos: 'Mehmonlar rasmlari', hide: 'Yashirish',
       format: 'Format', tiers: { lite: 'Yengil', full: 'To‘liq' }, tierLite: '15 tagacha rasm, filmsiz', tierFull: '45 tagacha rasm va film',
       tooMany: 'Bu formatda {{max}} tagacha rasm. Ortiqchasini olib tashlang yoki «To‘liq»ni tanlang.',
       theme: 'Zallar bezagi', themes: { classic: 'Klassik', night: 'Tungi', garden: 'Bog‘', samarkand: 'Samarqand', valentine: 'Valentin' },
@@ -384,7 +416,21 @@ const extra = {
     },
   },
   en: {
+    about: {
+      kicker: 'Our museum', title: 'A museum of your photos', lead: 'Walk together through halls hung with your best days. Each on your own phone, even from different cities.',
+      create: 'Build a museum', demo: 'See the demo', howTitle: 'How it works', insideTitle: 'What is inside', priceTitle: 'Pricing',
+      priceNote: '1 month is included. You can extend it and add themes, voice and your own song.',
+      steps: [
+        { title: 'Pick photos', text: '6 to 45. The first becomes the centrepiece.' },
+        { title: 'Add words', text: 'A dedication, captions, voice and music.' },
+        { title: 'Send the link', text: 'Nothing to install, it opens in the browser.' },
+        { title: 'Step in together', text: 'Up to four people walk, sit on benches and chat.' },
+      ],
+      features: ['A film on the gallery screen', 'A caption for every photo', 'A voice message at the entrance', 'A final question with a runaway No button', 'Opening at the exact moment', 'A guest book and guest photos'],
+    },
     world: {
+      hallOf: 'Hall {{hall}} of {{total}}', following: 'Following {{name}} · cancel', followHint: 'Tap to follow this person',
+      guestAdd: 'Add your photo', guestDone: 'It will appear at the entrance', guestFailed: 'Could not add the photo', guestFrom: 'From {{name}}',
       soundOn: 'Turn sound on', soundOff: 'Turn sound off', voicePlay: 'Hear the message', voiceStop: 'Stop',
       yes: 'Yes', later: 'Maybe later', finaleYes: '{{name}} already knows', finaleAgain: 'A question from the museum',
       noPhrases: ['No', 'Sure?', 'Think again', 'Please', 'Last chance', 'Really no?'],
@@ -396,7 +442,9 @@ const extra = {
       waitTitle: '{{name}}, a surprise is waiting', waitText: 'Opens on {{date}}. This page will open it by itself.',
       days: 'days', hours: 'hours', minutes: 'minutes', seconds: 'seconds',
     },
+    dashboard: { answered: 'Answered yes at the end', noAnswer: 'No answer at the end yet' },
     builder: {
+      warn: { dark: 'This photo is very dark and will look dull', small: 'This photo is small and will look blurry in a big frame' }, guestPhotos: 'Guest photos', hide: 'Hide',
       format: 'Format', tiers: { lite: 'Light', full: 'Full' }, tierLite: 'Up to 15 photos, no film', tierFull: 'Up to 45 photos and a film',
       tooMany: 'This format fits {{max}} photos. Remove some or choose Full.',
       theme: 'Hall style', themes: { classic: 'Classic', night: 'Night', garden: 'Garden', samarkand: 'Samarkand', valentine: 'Valentine' },

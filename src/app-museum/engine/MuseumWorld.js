@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { HALL, resolveCollisions } from './layout.js';
+import { HALL, hallAt, resolveCollisions } from './layout.js';
 import { themeOf } from './themes.js';
 
 const SPEED = 2.9;
@@ -88,6 +88,22 @@ function skylight([center, edge, bar]) {
     g.fillStyle = bar;
     for (let x = 0; x <= 4; x += 1) g.fillRect((x * w) / 4 - 3, 0, 6, h);
     for (let y = 0; y <= 8; y += 1) g.fillRect(0, (y * h) / 8 - 3, w, 6);
+  });
+}
+
+function arrowTexture(color) {
+  return canvasTexture(128, 128, (g, w) => {
+    g.strokeStyle = color;
+    g.lineWidth = 11;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    for (const y of [26, 66]) {
+      g.beginPath();
+      g.moveTo(w * 0.22, y + 34);
+      g.lineTo(w * 0.5, y);
+      g.lineTo(w * 0.78, y + 34);
+      g.stroke();
+    }
   });
 }
 
@@ -194,12 +210,12 @@ function labelSprite(text, { bg = 'rgba(32,12,22,.78)', color = '#fff', width = 
 }
 
 export class MuseumWorld {
-  constructor(canvas, { data, layout, labels, onPhotoTap, onHud, onFilmChange, onProgress, onContextLost }) {
+  constructor(canvas, { data, layout, labels, onPhotoTap, onGuestTap, onHud, onFilmChange, onProgress, onContextLost }) {
     this.canvas = canvas;
     this.data = data;
     this.layout = layout;
     this.labels = labels;
-    this.cb = { onPhotoTap, onHud, onFilmChange, onProgress };
+    this.cb = { onPhotoTap, onGuestTap, onHud, onFilmChange, onProgress };
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.pixelRatio = Math.min(window.devicePixelRatio || 1, LOW_END ? 1.25 : 1.75);
@@ -219,6 +235,7 @@ export class MuseumWorld {
     this.move = { x: 0, y: 0 };
     this.keys = new Set();
     this.seat = null;
+    this.followId = null;
     this.peers = new Map();
     this.pictureMeshes = [];
     this.textures = new Map();
@@ -233,6 +250,8 @@ export class MuseumWorld {
 
     this.buildArchitecture();
     this.buildPictures();
+    this.guestMeshes = [];
+    this.buildGuestPhotos();
     this.buildBenches();
     this.buildScreen();
     this.bindInput();
@@ -335,6 +354,7 @@ export class MuseumWorld {
     }
 
     if (this.theme.frieze) this.buildFrieze();
+    this.buildArrows();
 
     const panel = new THREE.Mesh(
       this.track(new THREE.PlaneGeometry(3.4, 2.26)),
@@ -342,6 +362,49 @@ export class MuseumWorld {
     );
     panel.position.set(0, 1.8, -5.23);
     this.scene.add(panel);
+  }
+
+  buildArrows() {
+    const mat = this.track(new THREE.MeshBasicMaterial({ map: this.track(arrowTexture(this.theme.rail)), transparent: true, opacity: 0.55, depthWrite: false }));
+    const geo = this.track(new THREE.PlaneGeometry(0.8, 0.8));
+    for (const a of this.layout.arrows) {
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(a.x, 0.02, a.z);
+      this.scene.add(mesh);
+    }
+  }
+
+  /** Фото гостей висят у входа: их первым видит каждый, кто зашёл снова. */
+  buildGuestPhotos() {
+    const plane = this.track(new THREE.PlaneGeometry(1, 1));
+    const frameMat = this.track(new THREE.MeshBasicMaterial({ color: this.theme.frame }));
+    (this.data.guestPhotos || []).slice(0, this.layout.guestSlots.length).forEach((photo, i) => {
+      const slot = this.layout.guestSlots[i];
+      const aspect = photo.w / photo.h || 1;
+      const h = aspect > 1 ? 1.1 / aspect : 1.25;
+      const w = h * aspect;
+      const n = new THREE.Vector3(Math.sin(slot.rotY), 0, Math.cos(slot.rotY));
+      const frame = new THREE.Mesh(plane, frameMat);
+      frame.scale.set(w + 0.1, h + 0.1, 1);
+      frame.position.set(slot.x, slot.y, slot.z).addScaledVector(n, 0.02);
+      frame.rotation.y = slot.rotY;
+      const mat = this.track(new THREE.MeshBasicMaterial({ color: '#d9c7b8', toneMapped: false }));
+      const mesh = new THREE.Mesh(plane, mat);
+      mesh.scale.set(w, h, 1);
+      mesh.position.set(slot.x, slot.y, slot.z).addScaledVector(n, 0.03);
+      mesh.rotation.y = slot.rotY;
+      mesh.userData.guestIndex = i;
+      this.scene.add(frame, mesh);
+      this.guestMeshes.push(mesh);
+      this.loadTexture(photo.url).then((t) => {
+        if (this.disposed) { t.dispose(); return; }
+        this.track(t);
+        mat.map = t;
+        mat.color.set('#ffffff');
+        mat.needsUpdate = true;
+      }).catch(() => {});
+    });
   }
 
   ceilingMaterial(length) {
@@ -699,10 +762,11 @@ export class MuseumWorld {
     const v = new THREE.Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
     this.raycaster.setFromCamera(v, this.camera);
     this.raycaster.far = 14;
-    const targets = this.screen ? [...this.pictureMeshes, this.screen] : this.pictureMeshes;
+    const targets = [...this.pictureMeshes, ...this.guestMeshes, ...(this.screen ? [this.screen] : [])];
     const hit = this.raycaster.intersectObjects(targets, false)[0];
     if (!hit) return;
     if (hit.object.userData.isScreen) this.toggleFilm();
+    else if (hit.object.userData.guestIndex !== undefined) this.cb.onGuestTap?.(hit.object.userData.guestIndex);
     else this.cb.onPhotoTap?.(hit.object.userData.photoIndex);
   }
 
@@ -714,7 +778,36 @@ export class MuseumWorld {
   setMove(x, y) {
     this.move.x = x;
     this.move.y = y;
+    if (x || y) this.followId = null;
     if ((x || y) && this.seat) this.stand();
+  }
+
+  /** «Следуй за мной»: идём за выбранным человеком, пока сами не тронем управление. */
+  follow(id) {
+    this.followId = id;
+    if (this.seat) this.stand();
+    this.emitHud();
+  }
+
+  stepFollow(dt) {
+    const peer = this.peers.get(this.followId);
+    if (!peer || !peer.seen) { this.followId = null; return; }
+    const dx = peer.target.x - this.pos.x;
+    const dz = peer.target.z - this.pos.z;
+    const d = Math.hypot(dx, dz);
+    // Застрять за углом нельзя: если отстали, догоняем прыжком
+    if (d > 10) {
+      this.pos.x = peer.target.x - (dx / d) * 1.6;
+      this.pos.z = peer.target.z - (dz / d) * 1.6;
+      resolveCollisions(this.pos, this.layout.colliders);
+    } else if (d > 1.7) {
+      const step = Math.min(SPEED * 1.2 * dt, d - 1.7);
+      this.pos.x += (dx / d) * step;
+      this.pos.z += (dz / d) * step;
+      resolveCollisions(this.pos, this.layout.colliders);
+    }
+    const want = Math.atan2(-dx, -dz);
+    this.yaw += Math.atan2(Math.sin(want - this.yaw), Math.cos(want - this.yaw)) * Math.min(1, dt * 4);
   }
 
   nearestSeat() {
@@ -752,6 +845,8 @@ export class MuseumWorld {
     const hud = {
       nearHero: Math.hypot(hero.x - this.pos.x, hero.z - this.pos.z) < 7.5,
       nearEntrance: this.pos.z > -HALL.vestDepth,
+      hall: hallAt(this.pos.z, this.layout.hallCount),
+      following: this.followId || null,
       canSit: !this.seat && Boolean(this.nearestSeat()),
       sitting: Boolean(this.seat),
       nearFilm,
@@ -845,7 +940,9 @@ export class MuseumWorld {
     if (k.has('KeyS') || k.has('ArrowDown')) my -= 1;
     if (k.has('KeyA') || k.has('ArrowLeft')) mx -= 1;
     if (k.has('KeyD') || k.has('ArrowRight')) mx += 1;
+    if ((mx || my) && this.followId) this.followId = null;
     if ((mx || my) && this.seat && k.size) this.stand();
+    if (this.followId) { this.stepFollow(dt); return; }
     if (this.seat || (!mx && !my)) return;
     const len = Math.hypot(mx, my);
     if (len > 1) { mx /= len; my /= len; }

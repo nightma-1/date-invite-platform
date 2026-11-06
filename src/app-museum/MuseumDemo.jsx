@@ -80,6 +80,7 @@ export default function MuseumDemo() {
         finaleQuestion: 'Пойдём делать новые фото?',
         hearts: { 1: 3 },
         guestbook: [{ author: 'Дилноза', message: 'Какие же вы красивые! Плачу у экрана.' }],
+        guestPhotos: [],
         photos: samplePhotos(Math.min(45, Math.max(6, Number(params.get('photos')) || 16))),
       });
     });
@@ -88,6 +89,6 @@ export default function MuseumDemo() {
 
   if (!data) return <div style={{ minHeight: '100dvh', background: '#2b1320' }} />;
   return room
-    ? <MuseumExperience data={data} mode="live" slug={room} localRoom onExit={() => navigate('/lab/museum')} />
-    : <MuseumExperience data={data} mode="demo" onExit={() => navigate('/lab/museum')} />;
+    ? <MuseumExperience data={data} mode="live" slug={room} localRoom onExit={() => navigate('/museum')} />
+    : <MuseumExperience data={data} mode="demo" onExit={() => navigate('/museum')} />;
 }

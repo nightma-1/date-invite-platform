@@ -2,6 +2,12 @@
  * © 2026 Senti. O'zbekcha tarjima (lotin yozuvi).
  */
 export default {
+  museumPromo: {
+    kicker: 'Yangi: bizning muzey',
+    title: 'Rasmlaringizdan muzey',
+    text: 'Har kim o‘z telefonidan birga aylanadigan 3D galereya.',
+  },
+
   nav: {
     create: "Yaratish",
     myInvitations: 'Mening taklifnomalarim',

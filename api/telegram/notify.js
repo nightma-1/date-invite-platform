@@ -170,6 +170,18 @@ function formatMuseumExpiring(invitation, extra) {
   return `⏳ Музей для ${name} закроется ${left}. Его можно продлить в кабинете, иначе ссылка перестанет работать.`;
 }
 
+function formatMuseumEarly(invitation, extra) {
+  const g = invitation.recipient_gender;
+  const when = extra?.opens_at
+    ? new Date(extra.opens_at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent' })
+    : '';
+  return `👀 <b>${escapeHtml(invitation.recipient_name)}</b> ${verb(g, 'открыл')} ссылку раньше времени и пока видит отсчёт. Музей откроется ${when}.`;
+}
+
+function formatGuestPhoto(invitation, extra) {
+  return `📷 <b>${escapeHtml(extra?.author)}</b> добавил(а) фото в музей для ${escapeHtml(invitation.recipient_name)}. Если оно лишнее, его можно скрыть в кабинете.`;
+}
+
 function formatGuestbook(invitation, extra) {
   return `✍️ <b>${escapeHtml(extra?.author)}</b> оставил(а) запись в музее для ${escapeHtml(invitation.recipient_name)}:\n\n${escapeHtml(extra?.message)}`;
 }
@@ -220,6 +232,8 @@ export default async function handler(req, res) {
       viewed: [formatMuseumViewed, { text: 'Войти в музей', url: museumUrl }],
       answered: [formatMuseumAnswered, { text: 'Войти в музей', url: museumUrl }],
       guestbook: [formatGuestbook, { text: 'Войти в музей', url: museumUrl }],
+      early: [formatMuseumEarly, null],
+      guest_photo: [formatGuestPhoto, { text: 'Открыть кабинет', url: appUrl('/dashboard') }],
       expiring: [formatMuseumExpiring, { text: 'Продлить', url: appUrl('/dashboard') }],
     }[event];
     if (!museum) return res.status(200).json({ ok: false, reason: 'unknown event' });

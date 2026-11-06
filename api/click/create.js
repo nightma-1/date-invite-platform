@@ -85,8 +85,9 @@ export default async function handler(req, res) {
   // Музей: цена зависит от срока. Срок читаем из базы или проверяем по белому
   // списку, сумма считается только здесь. Продлить можно лишь живую ссылку.
   const isExtension = req.body?.purpose === 'extend';
-  if (isExtension && (invitation.kind !== 'museum' || invitation.status !== 'published')) {
-    return res.status(409).json({ error: 'продлить можно только активный музей' });
+  // Закончившийся музей тоже можно продлить, пока файлы не удалены (см. api/museum.js)
+  if (isExtension && (invitation.kind !== 'museum' || !['published', 'expired'].includes(invitation.status))) {
+    return res.status(409).json({ error: 'этот музей нельзя продлить' });
   }
   if (!isExtension && invitation.status === 'published') {
     return res.status(409).json({ error: 'приглашение уже опубликовано' });
@@ -102,6 +103,8 @@ export default async function handler(req, res) {
       if (!museumTerm(req.body?.termDays)) {
         return res.status(400).json({ error: 'неверный срок' });
       }
+      const { data: content } = await admin.from('museum_content').select('purged_at').eq('invitation_id', invitationId).maybeSingle();
+      if (!content || content.purged_at) return res.status(409).json({ error: 'файлы этого музея уже удалены' });
       termDays = Number(req.body.termDays);
       amount = museumExtendPrice(termDays);
     } else {

@@ -15,6 +15,7 @@ import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 import { isEditLocked } from '../lib/editWindow.js';
 import { inviteShareUrl } from '../lib/shareLink.js';
 import MuseumExtend from '../app-museum/MuseumExtend.jsx';
+import { removeFiles } from '../app-museum/museumMedia.js';
 
 const t = getTemplateTokens('romantic');
 
@@ -185,6 +186,11 @@ export default function InvitationList() {
   async function deleteInvitation(inv) {
     if (!confirm(tr('dashboard.deleteConfirm', { name: inv.recipient_name }))) return;
     setDeletingId(inv.id);
+    if (inv.kind === 'museum') {
+      // Файлы удаляем сами: каскад базы не трогает хранилище
+      const { data: c } = await supabase.from('museum_content').select('photos, video_url, voice_url, song_url').eq('invitation_id', inv.id).maybeSingle();
+      if (c) await removeFiles([...c.photos.flatMap((p) => [p.full, p.thumb]), c.video_url, c.voice_url, c.song_url].filter(Boolean)).catch(() => {});
+    }
     const { error } = await supabase.from('invitations').delete().eq('id', inv.id);
     setDeletingId(null);
     if (error) {
@@ -372,7 +378,11 @@ export default function InvitationList() {
                   </div>
                   <p className="mb-1 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>/i/{inv.slug}</p>
                   <InvitationTimeline inv={inv} now={now} tr={tr} tokens={t} lang={i18n.language} />
-                  {response ? (
+                  {inv.kind === 'museum' ? (
+                    <p className="text-sm" style={{ color: response ? t.berry : t.ink, opacity: response ? 1 : 0.45, fontFamily: t.fontUI }}>
+                      {response ? tr('museum.dashboard.answered') : tr('museum.dashboard.noAnswer')}
+                    </p>
+                  ) : response ? (
                     <p className="text-sm" style={{ color: t.berry, fontFamily: t.fontUI }}>
                       {response.answered_yes ? tr('dashboard.answeredYes') : tr('dashboard.answeredNo')}
                       {response.selected_date && ` · ${response.selected_date}`}
@@ -394,7 +404,7 @@ export default function InvitationList() {
                     </div>
                   )}
                   <div className="mt-2 mb-3 flex flex-wrap gap-x-4 gap-y-1">
-                    {response && (
+                    {response && inv.kind !== 'museum' && (
                       <Link to={`/dashboard/response/${inv.id}`} className="inline-block text-xs underline" style={{ color: t.berry, fontWeight: 600 }}>
                         {tr('dashboard.viewResponse')}
                       </Link>
@@ -439,14 +449,14 @@ export default function InvitationList() {
                     )}
                     {!isEditLocked(inv, now) && (
                     <Link
-                      to={inv.kind === 'museum' ? `/lab/museum/edit/${inv.id}` : `/builder/edit/${inv.id}`}
+                      to={inv.kind === 'museum' ? `/museum/edit/${inv.id}` : `/builder/edit/${inv.id}`}
                       className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline"
                       style={{ background: 'white', color: t.ink, border: `1.5px solid ${t.ink}25`, fontFamily: t.fontUI }}
                     >
                       {tr('dashboard.edit')}
                     </Link>
                     )}
-                    {inv.kind === 'museum' && inv.status === 'published' && <MuseumExtend invitationId={inv.id} />}
+                    {inv.kind === 'museum' && ['published', 'expired'].includes(inv.status) && <MuseumExtend invitationId={inv.id} />}
                     {inv.status === 'published' && (
                       <button
                         type="button"

@@ -160,7 +160,27 @@ export function buildLayout(photos, hasVideo) {
     ]);
   }
 
-  return { hallCount, totalEnd, pictures, screen, colliders, benches, spawn: { x: 0, z: -1, yaw: 0 } };
+  // Шесть мест для фото гостей на стенах у входа
+  const guestSlots = [-1.5, -3.3, -6].flatMap((z) => [
+    { x: -vestHalfW + 0.02, y: 1.75, z, rotY: Math.PI / 2 },
+    { x: vestHalfW - 0.02, y: 1.75, z, rotY: -Math.PI / 2 },
+  ]);
+
+  // Подсказки на полу ведут по маршруту к главному фото
+  const arrows = [{ x: -2.9, z: -4.6 }, { x: 2.9, z: -4.6 }];
+  for (let i = 0; i < hallCount; i += 1) {
+    const z = -vestDepth - i * depth;
+    arrows.push({ x: 0, z: z - 1.8 });
+    if (i < hallCount - 1) arrows.push({ x: 0, z: z - depth + 2.2 });
+  }
+
+  return { hallCount, totalEnd, pictures, screen, colliders, benches, guestSlots, arrows, spawn: { x: 0, z: -1, yaw: 0 } };
+}
+
+/** Номер зала по координате: 0 — вход, дальше залы по порядку. */
+export function hallAt(z, hallCount) {
+  if (z > -HALL.vestDepth) return 0;
+  return Math.min(hallCount, Math.floor((-z - HALL.vestDepth) / HALL.depth) + 1);
 }
 
 /** Выталкивает круг радиуса r из всех препятствий, чтобы идти вдоль стены, а не застревать. */

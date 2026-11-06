@@ -8,6 +8,9 @@
  * ЭТО ВРЕМЕННЫЕ ЦЕНЫ: перед запуском поменять здесь.
  */
 
+// Показывать ли музей на главной. Включить при запуске.
+export const MUSEUM_PUBLIC = false;
+
 export const MUSEUM_TIERS = [
   { key: 'lite', price: 59000, maxPhotos: 15, video: false },
   { key: 'full', price: 99000, maxPhotos: 45, video: true },

@@ -6,9 +6,9 @@
  */
 
 import { useEffect, useState } from 'react';
+import i18n from './museumI18n.js';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import './museumI18n.js';
 import { supabase } from '../lib/supabaseClient.js';
 import MuseumExperience from './MuseumExperience.jsx';
 
@@ -27,6 +27,7 @@ export function toExperienceData(row) {
     finaleQuestion: row.finale_question,
     hearts: row.hearts,
     guestbook: row.guestbook,
+    guestPhotos: row.guest_photos,
   };
 }
 
@@ -68,18 +69,39 @@ function Countdown({ opensAt, name, onOpen, t }) {
   );
 }
 
-export default function MuseumRecipient({ slug }) {
+// Язык автора, пока получатель не выбрал свой на обложке
+function applyAuthorLanguage(lang, slug) {
+  const key = `senti-museum-lang-${slug}`;
+  try {
+    if (!lang || sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch { /* приватный режим: просто применим язык */ }
+  i18n.changeLanguage(lang);
+}
+
+export default function MuseumRecipient({ slug, ownerId }) {
   const { t } = useTranslation();
   const [params] = useSearchParams();
   const [state, setState] = useState({ status: 'loading' });
 
   const [attempt, setAttempt] = useState(0);
+  const [isOwner, setIsOwner] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setIsOwner(Boolean(ownerId) && data.session?.user?.id === ownerId));
+  }, [ownerId]);
 
   useEffect(() => {
     let cancelled = false;
     supabase.rpc('get_museum', { p_slug: slug }).then(({ data, error }) => {
       if (cancelled) return;
-      if (data?.locked) setState({ status: 'locked', opensAt: data.opens_at, name: data.recipient_name });
+      if (data?.lang) applyAuthorLanguage(data.lang, slug);
+      if (data?.locked) {
+        setState({ status: 'locked', opensAt: data.opens_at, name: data.recipient_name });
+        supabase.auth.getSession().then(({ data: auth }) => {
+          if (auth.session?.user?.id !== ownerId) supabase.rpc('museum_mark_early', { p_slug: slug }).then(() => {});
+        });
+      }
       else if (error || !data || !data.photos?.length) setState({ status: 'missing' });
       else setState({ status: 'ready', data: toExperienceData(data) });
     });
@@ -100,5 +122,5 @@ export default function MuseumRecipient({ slug }) {
       </div>
     );
   }
-  return <MuseumExperience data={state.data} mode="live" slug={slug} localRoom={params.has('localroom')} />;
+  return <MuseumExperience data={state.data} mode="live" slug={slug} isOwner={isOwner} localRoom={params.has('localroom')} />;
 }

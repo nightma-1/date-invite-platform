@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import NotFound from '../components/ui/NotFound.jsx';
+import MuseumStatsSection from './MuseumStatsSection.jsx';
 import AnalyticsSection from './AnalyticsSection.jsx';
 import LandingDemoSection from './LandingDemoSection.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
@@ -131,7 +132,7 @@ export default function AdminPanel() {
       {/* Вся статистика — в своём разделе: он считает период целиком на
           стороне базы, включая посещаемость и воронку. */}
       <div className="mb-12">
-        <AnalyticsSection />
+        <><AnalyticsSection /><MuseumStatsSection /></>
       </div>
 
       <h2 className="mb-3 text-base font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>Последние приглашения</h2>

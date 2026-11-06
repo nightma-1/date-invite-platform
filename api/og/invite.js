@@ -57,8 +57,8 @@ export default async function handler(request) {
 
   const html = inv
     ? page({
-      title: name ? `${name}, это тебе` : 'Это тебе',
-      description: 'Открой, когда будет минутка.',
+      title: inv.kind === 'museum' ? (name ? `${name}, для тебя целый музей` : 'Целый музей для тебя') : (name ? `${name}, это тебе` : 'Это тебе'),
+      description: inv.kind === 'museum' ? 'Открой, когда будет время.' : 'Открой, когда будет минутка.',
       // v= меняется вместе с именем/шаблоном — кэш картинки не покажет старое имя
       image: `${origin}/api/og/image?slug=${encodeURIComponent(slug)}&v=${v}`,
       url,
