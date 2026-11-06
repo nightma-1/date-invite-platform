@@ -3,7 +3,7 @@
  * Несанкционированное копирование или распространение запрещено.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
@@ -14,6 +14,13 @@ import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
 import ChoiceScreen from '../components/screens/ChoiceScreen.jsx';
 import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
+import { galaxyLetterEnabled } from '../lib/featureFlags.js';
+
+// Сцена тяжёлая (канвас, тысячи частиц, своя палитра) и нужна далеко не
+// каждому приглашению — поэтому грузим её отдельным чанком и только тогда,
+// когда она действительно включена у этого приглашения.
+const GalaxyLetterScene = lazy(() => import('../features/galaxy-letter/GalaxyLetterScene.jsx'));
+import { paletteIdFor } from '../features/galaxy-letter/palettes.js';
 
 // 'time' больше не отдельный шаг (дата и время теперь на одном экране —
 // см. DateTimeScreen.jsx), но старые опубликованные приглашения могут
@@ -87,6 +94,18 @@ export default function InvitationRuntime({ previewData = null }) {
   const [answers, setAnswers] = useState({ selectedDate: null, selectedTime: null, selections: {} });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Космическое письмо показываем вместо обычного финального экрана и только
+  // после того, как ответ уже записан: сначала дело, потом подарок.
+  const galaxyRaw = steps.find((st) => st.step_type === 'final')?.configuration_json?.galaxyLetter;
+  const galaxyConfig = galaxyLetterEnabled() && submitted && galaxyRaw?.enabled ? galaxyRaw : null;
+  // Цвет космоса берём из шаблона приглашения, чтобы письмо и галактика
+  // были одного настроения, а не жили отдельными аттракционами.
+  const galaxyPaletteId = paletteIdFor({ templateId: invitation?.template_key, mood: invitation?.mood });
+  const galaxyParagraphs = useMemo(
+    () => String(galaxyConfig?.paragraphs || '').split('\n').map((l) => l.trim()).filter(Boolean),
+    [galaxyConfig?.paragraphs],
+  );
   const [noAttempts, setNoAttempts] = useState(0);
 
   useEffect(() => {
@@ -402,7 +421,25 @@ export default function InvitationRuntime({ previewData = null }) {
           }}
         />
       )}
-      {activeStep?.step_type === 'final' && (
+      {activeStep?.step_type === 'final' && galaxyConfig && (
+        <Suspense fallback={null}>
+          <GalaxyLetterScene
+            recipientName={invitation.recipient_name}
+            letterHeading={galaxyConfig.heading}
+            letterParagraphs={galaxyParagraphs}
+            senderName={galaxyConfig.signature}
+            photoUrl={galaxyConfig.photoUrl}
+            finalCaption={galaxyConfig.caption || invitation.recipient_name}
+            finalSubcaption={galaxyConfig.subcaption}
+            cropZoom={galaxyConfig.cropZoom}
+            cropX={galaxyConfig.cropX}
+            cropY={galaxyConfig.cropY}
+            paletteId={galaxyPaletteId}
+            onEvent={(name, props) => track(name, { ...props, slug })}
+          />
+        </Suspense>
+      )}
+      {activeStep?.step_type === 'final' && !galaxyConfig && (
         <FinalScreen
           title={content?.final_screen?.ru?.title}
           description={content?.final_screen?.ru?.description}

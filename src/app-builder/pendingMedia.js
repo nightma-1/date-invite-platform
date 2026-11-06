@@ -11,14 +11,16 @@
  * компромисс ради того, чтобы не заливать в Storage файлы черновиков,
  * которые никогда не оплатят.
  *
- * Ключ ('question' | 'reaction' | 'date' | 'final'): раньше был один общий
+ * Ключ ('question' | 'reaction' | 'date' | 'final' | 'galaxy'): раньше был один общий
  * слот на весь конструктор, и загрузка своей картинки для экрана "Ого, ты
  * сказал да?" тихо затирала (или терялась под) картинку экрана вопроса —
  * теперь у каждого шага свой слот.
  */
 
-const STEP_KEYS = ['question', 'reaction', 'date', 'final'];
-const pending = { question: null, reaction: null, date: null, final: null };
+// 'galaxy' — фото для портрета-из-слов в космическом письме: отдельный слот,
+// иначе оно затирало бы картинку финального экрана.
+const STEP_KEYS = ['question', 'reaction', 'date', 'final', 'galaxy'];
+const pending = { question: null, reaction: null, date: null, final: null, galaxy: null };
 
 export function setPendingMedia(key, file) {
   pending[key] = file;

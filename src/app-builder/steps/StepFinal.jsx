@@ -9,6 +9,8 @@ import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
 import { T, SectionCard, FieldLabel, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
+import { galaxyLetterEnabled } from '../../lib/featureFlags.js';
+import GalaxyLetterSection from './GalaxyLetterSection.jsx';
 import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
 export default function StepFinal() {
@@ -109,6 +111,14 @@ export default function StepFinal() {
           {t('steps.final.descriptionHint')}
         </p>
       </SectionCard>
+
+      {galaxyLetterEnabled() && (
+        <GalaxyLetterSection
+          number="4"
+          value={config.galaxyLetter}
+          onChange={(galaxyLetter) => update({ galaxyLetter })}
+        />
+      )}
     </div>
   );
 }

@@ -205,7 +205,7 @@ export async function composeStory({ pal, canvases, frame, caption, subcaption, 
 /** Какой формат видео вообще умеет этот браузер. */
 export function pickVideoType() {
   if (typeof MediaRecorder === 'undefined') return null;
-  const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  const types = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
   return types.find((t) => MediaRecorder.isTypeSupported?.(t)) || null;
 }
 
@@ -214,7 +214,7 @@ export function pickVideoType() {
  * и имя. Пишем в отдельный холст, куда каждый кадр переносим живую сцену,
  * поэтому в ролик попадает ровно то, что человек видел.
  */
-export async function recordStory({ pal, canvases, field, caption, subcaption, onProgress }) {
+export async function recordStory({ pal, canvases, field, caption, subcaption, audioTrack, onProgress }) {
   const type = pickVideoType();
   if (!type) return null;
 
@@ -223,8 +223,10 @@ export async function recordStory({ pal, canvases, field, caption, subcaption, o
   const g = out.getContext('2d');
 
   const stream = out.captureStream(30);
+  // Со звуком ролик смотрят, без звука — пролистывают.
+  if (audioTrack) { try { stream.addTrack(audioTrack); } catch { /* браузер не даёт смешивать дорожки */ } }
   const chunks = [];
-  const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 7_000_000 });
+  const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 7_000_000, audioBitsPerSecond: 128_000 });
   rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
 
   const HOLD = 1100;       // любуемся галактикой

@@ -14,7 +14,7 @@
  * тестовый маршрут (см. GalaxyLetterLabPage.jsx), пока фича не готова.
  */
 import { useRef, useState, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Starfield from './Starfield.jsx';
 import TextParticleField from './TextParticleField.jsx';
 import EnvelopeScene from './EnvelopeScene.jsx';
@@ -46,6 +46,7 @@ export default function GalaxyLetterScene({
   cropX,
   cropY,
   sound = true,
+  onEvent,
   onRestartRequest,
 }) {
   const pal = getPalette(paletteId);
@@ -60,8 +61,13 @@ export default function GalaxyLetterScene({
   const rootRef = useRef(null);
   const stage = STAGES[stageIndex];
 
-  const parallax = useParallax({ strength: 1 });
+  // Сцена целиком построена на движении, а часть людей от такого укачивает.
+  // В спокойном режиме выключаем параллакс, вращение и мерцание — смысл
+  // сцены сохраняется, движения почти нет.
+  const reduced = !!useReducedMotion();
+  const parallax = useParallax({ enabled: !reduced, strength: 1 });
   const audio = useAmbientSound();
+  const say = (name, props) => { try { onEvent?.(name, props); } catch { /* метрика не должна ломать сцену */ } };
 
   const next = () => setStageIndex((i) => Math.min(i + 1, STAGES.length - 1));
 
@@ -70,13 +76,17 @@ export default function GalaxyLetterScene({
   function handleEnvelopeOpen() {
     parallax.enable();
     if (sound) audio.start();
+    say('galaxy_envelope_open');
     next();
   }
 
   function handleSettle(p) {
     const phase = p >= 1 ? 'portrait' : 'galaxy';
     setCosmosPhase(phase);
-    if (phase === 'portrait' && sound) audio.chime();
+    if (phase === 'portrait') {
+      say('galaxy_portrait_assembled', { hasPhoto: !!photoUrl });
+      if (sound) audio.chime();
+    }
   }
 
   /** Живые слои сцены: звёздный фон и поле частиц. */
@@ -123,6 +133,7 @@ export default function GalaxyLetterScene({
     try {
       const canvas = await buildFrame(id);
       download(canvas.toDataURL('image/png'), `${fileBase}-senti.png`);
+      say('galaxy_story_saved', { kind: id });
       setPicker(false);
     } finally { setBusy(null); }
   }
@@ -136,10 +147,12 @@ export default function GalaxyLetterScene({
         field: fieldRef.current,
         caption: finalCaption,
         subcaption: finalSubcaption,
+        audioTrack: sound ? audio.captureTrack() : null,
       });
       if (!res) { setVideoFailed(true); return; }
       const url = URL.createObjectURL(res.blob);
       download(url, `${fileBase}-senti.${res.ext}`);
+      say('galaxy_story_saved', { kind: 'video' });
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       setPicker(false);
     } catch {
@@ -178,6 +191,7 @@ export default function GalaxyLetterScene({
         paletteId={paletteId}
         density={stage === 'cosmos' ? 0.75 : 1}
         nebula
+        reducedMotion={reduced}
         parallaxX={parallax.x}
         parallaxY={parallax.y}
       />
@@ -185,18 +199,19 @@ export default function GalaxyLetterScene({
       <AnimatePresence mode="wait">
         {stage === 'envelope' && (
           <motion.div key="envelope" {...fly} style={{ position: 'absolute', inset: 0 }}>
-            <EnvelopeScene recipientName={recipientName} palette={pal} onOpen={handleEnvelopeOpen} />
+            <EnvelopeScene recipientName={recipientName} palette={pal} reducedMotion={reduced} onOpen={handleEnvelopeOpen} />
           </motion.div>
         )}
 
         {stage === 'letter' && (
           <motion.div key="letter" {...fly} style={{ position: 'absolute', inset: 0 }}>
             <LetterScene
+              onRead={() => say('galaxy_letter_read')}
               heading={letterHeading}
               paragraphs={letterParagraphs}
               signature={senderName}
               palette={pal}
-              onContinue={next}
+              onContinue={() => { say('galaxy_letter_continue'); next(); }}
             />
           </motion.div>
         )}
@@ -212,6 +227,7 @@ export default function GalaxyLetterScene({
               cropY={cropY}
               parallaxX={parallax.x}
               parallaxY={parallax.y}
+              reducedMotion={reduced}
               interactive
               onProgressSettle={handleSettle}
             />

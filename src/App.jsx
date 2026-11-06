@@ -14,7 +14,7 @@ import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
-import GalaxyLetterLabPage from './experiments/galaxy-letter/GalaxyLetterLabPage.jsx';
+import GalaxyLetterLabPage from './features/galaxy-letter/GalaxyLetterLabPage.jsx';
 
 // Адрес админки нарочно не угадываемый и не в публичных ссылках сайта —
 // /admin слишком легко найти перебором ботов. Поменять адрес, если он

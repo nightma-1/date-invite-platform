@@ -19,7 +19,7 @@ function rnd(s) {
 // наклоне телефона и не оголять углы.
 const MARGIN = 30;
 
-export default function Starfield({ paletteId = 'senti', density = 1, nebula = true, parallaxX = 0, parallaxY = 0 }) {
+export default function Starfield({ paletteId = 'senti', density = 1, nebula = true, parallaxX = 0, parallaxY = 0, reducedMotion = false }) {
   const canvasRef = useRef(null);
   const parRef = useRef({ x: 0, y: 0 });
   parRef.current = { x: parallaxX, y: parallaxY };
@@ -168,7 +168,7 @@ export default function Starfield({ paletteId = 'senti', density = 1, nebula = t
         ctx.drawImage(back, ox, oy, width + MARGIN * 2, height + MARGIN * 2);
         ctx.globalCompositeOperation = 'lighter';
         for (const s of twinklers) {
-          const k = 0.5 + 0.5 * Math.sin(t * s.sp + s.ph);
+          const k = reducedMotion ? 0.75 : 0.5 + 0.5 * Math.sin(t * s.sp + s.ph);
           if (k > 0.15) star(ctx, s.x + ox + MARGIN, s.y + oy + MARGIN, s.r * (1 + k * 0.5), s.a * k * 0.55, s.tint);
         }
         ctx.globalCompositeOperation = 'source-over';
@@ -181,7 +181,7 @@ export default function Starfield({ paletteId = 'senti', density = 1, nebula = t
     const ro = new ResizeObserver(resize);
     ro.observe(canvas.parentElement);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, [paletteId, density, nebula]);
+  }, [paletteId, density, nebula, reducedMotion]);
 
   return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />;
 }

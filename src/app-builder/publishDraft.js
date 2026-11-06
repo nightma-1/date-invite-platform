@@ -62,6 +62,16 @@ export async function publishDraft(state, userId) {
     finalMediaUrl = finalConfig.mediaUrl;
   }
 
+  // Фото для портрета-из-слов (космическое письмо) — свой слот, свой аплоад.
+  let galaxyPhotoUrl = null;
+  const galaxyCfg = finalConfig.galaxyLetter || null;
+  const pendingGalaxyFile = getPendingMedia('galaxy');
+  if (pendingGalaxyFile) {
+    galaxyPhotoUrl = await uploadMedia(pendingGalaxyFile, userId);
+  } else if (galaxyCfg?.photoUrl && !galaxyCfg.photoUrl.startsWith('blob:')) {
+    galaxyPhotoUrl = galaxyCfg.photoUrl;
+  }
+
   const { data: invitation, error: invError } = await supabase
     .from('invitations')
     .insert({
@@ -93,9 +103,15 @@ export async function publishDraft(state, userId) {
     final: finalMediaUrl,
   };
   for (const step of state.steps) {
-    const configuration_json = step.step_type in stepMediaOverrides
+    let configuration_json = step.step_type in stepMediaOverrides
       ? { ...step.configuration_json, mediaUrl: stepMediaOverrides[step.step_type] }
       : step.configuration_json;
+    if (step.step_type === 'final' && galaxyCfg?.enabled) {
+      configuration_json = {
+        ...configuration_json,
+        galaxyLetter: { ...galaxyCfg, photoUrl: galaxyPhotoUrl },
+      };
+    }
     const { error: stepError } = await supabase.from('invitation_steps').insert({
       invitation_id: invitation.id,
       step_type: step.step_type,

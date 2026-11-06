@@ -12,7 +12,7 @@ const WORD_MS = 78;
 
 export default function LetterScene({
   heading, paragraphs, signature, palette,
-  buttonText = 'нажми, там сюрприз 🤍', onContinue,
+  buttonText = 'нажми, там сюрприз 🤍', onContinue, onRead,
 }) {
   const lines = paragraphs && paragraphs.length > 0 ? paragraphs : [
     'Я много раз пытался сказать тебе это красиво.',
@@ -34,11 +34,13 @@ export default function LetterScene({
 
   useEffect(() => {
     if (shown >= words.length) {
-      const t = setTimeout(() => setDone(true), 420);
+      const t = setTimeout(() => { setDone(true); onRead?.(); }, 420);
       return () => clearTimeout(t);
     }
     timer.current = setTimeout(() => setShown((n) => n + 1), WORD_MS);
     return () => clearTimeout(timer.current);
+    // onRead намеренно вне зависимостей: он должен сработать один раз
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, words.length]);
 
   function skip() {

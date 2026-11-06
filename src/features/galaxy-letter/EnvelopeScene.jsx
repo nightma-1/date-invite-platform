@@ -12,7 +12,7 @@ import { motion } from 'framer-motion';
 
 const PAPER = 'linear-gradient(158deg,#fffdfc 0%,#fdf6f4 46%,#f4e9ee 100%)';
 
-export default function EnvelopeScene({ recipientName, palette, onOpen }) {
+export default function EnvelopeScene({ recipientName, palette, reducedMotion = false, onOpen }) {
   const [opening, setOpening] = useState(false);
   const seal = palette?.seal || ['#ff9ebd', '#d4466f'];
   const initial = (recipientName || 'S').trim().charAt(0).toUpperCase();
@@ -46,7 +46,7 @@ export default function EnvelopeScene({ recipientName, palette, onOpen }) {
         onClick={handleOpen}
         aria-label="Открыть письмо"
         whileTap={{ scale: opening ? 1 : 0.97 }}
-        animate={opening ? { y: -4, scale: 1.04 } : { y: [0, -7, 0] }}
+        animate={opening ? { y: -4, scale: 1.04 } : (reducedMotion ? { y: 0 } : { y: [0, -7, 0] })}
         transition={opening
           ? { duration: 0.8, ease: [0.22, 1, 0.36, 1] }
           : { y: { duration: 3, repeat: Infinity, ease: 'easeInOut' } }}

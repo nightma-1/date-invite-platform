@@ -140,7 +140,7 @@ function analysePhoto(img, crop) {
 
 const TextParticleField = forwardRef(function TextParticleField(
   { photoUrl, paletteId = 'senti', cropZoom = 1, cropX = 0.5, cropY = 0.42,
-    parallaxX = 0, parallaxY = 0, count, interactive = true, onProgressSettle },
+    parallaxX = 0, parallaxY = 0, reducedMotion = false, count, interactive = true, onProgressSettle },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -450,9 +450,24 @@ const TextParticleField = forwardRef(function TextParticleField(
       layoutKeyRef.current = '';
     }
 
+    // Сколько частиц реально рисуем. На слабом телефоне 9500 спрайтов в кадре
+    // не вытягиваются, и вместо «вау» человек видит рывки — поэтому следим за
+    // временем кадра и сами снижаем плотность. Частицы в пуле перемешаны по
+    // типам, так что первые N — честная выборка, а не «только ядро».
+    let drawRatio = 1;
+    let fpsAcc = 0; let fpsFrames = 0; let last = performance.now();
+
     let time = 0;
     function tick() {
       time += 0.016;
+      const nowMs = performance.now();
+      fpsAcc += nowMs - last; last = nowMs; fpsFrames += 1;
+      if (fpsFrames >= 45) {
+        const avg = fpsAcc / fpsFrames;
+        if (avg > 22 && drawRatio > 0.45) drawRatio = Math.max(0.45, drawRatio - 0.12);
+        else if (avg < 14 && drawRatio < 1) drawRatio = Math.min(1, drawRatio + 0.06);
+        fpsAcc = 0; fpsFrames = 0;
+      }
       ctx.clearRect(0, 0, width, height);
       const sprites = spritesRef.current;
       const list = particlesRef.current;
@@ -474,12 +489,12 @@ const TextParticleField = forwardRef(function TextParticleField(
         if (Math.abs(v.vYaw) < 0.00025) v.vYaw = 0;
         if (Math.abs(v.vTilt) < 0.00025) v.vTilt = 0;
         // медленный собственный поворот: сразу видно, что объект живой и объёмный
-        if (p < 0.02 && !v.vYaw && !v.vTilt) v.yaw += 0.0011;
+        if (!reducedMotion && p < 0.02 && !v.vYaw && !v.vTilt) v.yaw += 0.0011;
       }
-      if (p < 0.02) spinRef.current += 0.0007;
+      if (!reducedMotion && p < 0.02) spinRef.current += 0.0007;
 
       // параллакс: галактика — передний план, смещается заметнее фона
-      const par = parallaxRef.current;
+      const par = reducedMotion ? { x: 0, y: 0 } : parallaxRef.current;
       const cx = width / 2 + par.x * 22;
       const cy = height * 0.42 + par.y * 16;
       const open = smooth(p * 1.7);                 // к портрету — разворот к зрителю
@@ -534,7 +549,8 @@ const TextParticleField = forwardRef(function TextParticleField(
       const fontP = layout ? layout.fontPx : 3;
       const bmpA = smooth((p - 0.62) / 0.33);
 
-      for (let i = 0; i < list.length; i++) {
+      const drawn = Math.round(list.length * drawRatio);
+      for (let i = 0; i < drawn; i++) {
         const q = list[i];
         const a = q.ang + spin * (1.8 - Math.min(1, q.r));
         // диск в плоскости XY, толщина по Z
@@ -579,7 +595,7 @@ const TextParticleField = forwardRef(function TextParticleField(
           }
         }
 
-        const tw = 0.72 + 0.28 * Math.sin(time * q.ts + q.tw);
+        const tw = reducedMotion ? 0.92 : 0.72 + 0.28 * Math.sin(time * q.ts + q.tw);
         const al = Math.min(1, alpha * tw * (0.55 + 0.45 * pp));
         if (al < 0.025) continue;
 
@@ -614,7 +630,7 @@ const TextParticleField = forwardRef(function TextParticleField(
     const ro = new ResizeObserver(resize);
     ro.observe(canvas.parentElement);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, [paletteId]);
+  }, [paletteId, reducedMotion]);
 
   // --- жесты ---------------------------------------------------------------
   function down(e) {

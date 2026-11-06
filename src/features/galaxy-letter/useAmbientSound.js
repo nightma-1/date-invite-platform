@@ -78,6 +78,23 @@ export default function useAmbientSound() {
     });
   }, [muted]);
 
+  /**
+   * Дорожка для записи ролика. MediaRecorder снимает только холст, поэтому
+   * видео выходило немым: подмешиваем сюда тот же мастер-выход, что идёт
+   * в колонки, и отдаём готовый трек.
+   */
+  const captureTrack = useCallback(() => {
+    const ac = ctxRef.current;
+    if (!ac || !masterRef.current) return null;
+    try {
+      const dest = ac.createMediaStreamDestination();
+      masterRef.current.connect(dest);
+      return dest.stream.getAudioTracks()[0] || null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const toggleMute = useCallback(() => {
     setMuted((m) => {
       const next = !m;
@@ -95,5 +112,5 @@ export default function useAmbientSound() {
     try { ctxRef.current?.close(); } catch { /* контекст уже закрыт */ }
   }, []);
 
-  return { start, chime, toggleMute, muted, started };
+  return { start, chime, toggleMute, captureTrack, muted, started };
 }
