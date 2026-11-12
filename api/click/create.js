@@ -32,10 +32,6 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'слишком много запросов' });
   }
 
-  if (!isClickConfigured()) {
-    return res.status(503).json({ error: 'оплата временно недоступна' });
-  }
-
   const authHeader = req.headers.authorization || '';
   const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!accessToken) {
@@ -85,6 +81,33 @@ export default async function handler(req, res) {
   }
 
   const admin = getAdmin();
+
+  // Владельцы сервиса (profiles.is_admin) публикуют без оплаты: тот же UPDATE,
+  // что делает вебхук Click после списания, только без строки в payments,
+  // чтобы бесплатные приглашения не попадали в выручку. Флаг читаем через
+  // service role: клиент его подделать не может.
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profile?.is_admin) {
+    const { data: published, error: publishError } = await admin
+      .from('invitations')
+      .update({ status: 'published' })
+      .eq('id', invitationId)
+      .select('slug')
+      .single();
+    if (publishError) {
+      console.error('click/create: admin free publish failed', publishError);
+      return res.status(500).json({ error: 'не удалось опубликовать' });
+    }
+    return res.status(200).json({ published: true, free: true, slug: published.slug });
+  }
+
+  if (!isClickConfigured()) {
+    return res.status(503).json({ error: 'оплата временно недоступна' });
+  }
 
   // Считаем только свежие попытки. Без окна брошенные оплаты (пользователь
   // ушёл на страницу Click и закрыл вкладку) копились бы вечно, и после пятой
