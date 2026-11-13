@@ -106,6 +106,7 @@ canvas.rainc{position:absolute;inset:0;z-index:2;pointer-events:none}
 @keyframes dealIn{from{opacity:0;transform:translate(115%,30px) rotate(16deg)}to{opacity:1;transform:rotate(var(--tilt,-1.6deg))}}
 @keyframes dealOut{to{opacity:0;transform:translate(-120%,-10px) rotate(-18deg)}}
 .tape{position:absolute;top:-12px;left:50%;width:92px;height:26px;margin-left:-46px;background:var(--tape);transform:rotate(-4deg);z-index:2}
+.media.photo img,.media.photo video{width:100%;height:100%;object-fit:cover;display:block}
 .media{position:relative;width:100%;aspect-ratio:5/4;border-radius:16px;overflow:hidden;background:var(--blush);display:grid;place-items:center;transition:background-color .9s}
 .media svg{width:100%;height:100%;display:block;overflow:visible}
 .media .ph{position:absolute;left:10px;bottom:8px;font-family:var(--text);font-size:11px;font-weight:600;color:var(--muted)}
@@ -360,6 +361,14 @@ const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let timers=[];
 const later=(fn,ms)=>{const t=setTimeout(fn,ms);timers.push(t);return t};
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
+/* Часы сервера, а не телефона: разница берётся из заголовка Date ответа сайта.
+   Полночь — по Ташкенту (UTC+5, без перехода на летнее время). */
+let clockSkew=0;
+const nowMs=()=>Date.now()+clockSkew;
+function openTarget(d){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d||'');return m?Date.UTC(+m[1],+m[2]-1,+m[3])-5*3600e3:0}
+function syncClock(){return Promise.race([
+  fetch(location.pathname,{method:'HEAD',cache:'no-store'}).then(r=>{const d=Date.parse(r.headers.get('date')||'');if(d)clockSkew=d-Date.now()}).catch(()=>{}),
+  new Promise(r=>setTimeout(r,2500))])}
 const clearT=()=>{timers.forEach(t=>{clearTimeout(t);clearInterval(t)});timers=[]};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const g=(f,a,b)=>f?a:b;
@@ -367,7 +376,7 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 const K={pink:'#F85589',cherry:'#B8204F',apricot:'#FF9F6E',blush:'#FFDCE5',white:'#FFFFFF',peach:'#FFD3B8'};
 
 function cfg(){const o=window.__OCC;if(o){return{scn:o.scn||'bday',to:o.to||'Тебе',toF:!!o.toF,from:o.from||'',fromF:!!o.fromF,
-  age:o.age?String(o.age):'',wish:o.wish||WISH[o.scn]||WISH.bday,gift:o.gift||'',early:false,since:o.since||'',reason:o.reason||'',peace:Array.isArray(o.peace)?o.peace:[]}}
+  age:o.age?String(o.age):'',wish:o.wish||WISH[o.scn]||WISH.bday,gift:o.gift||'',early:o.scn==='bday'&&openTarget(o.openAt)>nowMs(),openAt:o.openAt||'',since:o.since||'',reason:o.reason||'',peace:Array.isArray(o.peace)?o.peace:[]}}
   return{
   scn:document.querySelector('input[name=scn]:checked').value,
   to:$('#toName').value.trim()||'Муниса',
@@ -568,7 +577,13 @@ const rainH='<div class="rain" id="rainEl" style="position:absolute;left:28%;rig
 const moonSVG=`<svg viewBox="0 0 260 208" aria-hidden="true"><circle cx="130" cy="96" r="44" fill="#FFDCE5"/><circle cx="148" cy="84" r="40" fill="#4A1E35"/>
   <g fill="#FF9F6E"><path d="M60 50l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/><path d="M200 140l1.5 4.5 4.5 1.5-4.5 1.5-1.5 4.5-1.5-4.5-4.5-1.5 4.5-1.5z"/></g>
   <g fill="#F85589"><path d="M206 52l1.5 4.5 4.5 1.5-4.5 1.5-1.5 4.5-1.5-4.5-4.5-1.5 4.5-1.5z"/><path d="M52 148l1.5 4.5 4.5 1.5-4.5 1.5-1.5 4.5-1.5-4.5-4.5-1.5 4.5-1.5z"/></g></svg>`;
-const media=(inner,cls,ph)=>`<div class="media ${cls||''}" id="md">${inner}${ph?`<span class="ph">${ph}</span>`:''}</div>`;
+/* Своё фото или GIF автора стоит на обложке вместо рисунка. Берём только https: (Supabase Storage)
+   и blob: (превью в конструкторе до загрузки) — никаких javascript: и прочего. */
+function coverPhoto(){const o=window.__OCC;const p=o&&typeof o.photo==='string'?o.photo:'';return st.step==='cover'&&/^(https:|blob:)/.test(p)?p:''}
+const media=(inner,cls,ph)=>{const p=coverPhoto();
+  if(p){const isVideo=/\.(mp4|webm)(\?|#|$)/i.test(p)||(window.__OCC.photoType||'').startsWith('video/');
+    return `<div class="media photo ${cls||''}" id="md">${isVideo?`<video src="${esc(p)}" autoplay muted loop playsinline></video>`:`<img src="${esc(p)}" alt="">`}</div>`}
+  return `<div class="media ${cls||''}" id="md">${inner}${ph?`<span class="ph">${ph}</span>`:''}</div>`};
 
 /* ===== screens ===== */
 const st={step:null,branch:null,tilt:0};
@@ -582,17 +597,19 @@ const R={};
 
 R.wait=c=>{
   evening(true);
-  const mid=new Date();mid.setHours(24,0,0,0);const day=mid.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+  const mid=new Date(openTarget(c.openAt));const day=mid.toLocaleDateString('ru-RU',{day:'numeric',month:'long',timeZone:'Asia/Tashkent'});
   return[`${media(moonSVG,'')}
-    <p class="label" ${fd(.15)}>для ${esc(c.to)}</p>
+    <p class="label" ${fd(.15)}>${esc(c.to)}, это тебе</p>
     <p class="q" ${fd(.25)}>Откроется ${esc(day)} ровно в 00:00</p>
     <div class="tiles" ${fd(.35)}><div class="tile"><b id="ch">--</b><span>часы</span></div><div class="tile"><b id="cm">--</b><span>минуты</span></div><div class="tile"><b id="cs">--</b><span>секунды</span></div></div>
     <span ${fdc('note',.45)}>не подсматривай</span>
-    <button class="soft" id="skip" ${fd(.55)}>Перемотать до полуночи</button>
-    <p class="hint" style="font-size:11px" ${fd(.6)}>кнопка есть только в прототипе</p>`,()=>{
-    const tick=()=>{const s=Math.max(0,Math.floor((mid-new Date())/1000));$('#ch').textContent=String(s/3600|0).padStart(2,'0');$('#cm').textContent=String((s%3600)/60|0).padStart(2,'0');$('#cs').textContent=String(s%60).padStart(2,'0')};
-    tick();every(tick,1000);
-    $('#skip').onclick=()=>{S.chime();buzz(30);0;next()}}];
+    <p class="hint" ${fd(.55)}>Можно закрыть — ссылка откроется сама.</p>`,()=>{
+    let done=false;
+    const tick=()=>{const s=Math.max(0,Math.floor((mid-nowMs())/1000));
+      // больше суток — показываем дни в часах, чтобы плитки не врали
+      $('#ch').textContent=String(s/3600|0).padStart(2,'0');$('#cm').textContent=String((s%3600)/60|0).padStart(2,'0');$('#cs').textContent=String(s%60).padStart(2,'0');
+      if(s===0&&!done){done=true;S.chime();buzz(30);next()}};
+    tick();every(tick,1000)}];
 };
 
 R.cover=c=>{
@@ -763,7 +780,7 @@ document.querySelectorAll('input[name=scn]').forEach(r=>r.addEventListener('chan
 $('#early').addEventListener('change',()=>{if(cfg().scn==='bday')restart()});
 $('#since').addEventListener('change',()=>{if(cfg().scn==='anniv')restart()});
 $('#restart').onclick=restart;
-restart();
+syncClock().then(restart);
 })();
 </script>
 

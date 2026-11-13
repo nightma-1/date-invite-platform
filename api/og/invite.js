@@ -11,7 +11,7 @@
  */
 
 import { fetchPublicInvitation } from '../_lib/publicInvitation.js';
-import { cleanName, previewVersion } from '../_lib/ogCards.js';
+import { cleanName, previewVersion, occasionText } from '../_lib/ogCards.js';
 
 export const config = { runtime: 'edge' };
 
@@ -51,14 +51,18 @@ export default async function handler(request) {
   const origin = reqUrl.origin;
   const slug = reqUrl.searchParams.get('slug') || '';
   const inv = await fetchPublicInvitation(slug);
-  const v = inv ? previewVersion(inv.recipient_name, inv.template_key) : '';
+  const occ = inv?.kind === 'occasion' ? occasionText(inv.occasion) : null;
+  // У повода картинка зависит и от самого повода — кладём его в версию для кэша
+  const v = inv ? previewVersion(inv.recipient_name, occ ? `${inv.template_key}:${inv.occasion?.scn}:${inv.occasion?.openAt || ''}` : inv.template_key) : '';
   const url = `${origin}/i/${encodeURIComponent(slug)}${v ? `?v=${v}` : ''}`;
   const name = inv ? cleanName(inv.recipient_name) : '';
 
   const html = inv
     ? page({
-      title: inv.kind === 'museum' ? (name ? `${name}, для тебя целый музей` : 'Целый музей для тебя') : (name ? `${name}, это тебе` : 'Это тебе'),
-      description: inv.kind === 'museum' ? 'Открой, когда будет время.' : 'Открой, когда будет минутка.',
+      title: inv.kind === 'museum'
+        ? (name ? `${name}, для тебя целый музей` : 'Целый музей для тебя')
+        : (name ? `${name}, ${occ ? occ.headline : 'это тебе'}` : 'Это тебе'),
+      description: inv.kind === 'museum' ? 'Открой, когда будет время.' : `${occ ? occ.sub : 'Открой, когда будет минутка'}.`,
       // v= меняется вместе с именем/шаблоном — кэш картинки не покажет старое имя
       image: `${origin}/api/og/image?slug=${encodeURIComponent(slug)}&v=${v}`,
       url,

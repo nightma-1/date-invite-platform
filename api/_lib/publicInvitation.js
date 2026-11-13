@@ -16,7 +16,7 @@ export async function fetchPublicInvitation(slug) {
   if (!url || !key) return null;
 
   const query = new URLSearchParams({
-    select: 'recipient_name,recipient_gender,template_key,expires_at,updated_at,kind',
+    select: 'recipient_name,recipient_gender,template_key,expires_at,updated_at,kind,occasion',
     slug: `eq.${slug}`,
     status: 'eq.published',
     limit: '1',

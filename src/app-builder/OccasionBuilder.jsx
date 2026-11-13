@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
 import { inviteShareUrl } from '../lib/shareLink.js';
+import { uploadMedia, validateMediaFile } from '../lib/uploadMedia.js';
 import AuthGate from './AuthGate.jsx';
 import OccasionFrame from '../app-recipient/OccasionFrame.jsx';
 
@@ -107,6 +108,14 @@ function OccasionForm({ user }) {
   const [since, setSince] = useState('');
   const [reason, setReason] = useState('');
   const [peace, setPeace] = useState(['прогулка']);
+  // Фото или GIF на обложку. До публикации — только локальный blob: для превью,
+  // в хранилище файл уходит при нажатии «Опубликовать».
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [photoError, setPhotoError] = useState(null);
+  // День рождения: открыть сразу или ровно в 00:00 выбранного дня (Ташкент)
+  const [openMode, setOpenMode] = useState('now');
+  const [openAt, setOpenAt] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
@@ -116,15 +125,41 @@ function OccasionForm({ user }) {
     const base = { scn, to: to.trim(), toF, from: from.trim(), fromF };
     if (scn === 'sorry') return { ...base, reason: reason.trim(), peace };
     const extra = { wish: (wishes[scn] || '').trim() };
-    if (scn === 'bday') return { ...base, ...extra, age: age.trim(), gift: gift.trim() };
+    if (scn === 'bday') {
+      return { ...base, ...extra, age: age.trim(), gift: gift.trim(), openAt: openMode === 'midnight' ? openAt : '' };
+    }
     if (scn === 'anniv') return { ...base, ...extra, since };
     return { ...base, ...extra };
-  }, [scn, to, toF, from, fromF, wishes, age, gift, since, reason, peace]);
+  }, [scn, to, toF, from, fromF, wishes, age, gift, since, reason, peace, openMode, openAt]);
+
+  useEffect(() => () => { if (photoPreview) URL.revokeObjectURL(photoPreview); }, [photoPreview]);
+
+  function pickPhoto(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const err = validateMediaFile(file);
+    if (err) {
+      setPhotoError(err);
+      return;
+    }
+    setPhotoError(null);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
+  function removePhoto() {
+    setPhotoFile(null);
+    setPhotoPreview('');
+  }
 
   const previewOccasion = useDebounced(occasion, 600);
   const previewKey = JSON.stringify(previewOccasion);
 
-  const missing = !to.trim() ? 'Напиши, кому' : !from.trim() ? 'Напиши, от кого' : null;
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const missing = !to.trim() ? 'Напиши, кому'
+    : !from.trim() ? 'Напиши, от кого'
+      : scn === 'bday' && openMode === 'midnight' && !openAt ? 'Выбери день, когда открыть'
+        : null;
 
   async function publish() {
     if (missing) {
@@ -134,6 +169,9 @@ function OccasionForm({ user }) {
     setError(null);
     setPublishing(true);
     try {
+      let photo = '';
+      if (photoFile) photo = await uploadMedia(photoFile, user.id);
+      const finalOccasion = photo ? { ...occasion, photo, photoType: photoFile.type } : occasion;
       const slug = generateSlug();
       const { data: inv, error: insertError } = await supabase
         .from('invitations')
@@ -141,7 +179,7 @@ function OccasionForm({ user }) {
           user_id: user.id,
           slug,
           kind: 'occasion',
-          occasion,
+          occasion: finalOccasion,
           recipient_name: occasion.to,
           recipient_gender: toF ? 'female' : 'male',
           template_key: 'romantic',
@@ -232,6 +270,24 @@ function OccasionForm({ user }) {
               <Toggle options={[['он', false], ['она', true]]} value={fromF} onChange={setFromF} />
             </Row>
 
+            <Field label="Фото или GIF на обложку">
+              {photoPreview ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {photoFile?.type?.startsWith('video/')
+                    ? <video src={photoPreview} muted autoPlay loop playsInline style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 12 }} />
+                    : <img src={photoPreview} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 12 }} />}
+                  <button type="button" onClick={removePhoto} style={{ ...linkStyle, background: 'none', border: 0, padding: 0, cursor: 'pointer' }}>Убрать</button>
+                </div>
+              ) : (
+                <label style={{ ...inputStyle, cursor: 'pointer', color: C.muted, display: 'block' }}>
+                  Выбрать файл · JPG, PNG, GIF, MP4 до 10 МБ
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" onChange={pickPhoto} style={{ display: 'none' }} />
+                </label>
+              )}
+              {photoError && <span style={{ color: C.cherry, fontSize: 13 }}>{photoError}</span>}
+              {!photoPreview && <span style={{ color: C.muted, fontSize: 12 }}>Можно без фото — тогда на обложке будет рисунок.</span>}
+            </Field>
+
             {scn === 'sorry' ? (
               <>
                 <Field label="За что извиняешься">
@@ -254,6 +310,21 @@ function OccasionForm({ user }) {
               </Field>
             )}
 
+            {scn === 'bday' && (
+              <Field label="Когда открыть">
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Toggle options={[['сразу', 'now'], ['в 00:00', 'midnight']]} value={openMode} onChange={setOpenMode} />
+                  {openMode === 'midnight' && (
+                    <input type="date" min={tomorrow} value={openAt} onChange={(e) => setOpenAt(e.target.value)} style={{ ...inputStyle, width: 'auto' }} />
+                  )}
+                </div>
+                {openMode === 'midnight' && (
+                  <span style={{ color: C.muted, fontSize: 12 }}>
+                    Ссылку можно отправить заранее: до полуночи по Ташкенту получатель увидит обратный отсчёт.
+                  </span>
+                )}
+              </Field>
+            )}
             {scn === 'bday' && (
               <Row>
                 <Field label="Сколько исполняется">
@@ -279,7 +350,18 @@ function OccasionForm({ user }) {
           <section aria-label="Превью" style={{ position: 'sticky', top: 16 }}>
             <p style={{ ...labelStyle, margin: '0 0 8px' }}>так увидит получатель</p>
             <div style={{ height: 'min(760px, 80vh)', borderRadius: 28, overflow: 'hidden', background: '#1C0B16' }}>
-              <OccasionFrame key={previewKey} occasion={{ ...previewOccasion, to: previewOccasion.to || 'Имя', from: previewOccasion.from || 'Я' }} isPreview />
+              <OccasionFrame
+                key={`${previewKey}|${photoPreview}`}
+                occasion={{
+                  ...previewOccasion,
+                  to: previewOccasion.to || 'Имя',
+                  from: previewOccasion.from || 'Я',
+                  // в превью сразу показываем сам повод, а не экран ожидания полуночи
+                  openAt: '',
+                  ...(photoPreview ? { photo: photoPreview, photoType: photoFile?.type || '' } : {}),
+                }}
+                isPreview
+              />
             </div>
           </section>
         </div>

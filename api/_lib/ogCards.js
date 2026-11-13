@@ -133,7 +133,30 @@ function wordmark(color, size = 34) {
   return h('div', { fontSize: size, fontWeight: 700, color, letterSpacing: -0.5 }, 'Senti');
 }
 
-export function inviteCard({ name, templateKey }) {
+// Повод: вторая строка карточки и подпись. Без подробностей — сюрприз внутри.
+export function occasionText(occasion) {
+  const scn = occasion?.scn;
+  const headline = {
+    bday: 'с днём рождения',
+    sorry: 'мне нужно кое-что сказать',
+    women: 'с 8 марта',
+    anniv: 'это про нас',
+    proud: 'я горжусь тобой',
+    newyear: 'с Новым годом',
+  }[scn] || 'это тебе';
+  let sub = 'Открой, когда будет минутка';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(occasion?.openAt || '');
+  if (scn === 'bday' && m) {
+    const target = Date.UTC(+m[1], +m[2] - 1, +m[3]) - 5 * 3600e3;
+    if (target > Date.now()) {
+      const day = new Date(target).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Asia/Tashkent' });
+      sub = `Откроется ${day} в 00:00`;
+    }
+  }
+  return { headline, sub, templateKey: scn === 'sorry' ? 'darkromance' : 'romantic' };
+}
+
+export function inviteCard({ name, templateKey, headline = 'это тебе', sub = 'Открой, когда будет минутка' }) {
   const p = paletteFor(templateKey);
   const n = cleanName(name);
   const nameSize = n.length <= 8 ? 104 : n.length <= 14 ? 84 : 64;
@@ -152,9 +175,9 @@ export function inviteCard({ name, templateKey }) {
       n
         ? h('div', { fontSize: nameSize, fontWeight: 700, color: p.ink, lineHeight: 1.1 }, `${n},`)
         : null,
-      h('div', { fontSize: n ? 60 : 96, fontWeight: 700, color: p.ink, lineHeight: 1.15, marginTop: 6 }, n ? 'это тебе' : 'Это тебе'),
-      h('div', { fontSize: 30, color: p.muted, marginTop: 30, lineHeight: 1.4 },
-        'Открой, когда будет минутка'),
+      h('div', { fontSize: n ? (headline.length > 16 ? 48 : 60) : 96, fontWeight: 700, color: p.ink, lineHeight: 1.15, marginTop: 6 },
+        n ? headline : headline.charAt(0).toUpperCase() + headline.slice(1)),
+      h('div', { fontSize: 30, color: p.muted, marginTop: 30, lineHeight: 1.4 }, sub),
     ),
 
     h('div', { width: 380, justifyContent: 'center', alignItems: 'center', transform: 'rotate(-6deg)' },
