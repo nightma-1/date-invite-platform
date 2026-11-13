@@ -56,77 +56,112 @@ function project(alt, az, cx, cy, R) {
 }
 
 /**
- * Рисует карту неба в круге радиуса R с центром (cx, cy).
+ * Рисует карту неба в круге радиуса R с центром (cx, cy) — в стиле постера,
+ * а не учебной схемы. Решения, которые отличают подарок от атласа:
+ *  - звёзды — чёткие точки, ореол только у самых ярких; размытые пятна
+ *    читаются как грязь;
+ *  - линии созвездий тонкие и тихие, у горизонта не рисуются вовсе: там
+ *    проекция растягивает фигуры, и край круга превращается в паутину;
+ *  - круг обведён тонким кольцом со шкалой градусов, как у планисферы.
  * date — момент (Date), lat/lon — градусы, восточная долгота положительная.
  */
 export function paintStarMap(g, { date, lat, lon, cx, cy, R, palette }) {
   const lst = gmstDeg(julianDay(date));
   const ink = palette?.soft || '#ffd9e5';
+  const MIN_LINE_ALT = 12 * D2R;
 
   g.save();
   g.beginPath();
   g.arc(cx, cy, R, 0, Math.PI * 2);
   g.clip();
 
-  // купол неба — чуть светлее к горизонту, как настоящая засветка
+  // едва заметный купол: круг чуть светлее фона, без «дыры» посередине
   const dome = g.createRadialGradient(cx, cy, 0, cx, cy, R);
-  dome.addColorStop(0, 'rgba(0,0,0,0.42)');
-  dome.addColorStop(1, 'rgba(0,0,0,0.12)');
+  dome.addColorStop(0, 'rgba(255,255,255,0.045)');
+  dome.addColorStop(1, 'rgba(255,255,255,0.015)');
   g.fillStyle = dome;
   g.fillRect(cx - R, cy - R, R * 2, R * 2);
 
-  // линии созвездий: сегмент рисуем, только если обе его точки над горизонтом
+  // линии созвездий
   g.strokeStyle = ink;
-  g.globalAlpha = 0.26;
-  g.lineWidth = Math.max(1, R * 0.004);
+  g.globalAlpha = 0.2;
+  g.lineWidth = Math.max(1, R * 0.0026);
+  g.lineCap = 'round';
   LINES.forEach((flat) => {
-    let started = false;
-    g.beginPath();
+    let prev = null;
     for (let i = 0; i < flat.length; i += 2) {
       const { alt, az } = toAltAz(flat[i], flat[i + 1], lat, lon, lst);
-      const p = project(alt, az, cx, cy, R);
-      if (!p) { started = false; continue; }
-      if (started) g.lineTo(p.x, p.y);
-      else { g.moveTo(p.x, p.y); started = true; }
+      const p = alt > MIN_LINE_ALT ? project(alt, az, cx, cy, R) : null;
+      if (p && prev) {
+        g.beginPath();
+        g.moveTo(prev.x, prev.y);
+        g.lineTo(p.x, p.y);
+        g.stroke();
+      }
+      prev = p;
     }
-    g.stroke();
   });
 
-  // звёзды: чем ярче, тем крупнее; самые яркие получают ореол
+  // звёзды: чёткий кружок, размер и яркость от звёздной величины
   g.globalAlpha = 1;
-  g.globalCompositeOperation = 'lighter';
   for (let i = 0; i < STARS.length; i += 3) {
     const { alt, az } = toAltAz(STARS[i], STARS[i + 1], lat, lon, lst);
     const p = project(alt, az, cx, cy, R);
     if (!p) continue;
     const mag = STARS[i + 2];
-    const size = Math.max(0.6, (5.4 - mag) * R * 0.0032);
-    const a = Math.max(0.3, Math.min(1, (5.6 - mag) / 4));
-    const grad = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 3.2);
-    grad.addColorStop(0, `rgba(255,255,255,${a})`);
-    grad.addColorStop(0.3, `rgba(255,245,250,${a * 0.4})`);
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.fillRect(p.x - size * 3.2, p.y - size * 3.2, size * 6.4, size * 6.4);
+    const r = Math.max(R * 0.0018, (5.3 - mag) * R * 0.0029);
+    const a = Math.max(0.35, Math.min(1, (5.6 - mag) / 4.2));
+    if (mag < 1.6) {
+      // ореол — только у полутора десятков самых ярких звёзд неба
+      const glow = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 4);
+      glow.addColorStop(0, 'rgba(255,240,246,0.35)');
+      glow.addColorStop(1, 'rgba(255,240,246,0)');
+      g.fillStyle = glow;
+      g.fillRect(p.x - r * 4, p.y - r * 4, r * 8, r * 8);
+    }
+    g.fillStyle = `rgba(255,252,253,${a})`;
+    g.beginPath();
+    g.arc(p.x, p.y, r, 0, Math.PI * 2);
+    g.fill();
   }
-  g.globalCompositeOperation = 'source-over';
   g.restore();
 
-  // обод горизонта и стороны света
+  // кольцо горизонта и внешний обод со шкалой — как у планисферы
+  const ringR = R + R * 0.045;
   g.strokeStyle = ink;
-  g.globalAlpha = 0.5;
-  g.lineWidth = Math.max(1.2, R * 0.006);
-  g.beginPath();
-  g.arc(cx, cy, R, 0, Math.PI * 2);
-  g.stroke();
-  g.globalAlpha = 0.45;
+  g.globalAlpha = 0.55;
+  g.lineWidth = Math.max(1, R * 0.0035);
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+  g.globalAlpha = 0.3;
+  g.beginPath(); g.arc(cx, cy, ringR, 0, Math.PI * 2); g.stroke();
+  for (let deg = 0; deg < 360; deg += 5) {
+    const long = deg % 45 === 0;
+    const a = deg * D2R;
+    const r0 = R + R * 0.006;
+    const r1 = R + R * (long ? 0.04 : 0.018);
+    g.globalAlpha = long ? 0.5 : 0.25;
+    g.beginPath();
+    g.moveTo(cx + Math.sin(a) * r0, cy - Math.cos(a) * r0);
+    g.lineTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1);
+    g.stroke();
+  }
+
+  // стороны света снаружи обода; восток слева — небо смотрят снизу вверх
+  g.globalAlpha = 0.55;
   g.fillStyle = ink;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = `600 ${Math.round(R * 0.07)}px "Manrope", sans-serif`;
-  const marks = [['N', 0, -1], ['E', -1, 0], ['S', 0, 1], ['W', 1, 0]];
-  marks.forEach(([ch, dx, dy]) => {
-    g.fillText(ch, cx + dx * (R + R * 0.085), cy + dy * (R + R * 0.085));
+  g.font = `600 ${Math.round(R * 0.05)}px "Manrope", sans-serif`;
+  const off = ringR + R * 0.07;
+  [['N', 0, -1], ['E', -1, 0], ['S', 0, 1], ['W', 1, 0]].forEach(([ch, dx, dy]) => {
+    g.fillText(ch, cx + dx * off, cy + dy * off);
   });
   g.globalAlpha = 1;
+}
+
+/** Координаты места для подписи на постере: 39.65° N · 66.96° E. */
+export function formatCoords(lat, lon) {
+  const ns = lat >= 0 ? 'N' : 'S';
+  const ew = lon >= 0 ? 'E' : 'W';
+  return `${Math.abs(lat).toFixed(2)}° ${ns} · ${Math.abs(lon).toFixed(2)}° ${ew}`;
 }

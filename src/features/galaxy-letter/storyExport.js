@@ -13,7 +13,7 @@
  *    своим интерфейсом — аватаркой, именем, полем ответа. Всё, что должно
  *    читаться, держим между SAFE_TOP и SAFE_BOTTOM.
  */
-import { paintStarMap } from './starMap.js';
+import { paintStarMap, formatCoords } from './starMap.js';
 
 export const STORY_W = 1080;
 export const STORY_H = 1920;
@@ -144,7 +144,9 @@ export function paintCaptions(g, pal, { caption, subcaption, frame, texts = {} }
   g.textAlign = 'center';
   g.textBaseline = 'alphabetic';
 
-  let y = SAFE_BOTTOM - 300;
+  // у карты неба под именем ещё две строки (дата, координаты) — поднимаем блок,
+  // иначе координаты ложатся на кнопку
+  let y = SAFE_BOTTOM - (frame === 'sky' ? 340 : 300);
   if (caption) {
     g.shadowColor = pal.accent.glow;
     g.shadowBlur = 44;
@@ -160,10 +162,19 @@ export function paintCaptions(g, pal, { caption, subcaption, frame, texts = {} }
     g.fillText(subcaption, STORY_W / 2, y);
   }
   if (frame === 'sky' && texts.skyWhen) {
-    y += 70;
-    g.fillStyle = 'rgba(255,255,255,0.6)';
-    g.font = '500 40px "Caveat", cursive';
-    g.fillText(texts.skyWhen, STORY_W / 2, y);
+    // дата и место — спокойной разрядкой, как подпись на постере
+    y += 74;
+    g.fillStyle = 'rgba(255,255,255,0.78)';
+    g.font = '600 30px "Manrope", sans-serif';
+    if ('letterSpacing' in g) g.letterSpacing = '4px';
+    g.fillText(texts.skyWhen.toUpperCase(), STORY_W / 2, y);
+    if (texts.skyCoords) {
+      y += 46;
+      g.fillStyle = 'rgba(255,255,255,0.42)';
+      g.font = '500 24px "Manrope", sans-serif';
+      g.fillText(texts.skyCoords, STORY_W / 2, y);
+    }
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
   }
   if (frame === 'envelope') {
     y += 70;
@@ -192,7 +203,8 @@ export function paintCaptions(g, pal, { caption, subcaption, frame, texts = {} }
 }
 
 /** Готовая картинка 9:16 для выбранного кадра. */
-export async function composeStory({ pal, canvases, frame, caption, subcaption, recipientName, sky, texts = {} }) {
+export async function composeStory({ pal, canvases, frame, caption, subcaption, recipientName, sky, texts: rawTexts = {} }) {
+  const texts = sky ? { ...rawTexts, skyCoords: formatCoords(sky.lat, sky.lon) } : rawTexts;
   const out = document.createElement('canvas');
   out.width = STORY_W; out.height = STORY_H;
   const g = out.getContext('2d');
@@ -201,9 +213,15 @@ export async function composeStory({ pal, canvases, frame, caption, subcaption, 
     paintScene(g, canvases.slice(0, 1));   // только звёздный фон, без частиц
     paintEnvelope(g, pal, recipientName);
   } else if (frame === 'sky') {
-    paintScene(g, canvases.slice(0, 1));
-    const R = STORY_W * 0.38;
-    paintStarMap(g, { ...sky, cx: STORY_W / 2, cy: STORY_H * 0.345, R, palette: pal });
+    // Постеру нужен чистый фон: Млечный Путь и мигающие звёзды вокруг
+    // спорили с картой, и круг тонул. Только ровное небо и мягкая виньетка.
+    const vg = g.createRadialGradient(STORY_W / 2, STORY_H * 0.36, 0, STORY_W / 2, STORY_H * 0.36, STORY_H * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.5)');
+    g.fillStyle = vg;
+    g.fillRect(0, 0, STORY_W, STORY_H);
+    const R = STORY_W * 0.37;
+    paintStarMap(g, { ...sky, cx: STORY_W / 2, cy: STORY_H * 0.338, R, palette: pal });
   } else {
     paintScene(g, canvases);
   }
