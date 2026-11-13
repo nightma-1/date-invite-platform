@@ -6,7 +6,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { clickProvider, isClickConfigured, PAYMENT_METHOD } from '../../src/lib/clickProvider.js';
 import { rateLimit, clientIp } from '../_lib/rateLimit.js';
-import { museumPublishPrice, museumExtendPrice, museumTerm } from '../../src/lib/museumPlans.js';
+import { MUSEUM_PUBLIC, museumPublishPrice, museumExtendPrice, museumTerm } from '../../src/lib/museumPlans.js';
 
 const INVITATION_PRICE = 19000; // сум, см. ТЗ раздел 3 (цена задаётся только здесь, клиент её не передаёт)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,10 +31,6 @@ export default async function handler(req, res) {
   // Грубый лимит по IP до любых обращений к БД и Supabase Auth.
   if (!rateLimit(`click-create:${clientIp(req)}`, { max: 20, windowMs: 60_000 })) {
     return res.status(429).json({ error: 'слишком много запросов' });
-  }
-
-  if (!isClickConfigured()) {
-    return res.status(503).json({ error: 'оплата временно недоступна' });
   }
 
   const authHeader = req.headers.authorization || '';
@@ -94,6 +90,55 @@ export default async function handler(req, res) {
   }
 
   const admin = getAdmin();
+
+  // Владельцы сервиса (profiles.is_admin) публикуют без оплаты: тот же UPDATE,
+  // что делает вебхук Click после списания, только без строки в payments,
+  // чтобы бесплатные приглашения не попадали в выручку. Флаг читаем через
+  // service role: клиент его подделать не может.
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profile?.is_admin) {
+    // Продление музея владельцем: сразу добавляем срок, без оплаты
+    if (isExtension) {
+      const days = museumTerm(req.body?.termDays)?.days;
+      if (!days) return res.status(400).json({ error: 'неверный срок' });
+      const { data: current } = await admin.from('invitations').select('expires_at').eq('id', invitationId).single();
+      const from = Math.max(Date.now(), new Date(current?.expires_at || 0).getTime());
+      const until = new Date(from + days * 86400000).toISOString();
+      const { error: extendError } = await admin
+        .from('invitations')
+        .update({ expires_at: until, edit_until: until, expiry_reminded_at: null, status: 'published' })
+        .eq('id', invitationId);
+      if (extendError) {
+        console.error('click/create: admin free extend failed', extendError);
+        return res.status(500).json({ error: 'не удалось продлить' });
+      }
+      return res.status(200).json({ extended: true, free: true });
+    }
+    const { data: published, error: publishError } = await admin
+      .from('invitations')
+      .update({ status: 'published' })
+      .eq('id', invitationId)
+      .select('slug')
+      .single();
+    if (publishError) {
+      console.error('click/create: admin free publish failed', publishError);
+      return res.status(500).json({ error: 'не удалось опубликовать' });
+    }
+    return res.status(200).json({ published: true, free: true, slug: published.slug });
+  }
+
+  // Пока музей не запущен, оплатить его не может никто, кроме владельца
+  if (invitation.kind === 'museum' && !MUSEUM_PUBLIC) {
+    return res.status(403).json({ error: 'музей пока недоступен' });
+  }
+
+  if (!isClickConfigured()) {
+    return res.status(503).json({ error: 'оплата временно недоступна' });
+  }
 
   let amount = INVITATION_PRICE;
   let termDays = null;

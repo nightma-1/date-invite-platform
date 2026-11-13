@@ -14,6 +14,7 @@ import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
 import ChoiceScreen from '../components/screens/ChoiceScreen.jsx';
 import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
+import OccasionFrame from './OccasionFrame.jsx';
 
 // three.js весит много, поэтому код музея скачивается только тем, кто его открыл
 const MuseumRecipient = lazy(() => import('../app-museum/MuseumRecipient.jsx'));
@@ -251,6 +252,10 @@ export default function InvitationRuntime({ previewData = null }) {
   }
   if (state.status === 'expired') {
     return <CenteredMessage text="💌 Это приглашение больше недоступно." tokens={tokens} />;
+  }
+  // Поводы (день рождения, извинение и т.д.) рисует своя страница — см. OccasionFrame.jsx
+  if (invitation?.kind === 'occasion') {
+    return <OccasionFrame slug={slug} occasion={invitation.occasion} isPreview={isPreview} />;
   }
 
   const activeStep = steps[activeIndex];

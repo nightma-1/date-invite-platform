@@ -128,6 +128,8 @@ export default function InvitationList() {
   const [copiedSlug, setCopiedSlug] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [telegramLinked, setTelegramLinked] = useState(null); // null = ещё не знаем
+  // Владелец видит вход в новые поводы — пока они тестовые и скрыты от остальных
+  const [isAdmin, setIsAdmin] = useState(false);
   const [payingId, setPayingId] = useState(null);
 
   // Черновик (status: 'draft') — это приглашение, за которое ещё не
@@ -259,10 +261,13 @@ export default function InvitationList() {
     async function loadProfile() {
       const { data } = await supabase
         .from('profiles')
-        .select('telegram_chat_id')
+        .select('telegram_chat_id, is_admin')
         .eq('id', session.user.id)
         .maybeSingle();
-      if (!cancelled) setTelegramLinked(!!data?.telegram_chat_id);
+      if (!cancelled) {
+        setTelegramLinked(!!data?.telegram_chat_id);
+        setIsAdmin(Boolean(data?.is_admin));
+      }
     }
 
     load();
@@ -312,6 +317,32 @@ export default function InvitationList() {
           {tr('dashboard.title')}
         </h1>
 
+        {isAdmin && (
+          <Link
+            to="/museum"
+            className="mb-3 flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 no-underline"
+            style={{ background: '#2b1320', color: '#fff8f0', fontFamily: t.fontUI }}
+          >
+            <span>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>Наш музей</span>
+              <span style={{ display: 'block', fontSize: 12.5, opacity: 0.85 }}>3D-галерея из фото · тест, видишь только ты</span>
+            </span>
+            <span aria-hidden="true" style={{ fontSize: 20 }}>→</span>
+          </Link>
+        )}
+        {isAdmin && (
+          <Link
+            to="/builder/occasion"
+            className="mb-6 flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 no-underline"
+            style={{ background: t.berry, color: '#fff', fontFamily: t.fontUI }}
+          >
+            <span>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>Новые поводы</span>
+              <span style={{ display: 'block', fontSize: 12.5, opacity: 0.85 }}>День рождения, извинение, 8 марта и другие · тест, видишь только ты</span>
+            </span>
+            <span aria-hidden="true" style={{ fontSize: 20 }}>→</span>
+          </Link>
+        )}
         {telegramLinked === false && signedInWithTelegram && (
           <div className="mb-8 rounded-2xl px-5 py-5" style={{ background: '#2AABEE', color: '#fff' }}>
             <p style={{ margin: 0, fontFamily: t.fontUI, fontSize: 16, fontWeight: 700 }}>
@@ -378,7 +409,13 @@ export default function InvitationList() {
                   </div>
                   <p className="mb-1 text-xs" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>/i/{inv.slug}</p>
                   <InvitationTimeline inv={inv} now={now} tr={tr} tokens={t} lang={i18n.language} />
-                  {inv.kind === 'museum' ? (
+                  {inv.kind === 'occasion' && response ? (
+                    <div className="space-y-0.5">
+                      {(response.selections?.log || [response.selections?.last]).filter(Boolean).map((line, i) => (
+                        <p key={i} className="text-sm" style={{ color: t.berry, fontFamily: t.fontUI, margin: 0 }}>{line}</p>
+                      ))}
+                    </div>
+                  ) : inv.kind === 'museum' ? (
                     <p className="text-sm" style={{ color: response ? t.berry : t.ink, opacity: response ? 1 : 0.45, fontFamily: t.fontUI }}>
                       {response ? tr('museum.dashboard.answered') : tr('museum.dashboard.noAnswer')}
                     </p>
@@ -404,7 +441,7 @@ export default function InvitationList() {
                     </div>
                   )}
                   <div className="mt-2 mb-3 flex flex-wrap gap-x-4 gap-y-1">
-                    {response && inv.kind !== 'museum' && (
+                    {response && inv.kind !== 'occasion' && inv.kind !== 'museum' && (
                       <Link to={`/dashboard/response/${inv.id}`} className="inline-block text-xs underline" style={{ color: t.berry, fontWeight: 600 }}>
                         {tr('dashboard.viewResponse')}
                       </Link>
@@ -447,7 +484,7 @@ export default function InvitationList() {
                         </button>
                       </>
                     )}
-                    {!isEditLocked(inv, now) && (
+                    {!isEditLocked(inv, now) && inv.kind !== 'occasion' && (
                     <Link
                       to={inv.kind === 'museum' ? `/museum/edit/${inv.id}` : `/builder/edit/${inv.id}`}
                       className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline"

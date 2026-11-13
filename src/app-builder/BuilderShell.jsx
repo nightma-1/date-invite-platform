@@ -443,7 +443,7 @@ export default function BuilderShell() {
       // затем уходим на оплату Click. Сама публикация (status: 'published')
       // происходит в /api/click/webhook.js после реального списания —
       // отсюда мы просто редиректим на страницу оплаты и ничего не ждём.
-      const { invitationId } = await publishDraft(state, userId);
+      const { invitationId, slug } = await publishDraft(state, userId);
       track('draft_created', { template: state.templateId, shape: state.cardShape || 'classic' });
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
@@ -453,6 +453,13 @@ export default function BuilderShell() {
         body: JSON.stringify({ invitationId, method }),
       });
       const data = await res.json();
+      // Владелец сервиса публикует без оплаты: сервер уже опубликовал
+      // приглашение, показываем ссылку сразу, без перехода на Click.
+      if (res.ok && data.published) {
+        track('invitation_published_free', { template: state.templateId });
+        setPublishResult({ invitationId, slug: data.slug || slug });
+        return;
+      }
       if (!res.ok || !data.paymentUrl) {
         throw new Error(data.error || t('builder.publishGenericError'));
       }

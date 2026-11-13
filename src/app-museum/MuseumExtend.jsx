@@ -26,6 +26,10 @@ export default function MuseumExtend({ invitationId }) {
         body: JSON.stringify({ invitationId, purpose: 'extend', termDays }),
       });
       const body = await res.json();
+      if (res.ok && body.extended) {
+        window.location.reload(); // владелец продлевает без оплаты
+        return;
+      }
       if (res.ok && body.paymentUrl) {
         window.location.href = body.paymentUrl;
         return;

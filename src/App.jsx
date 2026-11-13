@@ -14,11 +14,13 @@ import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
+import OccasionBuilder from './app-builder/OccasionBuilder.jsx';
 
-// «Наш музей»: на сайте ссылки появятся, когда MUSEUM_PUBLIC станет true.
+// «Наш музей»: пока MUSEUM_PUBLIC = false, страницы видит только владелец (MuseumGate).
 const MuseumBuilder = lazy(() => import('./app-museum/MuseumBuilder.jsx'));
 const MuseumDemo = lazy(() => import('./app-museum/MuseumDemo.jsx'));
 const MuseumAbout = lazy(() => import('./app-museum/MuseumAbout.jsx'));
+const MuseumGate = lazy(() => import('./app-museum/MuseumGate.jsx'));
 
 function Lazy({ children }) {
   return <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#2b1320' }} />}>{children}</Suspense>;
@@ -81,18 +83,20 @@ export default function App() {
         {/* Каждый новый черновик получает свой id — иначе второе приглашение
             перезаписало бы localStorage первого */}
         <Route path="/builder" element={<NewDraftRedirect />} />
+        {/* Новые поводы — пока тест, страница открыта только владельцу (is_admin) */}
+        <Route path="/builder/occasion" element={<OccasionBuilder />} />
         <Route path="/builder/edit/:invitationId" element={<EditBuilderRoute />} />
         <Route path="/builder/:draftId" element={<BuilderRoute />} />
         <Route path="/payment/:invitationId" element={<PaymentStatus />} />
         <Route path="/i/:slug" element={<InvitationRuntime />} />
         <Route path="/dashboard" element={<InvitationList />} />
         <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />
-        <Route path="/museum" element={<Lazy><MuseumAbout /></Lazy>} />
-        <Route path="/museum/create" element={<Lazy><MuseumBuilder /></Lazy>} />
-        <Route path="/museum/demo" element={<Lazy><MuseumDemo /></Lazy>} />
-        <Route path="/museum/edit/:invitationId" element={<Lazy><MuseumBuilder /></Lazy>} />
+        <Route path="/museum" element={<Lazy><MuseumGate><MuseumAbout /></MuseumGate></Lazy>} />
+        <Route path="/museum/create" element={<Lazy><MuseumGate><MuseumBuilder /></MuseumGate></Lazy>} />
+        <Route path="/museum/demo" element={<Lazy><MuseumGate><MuseumDemo /></MuseumGate></Lazy>} />
+        <Route path="/museum/edit/:invitationId" element={<Lazy><MuseumGate><MuseumBuilder /></MuseumGate></Lazy>} />
         <Route path="/lab/museum" element={<Navigate to="/museum/create" replace />} />
-        <Route path="/lab/museum/demo" element={<Lazy><MuseumDemo /></Lazy>} />
+        <Route path="/lab/museum/demo" element={<Navigate to="/museum/demo" replace />} />
         <Route path={ADMIN_PATH} element={<AdminPanel />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

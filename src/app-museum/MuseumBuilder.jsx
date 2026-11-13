@@ -343,6 +343,12 @@ export default function MuseumBuilder() {
         body: JSON.stringify({ invitationId: id, method }),
       });
       const body = await res.json();
+      // Владелец публикует без оплаты: сервер уже всё сделал, показываем ссылку
+      if (res.ok && body.published) {
+        await clearDraft();
+        navigate(`/payment/${id}`);
+        return;
+      }
       if (!res.ok || !body.paymentUrl) throw new Error(body.error || 'payment failed');
       await clearDraft();
       window.location.href = body.paymentUrl;

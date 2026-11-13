@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { MUSEUM_PUBLIC } from '../lib/museumPlans.js';
+import { useIsAdmin } from '../lib/useIsAdmin.js';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -222,6 +223,7 @@ function LandingPreviewDemo() {
 }
 
 export default function Landing() {
+  const isAdmin = useIsAdmin(); // до запуска блок музея видит только владелец
   const { t } = useTranslation();
   const [openFaq, setOpenFaq] = useState(null);
 
@@ -328,7 +330,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {MUSEUM_PUBLIC && (
+      {(MUSEUM_PUBLIC || isAdmin) && (
         <section className="mx-auto max-w-[1040px] px-5 pt-12">
           <Link to="/museum" style={{ display: 'block', padding: 24, borderRadius: 24, textDecoration: 'none', color: '#fff8f0', background: 'linear-gradient(150deg, #7c2c4a, #2b1320)' }}>
             <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#d9b26f' }}>{t('museumPromo.kicker')}</p>

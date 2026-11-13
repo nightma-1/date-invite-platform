@@ -18,9 +18,11 @@ import { supabase } from '../lib/supabaseClient.js';
 import RunawayButton from '../components/ui/RunawayButton.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { track } from '../lib/analytics.js';
+import { MUSEUM_PUBLIC } from '../lib/museumPlans.js';
 import { preparePhoto } from './museumMedia.js';
 
-const MAKE_YOURS_URL = '/museum?utm_source=museum&utm_medium=recipient';
+// До запуска страница музея закрыта, поэтому ведём на главную
+const MAKE_YOURS_URL = MUSEUM_PUBLIC ? '/museum?utm_source=museum&utm_medium=recipient' : '/?utm_source=museum&utm_medium=recipient';
 const NO_LIMIT = 6;
 
 const C = {

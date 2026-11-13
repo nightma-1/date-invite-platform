@@ -240,7 +240,16 @@ export default async function handler(req, res) {
     return res.status(200).json(await sendMessage(chatId, museum[0](invitation, extra), museum[1]));
   }
 
-  if (event === 'answered') {
+  if (event === 'answered' && invitation.kind === 'occasion') {
+    // Поводы шлют автору готовую строку на каждый шаг получателя
+    // («Муниса простила 🤍», «открыла подарок») — см. OccasionFrame.jsx.
+    const line = String(extra?.selections?.last || '').slice(0, 300);
+    if (!line) return res.status(200).json({ ok: false, reason: 'empty occasion event' });
+    result = await sendMessage(chatId, `💌 ${escapeHtml(line)}`, {
+      text: 'Мои приглашения',
+      url: appUrl('/dashboard'),
+    });
+  } else if (event === 'answered') {
     result = await sendMessage(chatId, formatAnswered(invitation, extra), {
       text: 'Открыть ответ',
       url: appUrl(`/dashboard/response/${invitation.id}`),
