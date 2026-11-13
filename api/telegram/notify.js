@@ -166,7 +166,7 @@ export default async function handler(req, res) {
 
   const { data: invitation, error: invError } = await supabaseAdmin
     .from('invitations')
-    .select('id, recipient_name, recipient_gender, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
+    .select('id, kind, recipient_name, recipient_gender, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
     .eq('id', invitationId)
     .maybeSingle();
 
@@ -185,7 +185,16 @@ export default async function handler(req, res) {
   // Кнопка ведёт прямо на ответ в кабинете — повод вернуться на сайт.
   // На просмотр кнопку не ставим: там нечего открывать, кроме ожидания.
   let result;
-  if (event === 'answered') {
+  if (event === 'answered' && invitation.kind === 'occasion') {
+    // Поводы шлют автору готовую строку на каждый шаг получателя
+    // («Муниса простила 🤍», «открыла подарок») — см. OccasionFrame.jsx.
+    const line = String(extra?.selections?.last || '').slice(0, 300);
+    if (!line) return res.status(200).json({ ok: false, reason: 'empty occasion event' });
+    result = await sendMessage(chatId, `💌 ${escapeHtml(line)}`, {
+      text: 'Мои приглашения',
+      url: appUrl('/dashboard'),
+    });
+  } else if (event === 'answered') {
     result = await sendMessage(chatId, formatAnswered(invitation, extra), {
       text: 'Открыть ответ',
       url: appUrl(`/dashboard/response/${invitation.id}`),

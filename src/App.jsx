@@ -14,6 +14,7 @@ import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
+import OccasionBuilder from './app-builder/OccasionBuilder.jsx';
 
 // Адрес админки нарочно не угадываемый и не в публичных ссылках сайта —
 // /admin слишком легко найти перебором ботов. Поменять адрес, если он
@@ -72,6 +73,8 @@ export default function App() {
         {/* Каждый новый черновик получает свой id — иначе второе приглашение
             перезаписало бы localStorage первого */}
         <Route path="/builder" element={<NewDraftRedirect />} />
+        {/* Новые поводы — пока тест, страница открыта только владельцу (is_admin) */}
+        <Route path="/builder/occasion" element={<OccasionBuilder />} />
         <Route path="/builder/edit/:invitationId" element={<EditBuilderRoute />} />
         <Route path="/builder/:draftId" element={<BuilderRoute />} />
         <Route path="/payment/:invitationId" element={<PaymentStatus />} />
