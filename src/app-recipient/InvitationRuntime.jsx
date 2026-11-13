@@ -6,6 +6,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { SKY_CITIES } from '../features/galaxy-letter/skyCities.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
 import { getTemplateTokens } from '../templates/registry.js';
@@ -460,6 +461,11 @@ export default function InvitationRuntime({ previewData = null }) {
             cropZoom={galaxyConfig.cropZoom}
             cropX={galaxyConfig.cropX}
             cropY={galaxyConfig.cropY}
+            skyMoment={(() => {
+              const city = SKY_CITIES.find(([n]) => n === galaxyConfig.skyCity);
+              return galaxyConfig.skyDate && city
+                ? { date: galaxyConfig.skyDate, lat: city[1], lon: city[2], place: city[0] } : null;
+            })()}
             paletteId={galaxyPaletteId}
             answerStars={answerStars}
             onEvent={(name, props) => track(name, { ...props, slug })}

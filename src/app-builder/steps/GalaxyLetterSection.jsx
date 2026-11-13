@@ -19,6 +19,7 @@ import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import {
   T, SectionCard, FieldLabel, TxtArea, CharCount,
 } from '../BuilderUI.jsx';
+import { SKY_CITIES } from '../../features/galaxy-letter/skyCities.js';
 
 const DEFAULTS = {
   enabled: false,
@@ -32,6 +33,8 @@ const DEFAULTS = {
   cropX: 0.5,
   cropY: 0.42,
 };
+
+
 
 export default function GalaxyLetterSection({ number, value, onChange }) {
   const cfg = { ...DEFAULTS, ...(value || {}) };
@@ -200,6 +203,27 @@ export default function GalaxyLetterSection({ number, value, onChange }) {
             rows={1}
             maxLength={80}
           />
+
+
+          <FieldLabel style={{ marginTop: 18 }}>Звёздная карта для сторис (по желанию)</FieldLabel>
+          <p style={{ fontSize: 12, color: T.muted, marginTop: 0, marginBottom: 8, lineHeight: 1.5, fontFamily: T.font }}>
+            Небо, каким оно было в вашу ночь — например, в день знакомства. Получатель сможет выложить его
+            в сторис вместо портрета.
+          </p>
+          <input
+            type="datetime-local"
+            value={cfg.skyDate || ''}
+            onChange={(e) => set({ skyDate: e.target.value })}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(42,31,43,0.14)', fontFamily: T.font, fontSize: 14, boxSizing: 'border-box' }}
+          />
+          <select
+            value={cfg.skyCity || ''}
+            onChange={(e) => set({ skyCity: e.target.value })}
+            style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(42,31,43,0.14)', fontFamily: T.font, fontSize: 14, background: '#fff', boxSizing: 'border-box' }}
+          >
+            <option value="">Город</option>
+            {SKY_CITIES.map(([name]) => <option key={name} value={name}>{name}</option>)}
+          </select>
 
           <p style={{
             fontSize: 12, color: T.muted, marginTop: 16, lineHeight: 1.6,

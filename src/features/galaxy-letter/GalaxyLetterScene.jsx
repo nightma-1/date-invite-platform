@@ -54,10 +54,13 @@ export default function GalaxyLetterScene({
   // Второй вариант финала: вместо портрета — созвездие из снимков
   // [{ url, caption, date }]. Если он задан, портрет не собирается.
   memories = [],
+  // Ночь для звёздной карты: { date: ISO-строка, lat, lon, place }.
+  // Без неё кадр «Небо» в выборе для сторис просто не показываем.
+  skyMoment = null,
   onEvent,
   onRestartRequest,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const pal = getPalette(paletteId);
   const memoryItems = (memories || []).filter((m) => m && m.url).slice(0, 7);
   const finalMode = memoryItems.length ? 'constellation' : 'portrait';
@@ -78,10 +81,19 @@ export default function GalaxyLetterScene({
   const reduced = !!useReducedMotion();
   const parallax = useParallax({ enabled: !reduced, strength: 1 });
   const audio = useAmbientSound();
+  const skyDate = skyMoment?.date && !Number.isNaN(new Date(skyMoment.date).getTime())
+    ? new Date(skyMoment.date) : null;
+  const sky = skyDate && Number.isFinite(+skyMoment.lat) && Number.isFinite(+skyMoment.lon)
+    ? { date: skyDate, lat: +skyMoment.lat, lon: +skyMoment.lon } : null;
+  const frames = FRAMES.filter((f) => f.id !== 'sky' || sky);
   const storyTexts = {
     insideGalaxy: t('galaxy.insideGalaxy'),
     cta: t('galaxy.cta'),
     envelopeFor: recipientName ? t('galaxy.envelopeFor', { name: recipientName }) : t('galaxy.envelopeForNoName'),
+    skyWhen: skyDate ? [
+      skyDate.toLocaleDateString(i18n.language, { day: 'numeric', month: 'long', year: 'numeric' }),
+      skyMoment?.place,
+    ].filter(Boolean).join(' · ') : '',
   };
   const say = (name, props) => { try { onEvent?.(name, props); } catch { /* метрика не должна ломать сцену */ } };
 
@@ -135,8 +147,9 @@ export default function GalaxyLetterScene({
     caption: finalCaption,
     subcaption: finalSubcaption,
     recipientName,
+    sky,
     texts: storyTexts,
-  })), [pal, sceneCanvases, finalCaption, finalSubcaption, recipientName, withPhase]);
+  })), [pal, sceneCanvases, finalCaption, finalSubcaption, recipientName, withPhase, sky]);
 
   function download(href, name) {
     const a = document.createElement('a');
@@ -364,7 +377,7 @@ export default function GalaxyLetterScene({
                           {t('galaxy.whatToPost')}
                         </div>
                         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                          {FRAMES.map((f) => (
+                          {frames.map((f) => (
                             <button
                               key={f.id} type="button"
                               onClick={() => setFrame(f.id)}

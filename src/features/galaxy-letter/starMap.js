@@ -9,8 +9,10 @@
  * от карты на любую другую — иначе весь смысл подарка пропадает.
  *
  * Проекция — азимутальная равнопромежуточная от зенита: зенит в центре,
- * горизонт по краю круга, север сверху. Так небо читается привычно, как на
- * бумажных планисферах.
+ * горизонт по краю круга, север сверху. ВАЖНО: восток СЛЕВА. На небо
+ * смотрят снизу вверх, поэтому оно зеркально географической карте — так
+ * устроены все планисферы. С востоком справа созвездия выходят
+ * перевёрнутыми, и любой, кто знает Ориона, это заметит.
  */
 import { STARS, LINES } from './skyData.js';
 
@@ -50,7 +52,7 @@ export function toAltAz(raDeg, decDeg, latDeg, lonDeg, lstDeg) {
 function project(alt, az, cx, cy, R) {
   if (alt <= 0) return null;
   const r = (1 - alt / (Math.PI / 2)) * R;
-  return { x: cx + r * Math.sin(az), y: cy - r * Math.cos(az) };
+  return { x: cx - r * Math.sin(az), y: cy - r * Math.cos(az) };
 }
 
 /**
@@ -122,7 +124,7 @@ export function paintStarMap(g, { date, lat, lon, cx, cy, R, palette }) {
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.font = `600 ${Math.round(R * 0.07)}px "Manrope", sans-serif`;
-  const marks = [['N', 0, -1], ['E', 1, 0], ['S', 0, 1], ['W', -1, 0]];
+  const marks = [['N', 0, -1], ['E', -1, 0], ['S', 0, 1], ['W', 1, 0]];
   marks.forEach(([ch, dx, dy]) => {
     g.fillText(ch, cx + dx * (R + R * 0.085), cy + dy * (R + R * 0.085));
   });

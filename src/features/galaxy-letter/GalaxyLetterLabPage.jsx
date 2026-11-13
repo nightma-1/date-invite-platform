@@ -30,6 +30,10 @@ export default function GalaxyLetterLabPage() {
   const [answersText, setAnswersText] = useState('дата | 15 ноября\nвремя | 19:00\nместо | кофейня на Регистане\nеда | суши');
   const [memories, setMemories] = useState([]);
   const [memoryCaptions, setMemoryCaptions] = useState('первая встреча\nтвой смех\nнаше море');
+  const [skyDate, setSkyDate] = useState('2026-02-14T21:00');
+  const [skyLat, setSkyLat] = useState('39.65');
+  const [skyLon, setSkyLon] = useState('66.96');
+  const [skyPlace, setSkyPlace] = useState('Самарканд');
   const [runKey, setRunKey] = useState(0);
 
   function handleFile(e) {
@@ -97,6 +101,14 @@ export default function GalaxyLetterLabPage() {
           <textarea value={answersText} onChange={(e) => setAnswersText(e.target.value)} rows={4}
             style={{ ...inputStyle, resize: 'vertical' }} />
         </Field>
+        <Field label="Звёздная карта: ночь и место">
+          <input type="datetime-local" value={skyDate} onChange={(e) => setSkyDate(e.target.value)} style={inputStyle} />
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <input value={skyLat} onChange={(e) => setSkyLat(e.target.value)} placeholder="широта" style={inputStyle} />
+            <input value={skyLon} onChange={(e) => setSkyLon(e.target.value)} placeholder="долгота" style={inputStyle} />
+          </div>
+          <input value={skyPlace} onChange={(e) => setSkyPlace(e.target.value)} placeholder="место" style={{ ...inputStyle, marginTop: 6 }} />
+        </Field>
         <Field label="Палитра космоса">
           <select value={paletteId} onChange={(e) => setPaletteId(e.target.value)} style={inputStyle}>
             {PALETTE_LIST.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
@@ -143,6 +155,7 @@ export default function GalaxyLetterLabPage() {
           finalSubcaption={finalSubcaption}
           paletteId={paletteId}
           memories={memories.map((url, i) => ({ url, caption: memoryCaptions.split('\n')[i]?.trim() || '' }))}
+          skyMoment={skyDate ? { date: skyDate, lat: skyLat, lon: skyLon, place: skyPlace } : null}
           answerStars={answersText.split('\n').map((l) => {
             const [label, value] = l.split('|').map((x) => x.trim());
             return value ? { label, value } : null;

@@ -2,7 +2,7 @@
  * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  */
 
-import { useEffect } from 'react';
+import { useEffect , lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { trackPageView } from './lib/analytics.js';
 import { BuilderProvider } from './app-builder/builderStore.jsx';
@@ -14,7 +14,10 @@ import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
-import GalaxyLetterLabPage from './features/galaxy-letter/GalaxyLetterLabPage.jsx';
+// Лаборатория грузится лениво: при обычном импорте вся сцена (частицы,
+// каталог звёзд) попадала в основной бандл каждого посетителя senti.uz,
+// и ленивая загрузка сцены в приглашении теряла смысл.
+const GalaxyLetterLabPage = lazy(() => import('./features/galaxy-letter/GalaxyLetterLabPage.jsx'));
 
 // Адрес админки нарочно не угадываемый и не в публичных ссылках сайта —
 // /admin слишком легко найти перебором ботов. Поменять адрес, если он
@@ -84,7 +87,7 @@ export default function App() {
             пользователям senti.uz — маршрут нарочно нигде не упоминается
             (ни в лендинге, ни в дашборде, ни в sitemap). Убрать перед тем,
             как фича станет частью обычного флоу конструктора. */}
-        <Route path="/lab/galaxy-letter" element={<GalaxyLetterLabPage />} />
+        <Route path="/lab/galaxy-letter" element={<Suspense fallback={null}><GalaxyLetterLabPage /></Suspense>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

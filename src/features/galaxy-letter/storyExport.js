@@ -44,10 +44,15 @@ export function paintSky(g, pal) {
 
 /** Слои живой сцены (фон + частицы), вписанные по принципу cover. */
 export function paintScene(g, canvases, centerY = STORY_H * 0.37) {
-  canvases.forEach((c) => {
+  canvases.forEach((c, i) => {
     if (!c || !c.width || !c.height) return;
+    // Звёздный фон (первый слой) обязан закрыть кадр целиком, от верха до
+    // низа: центр сцены сдвинут вверх, и при «обычном» масштабе снизу
+    // оставалась тёмная полоса голого градиента. Частицы масштабируем как
+    // раньше, чтобы портрет не обрезался по бокам.
+    const coverH = i === 0 ? 2 * Math.max(centerY, STORY_H - centerY) : STORY_H * 0.72;
     // +2% запаса: при дробном devicePixelRatio иначе по краю остаётся щель
-    const s = Math.max(STORY_W / c.width, (STORY_H * 0.72) / c.height) * 1.02;
+    const s = Math.max(STORY_W / c.width, coverH / c.height) * 1.02;
     const dw = c.width * s; const dh = c.height * s;
     g.drawImage(c, (STORY_W - dw) / 2, centerY - dh / 2, dw, dh);
   });
@@ -197,8 +202,8 @@ export async function composeStory({ pal, canvases, frame, caption, subcaption, 
     paintEnvelope(g, pal, recipientName);
   } else if (frame === 'sky') {
     paintScene(g, canvases.slice(0, 1));
-    const R = STORY_W * 0.41;
-    paintStarMap(g, { ...sky, cx: STORY_W / 2, cy: STORY_H * 0.37, R, palette: pal });
+    const R = STORY_W * 0.38;
+    paintStarMap(g, { ...sky, cx: STORY_W / 2, cy: STORY_H * 0.345, R, palette: pal });
   } else {
     paintScene(g, canvases);
   }

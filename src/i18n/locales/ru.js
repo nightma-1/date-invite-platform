@@ -28,6 +28,8 @@ export default {
     frameGalaxyHint: 'ничего не раскрывает',
     frameEnvelope: 'Конверт',
     frameEnvelopeHint: 'только имя',
+    frameSky: 'Небо',
+    frameSkyHint: 'ночь, которую вы выбрали',
     framePortrait: 'Портрет',
     framePortraitHint: 'видно лицо',
     noVideo: 'Этот браузер не умеет записывать видео — сохрани картинку.',

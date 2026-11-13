@@ -28,6 +28,8 @@ export default {
     frameGalaxyHint: 'hech narsani ochib bermaydi',
     frameEnvelope: 'Konvert',
     frameEnvelopeHint: 'faqat ism',
+    frameSky: 'Osmon',
+    frameSkyHint: 'siz tanlagan tun',
     framePortrait: 'Portret',
     framePortraitHint: 'yuzi ko‘rinadi',
     noVideo: 'Bu brauzer video yoza olmaydi — rasmni saqla.',

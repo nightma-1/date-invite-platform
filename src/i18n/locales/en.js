@@ -28,6 +28,8 @@ export default {
     frameGalaxyHint: 'reveals nothing',
     frameEnvelope: 'Envelope',
     frameEnvelopeHint: 'just the name',
+    frameSky: 'Sky',
+    frameSkyHint: 'the night you chose',
     framePortrait: 'Portrait',
     framePortraitHint: 'the face is visible',
     noVideo: 'This browser cannot record video — save the picture instead.',
