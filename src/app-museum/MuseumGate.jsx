@@ -12,7 +12,8 @@ import { useIsAdmin } from '../lib/useIsAdmin.js';
 
 export default function MuseumGate({ children }) {
   const isAdmin = useIsAdmin();
-  if (MUSEUM_PUBLIC) return children;
+  // На локальном сервере разработки вход не нужен; в сборку сайта это не попадает
+  if (MUSEUM_PUBLIC || import.meta.env.DEV) return children;
   if (isAdmin === null) return <div style={{ minHeight: '100dvh', background: '#fff' }} />;
   if (!isAdmin) return <Navigate to="/" replace />;
   return children;

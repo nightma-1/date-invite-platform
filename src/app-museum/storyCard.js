@@ -15,7 +15,7 @@ function load(url) {
   });
 }
 
-export async function makeStoryCard({ photoUrl, title, footer }) {
+export async function makeStoryCard({ photoUrl, title, footer, cover = false }) {
   const c = document.createElement('canvas');
   c.width = 1080;
   c.height = 1920;
@@ -30,18 +30,25 @@ export async function makeStoryCard({ photoUrl, title, footer }) {
 
   const img = photoUrl ? await load(photoUrl) : null;
   if (img) {
-    const maxW = 780;
-    const maxH = 860;
-    const r = Math.min(maxW / img.width, maxH / img.height);
-    const w = img.width * r;
-    const h = img.height * r;
+    const maxW = cover ? 860 : 780;
+    const maxH = cover ? 1000 : 860;
+    // cover: кадр из музея заполняет рамку целиком, лишнее обрезается по краям
+    const r = cover ? Math.max(maxW / img.width, maxH / img.height) : Math.min(maxW / img.width, maxH / img.height);
+    const w = cover ? maxW : img.width * r;
+    const h = cover ? maxH : img.height * r;
     const x = (1080 - w) / 2;
-    const y = 330 + (maxH - h) / 2;
+    const y = (cover ? 230 : 330) + (maxH - h) / 2;
     g.fillStyle = '#c79a58';
     g.fillRect(x - 44, y - 44, w + 88, h + 88);
     g.fillStyle = '#fbf6ee';
     g.fillRect(x - 32, y - 32, w + 64, h + 64);
-    g.drawImage(img, x, y, w, h);
+    if (cover) {
+      const sw = w / r;
+      const sh = h / r;
+      g.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
+    } else {
+      g.drawImage(img, x, y, w, h);
+    }
   }
 
   g.textAlign = 'center';

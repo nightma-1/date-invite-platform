@@ -199,6 +199,9 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
   const [outfit, setOutfit] = useState(0);
   const [cameraMode, setCameraMode] = useState('third');
   const [guestView, setGuestView] = useState(null);
+  const [emotesOpen, setEmotesOpen] = useState(false);
+  const [flash, setFlash] = useState(false);
+  const [photo, setPhoto] = useState(null);
   const [guestState, setGuestState] = useState('idle'); // idle | sending | done | failed
   const [liked, setLiked] = useState(() => new Set());
   const seenHalls = useRef(new Set());
@@ -287,7 +290,7 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
             setUnread((n) => n + 1);
           },
           onFilm: ({ playing, t: time }) => world.setFilmPlaying(playing, false, time),
-          onWave: (id) => world.peerWave(id),
+          onEmote: (id, kind) => world.peerEmote(id, kind),
           onHeart: (photo, count) => {
             world.heartBurst(photo);
             world.setHeartCount(photo, count);
@@ -376,9 +379,29 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
     if (isLive && !isOwner) supabase.rpc('museum_mark_entered', { p_slug: slug }).then(() => {});
   }
 
-  function wave() {
-    worldRef.current?.wave();
-    roomRef.current?.sendWave();
+  function doEmote(kind) {
+    worldRef.current?.emote(kind);
+    roomRef.current?.sendEmote(kind);
+    setEmotesOpen(false);
+    track('museum_emote', { kind });
+  }
+
+  // Общее фото: кадр из музея в рамке для сторис
+  async function takePhoto() {
+    const world = worldRef.current;
+    if (!world) return;
+    roomRef.current?.sendEmote('wave'); // чтобы партнёр помахал и у себя
+    const shot = world.snapshot();
+    setFlash(true);
+    setTimeout(() => setFlash(false), 260);
+    track('museum_photo');
+    const blob = await makeStoryCard({ photoUrl: shot, title: t('museum.world.photoTitle'), footer: 'senti.uz', cover: true });
+    if (blob) setPhoto({ blob, url: URL.createObjectURL(blob) });
+  }
+
+  function closePhoto() {
+    if (photo) URL.revokeObjectURL(photo.url);
+    setPhoto(null);
   }
 
   function toggleCamera() {
@@ -586,7 +609,13 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
 
           <div style={{ position: 'absolute', right: 16, bottom: 'calc(28px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" data-testid="wave" aria-label={t('museum.world.wave')} style={pill} onClick={wave}>👋</button>
+              {emotesOpen && [['wave', '👋'], ['heart', '🫶'], ['clap', '👏'], ['dance', '💃']].map(([kind, icon]) => (
+                <button key={kind} type="button" data-testid={`emote-${kind}`} aria-label={t(`museum.world.emotes.${kind}`)} style={{ ...pill, padding: '11px 13px' }} onClick={() => doEmote(kind)}>{icon}</button>
+              ))}
+              <button type="button" data-testid="emotes" aria-label={t('museum.world.emotesLabel')} aria-expanded={emotesOpen} style={pill} onClick={() => setEmotesOpen((o) => !o)}>{emotesOpen ? '×' : '👋'}</button>
+              <button type="button" data-testid="photo" aria-label={t('museum.world.photo')} style={pill} onClick={takePhoto}>📸</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" data-testid="camera" style={pill} onClick={toggleCamera}>
                 {t(cameraMode === 'third' ? 'museum.world.cameraFirst' : 'museum.world.cameraThird')}
               </button>
@@ -655,6 +684,10 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
           style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 16, boxSizing: 'border-box', background: 'rgba(15,5,10,.92)', cursor: 'zoom-out' }}
         >
           <img src={data.photos[viewer].full} alt="" style={{ maxWidth: '100%', minHeight: 0, flex: '0 1 auto', objectFit: 'contain', borderRadius: 4 }} />
+          {[[-1, '‹', 'left'], [1, '›', 'right']].map(([step, sign, edge]) => (
+            <button key={edge} type="button" data-testid={`viewer-${edge}`} aria-label={t(step < 0 ? 'museum.world.prevPhoto' : 'museum.world.nextPhoto')} onClick={(e) => { e.stopPropagation(); setViewer((viewer + step + data.photos.length) % data.photos.length); }} style={{ ...pill, position: 'absolute', top: '50%', [edge]: 8, transform: 'translateY(-50%)', width: 44, padding: 0, fontSize: 24 }}>{sign}</button>
+          ))}
+          <span style={{ position: 'absolute', top: 'calc(14px + env(safe-area-inset-top))', left: '50%', transform: 'translateX(-50%)', color: C.cream, fontFamily: C.ui, fontSize: 13, opacity: 0.75 }}>{viewer + 1} / {data.photos.length}</span>
           {(data.photos[viewer].caption || data.photos[viewer].date) && (
             <p style={{ margin: 0, maxWidth: 520, textAlign: 'center', color: C.cream, fontFamily: C.display, fontStyle: 'italic', fontSize: 22, lineHeight: 1.25 }}>
               {data.photos[viewer].caption}
@@ -664,6 +697,18 @@ export default function MuseumExperience({ data, mode = 'live', slug, onExit, lo
           <button type="button" data-testid="heart" onClick={(e) => { e.stopPropagation(); giveHeart(viewer); }} style={{ ...pill, flexShrink: 0, background: C.rose }}>
             ♥ {hearts[viewer] || t('museum.world.heart')}{liked.has(viewer) ? ' ✓' : ''}
           </button>
+        </div>
+      )}
+
+      {flash && <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: 0.85, pointerEvents: 'none' }} />}
+
+      {photo && (
+        <div data-testid="photo-result" style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 16, boxSizing: 'border-box', background: 'rgba(15,5,10,.94)' }}>
+          <img src={photo.url} alt="" style={{ maxHeight: '72%', maxWidth: '100%', borderRadius: 14 }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" data-testid="photo-share" onClick={() => shareBlob(photo.blob, 'senti-museum-photo.png')} style={{ ...pill, background: C.rose }}>{t('museum.world.photoShare')}</button>
+            <button type="button" onClick={closePhoto} style={pill}>{t('museum.common.close')}</button>
+          </div>
         </div>
       )}
 

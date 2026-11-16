@@ -19,7 +19,7 @@ function supabaseTransport(topic) {
     const list = Object.values(channel.presenceState()).map((v) => v[0]).filter(Boolean);
     handlers.presence?.(list);
   });
-  for (const event of ['pos', 'chat', 'film', 'heart', 'wave']) {
+  for (const event of ['pos', 'chat', 'film', 'heart', 'emote']) {
     channel.on('broadcast', { event }, ({ payload }) => handlers.message?.(event, payload));
   }
   return {
@@ -106,7 +106,7 @@ export function createRoom({ slug, name, avatar, local = false, handlers }) {
     if (event === 'pos') handlers.onPos(p.id, { x: num(p.x), z: num(p.z), yaw: num(p.yaw), sit: Boolean(p.sit) });
     if (event === 'chat' && typeof p.text === 'string') handlers.onChat(p.id, p.text.slice(0, 200));
     if (event === 'film') handlers.onFilm({ playing: Boolean(p.playing), t: num(p.t) });
-    if (event === 'wave') handlers.onWave(p.id);
+    if (event === 'emote' && typeof p.kind === 'string') handlers.onEmote(p.id, p.kind.slice(0, 12));
     if (event === 'heart') handlers.onHeart(Math.trunc(num(p.photo)), Math.trunc(num(p.count)));
   });
 
@@ -125,8 +125,8 @@ export function createRoom({ slug, name, avatar, local = false, handlers }) {
       transport.send('chat', { id, text: clean });
       return true;
     },
-    sendWave() {
-      if (admitted) transport.send('wave', { id });
+    sendEmote(kind) {
+      if (admitted) transport.send('emote', { id, kind });
     },
     sendHeart(photo, count) {
       if (admitted) transport.send('heart', { id, photo, count });

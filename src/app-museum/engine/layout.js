@@ -161,6 +161,18 @@ export function buildLayout(photos, hasVideo) {
     ]);
   }
 
+  // Растения в углах залов: живое пятно и ориентир, где ты находишься
+  const plants = [];
+  for (let i = 0; i < hallCount; i += 1) {
+    const zStart = -vestDepth - i * depth;
+    for (const side of [-1, 1]) {
+      const plant = { x: side * (halfW - 0.5), z: zStart - 0.55 };
+      plants.push(plant);
+      add(plant.x - 0.24, plant.x + 0.24, plant.z - 0.24, plant.z + 0.24);
+      colliders[colliders.length - 1].low = true;
+    }
+  }
+
   // Шесть мест для фото гостей на стенах у входа
   const guestSlots = [-1.5, -3.3, -6].flatMap((z) => [
     { x: -vestHalfW + 0.02, y: 1.75, z, rotY: Math.PI / 2 },
@@ -175,7 +187,44 @@ export function buildLayout(photos, hasVideo) {
     if (i < hallCount - 1) arrows.push({ x: 0, z: z - depth + 2.2 });
   }
 
-  return { hallCount, totalEnd, pictures, screen, colliders, benches, guestSlots, arrows, spawn: { x: 0, z: -2.5, yaw: 0 } }; // камере нужно место позади человека
+  return { hallCount, totalEnd, pictures, screen, colliders, benches, plants, guestSlots, arrows, spawn: { x: 0, z: -2.5, yaw: 0 } }; // камере нужно место позади человека
+}
+
+/**
+ * Маршрут для «нажми, куда идти»: прямая упирается в стены, поэтому ведём
+ * через двери, мимо стены с посвящением и сбоку от скамеек в центре залов.
+ */
+export function planRoute(from, to, hallCount) {
+  const { vestDepth, depth } = HALL;
+  const panelZ = -5.4;
+  const section = (z) => (z > panelZ ? 0 : z > -vestDepth ? 1 : 1 + hallAt(z, hallCount));
+  const a = section(from.z);
+  const b = section(to.z);
+  const points = [];
+  const side = (from.x || to.x) >= 0 ? 1 : -1;
+  const doorZ = (hall) => -vestDepth - (hall - 1) * depth; // дверь, ведущая В зал hall
+  const lane = (hall) => points.push({ x: 1.35, z: doorZ(hall) - depth / 2 });
+  if (a < b) {
+    for (let k = a; k < b; k += 1) {
+      if (k === 0) points.push({ x: side * 2.9, z: panelZ + 0.6 }, { x: side * 2.9, z: panelZ - 0.6 });
+      else {
+        const hall = k; // переход из секции k в k+1 — это дверь в зал k
+        points.push({ x: 0, z: doorZ(hall) + 0.7 }, { x: 0, z: doorZ(hall) - 0.7 });
+        if (k + 1 < b) lane(hall);
+      }
+    }
+  } else {
+    for (let k = a; k > b; k -= 1) {
+      if (k === 1) points.push({ x: side * 2.9, z: panelZ - 0.6 }, { x: side * 2.9, z: panelZ + 0.6 });
+      else {
+        const hall = k - 1;
+        points.push({ x: 0, z: doorZ(hall) - 0.7 }, { x: 0, z: doorZ(hall) + 0.7 });
+        if (k - 1 > b && hall - 1 >= 1) lane(hall - 1);
+      }
+    }
+  }
+  points.push({ x: to.x, z: to.z });
+  return points;
 }
 
 /** Точка перед сиденьем: отсюда человек садится и сюда же встаёт. */

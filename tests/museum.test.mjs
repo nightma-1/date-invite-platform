@@ -3,7 +3,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildLayout, clearCameraDistance, hallAt, resolveCollisions, seatFront, HALL } from '../src/app-museum/engine/layout.js';
+import { buildLayout, clearCameraDistance, hallAt, planRoute, resolveCollisions, seatFront, HALL } from '../src/app-museum/engine/layout.js';
 import { MUSEUM_THEMES, MUSEUM_TIERS, museumExtendPrice, museumPublishPrice, museumTier } from '../src/lib/museumPlans.js';
 
 const photos = (n, aspect = 1.5) => Array.from({ length: n }, (_, i) => ({ aspect: i % 3 ? aspect : 0.75 }));
@@ -74,6 +74,31 @@ test('камера не уходит за стену, а скамейка её �
   const bench = layout.benches[0];
   const free = clearCameraDistance({ x: bench.x, z: bench.z - 2 }, { x: 0, z: 1 }, 2.75, layout.colliders);
   assert.equal(free, 2.75);
+});
+
+test('«нажми, куда идти» доводит от входа до главного фото и обратно', () => {
+  for (const n of [6, 20, 45]) {
+    const layout = buildLayout(photos(n), true);
+    const start = { x: 0.8, z: -2.5 };
+    const hero = layout.pictures.find((p) => p.index === 0);
+    const goal = { x: hero.x + 1.5, z: hero.z + 2.6 };
+    for (const [from, to] of [[start, goal], [goal, start]]) {
+      const pos = { ...from };
+      const points = planRoute(pos, to, layout.hallCount);
+      let steps = 0;
+      while (points.length && steps < 20000) {
+        const t = points[0];
+        const d = Math.hypot(t.x - pos.x, t.z - pos.z);
+        if (d < 0.12) { points.shift(); continue; }
+        pos.x += ((t.x - pos.x) / d) * 0.05;
+        pos.z += ((t.z - pos.z) / d) * 0.05;
+        resolveCollisions(pos, layout.colliders);
+        steps += 1;
+      }
+      assert.equal(points.length, 0, `n=${n}`);
+      assert.ok(Math.hypot(pos.x - to.x, pos.z - to.z) < 0.2, `n=${n}`);
+    }
+  }
 });
 
 test('номер зала считается от входа', () => {

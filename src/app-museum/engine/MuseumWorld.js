@@ -8,8 +8,8 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { HALL, clearCameraDistance, hallAt, resolveCollisions, seatFront } from './layout.js';
-import { createAvatar, createAvatarKit, disposeAvatar, headHeight, poseAvatar } from './Avatar.js';
+import { HALL, clearCameraDistance, hallAt, planRoute, resolveCollisions, seatFront } from './layout.js';
+import { createAvatar, createAvatarKit, disposeAvatar, emote, headHeight, poseAvatar } from './Avatar.js';
 import { themeOf } from './themes.js';
 
 const SPEED = 2.9;
@@ -37,6 +37,48 @@ function shadedBox(w, h, d, x, y, z, hex) {
   }
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   return g.toNonIndexed();
+}
+
+/** Геометрия одного цвета, готовая к слиянию со стенами. */
+function tinted(geometry, hex, x, y, z) {
+  const g = geometry.toNonIndexed();
+  g.translate(x, y, z);
+  const c = new THREE.Color(hex);
+  const colors = new Float32Array(g.attributes.position.count * 3);
+  for (let i = 0; i < colors.length; i += 3) colors.set([c.r, c.g, c.b], i);
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.dispose();
+  return g;
+}
+
+function carpetTexture(base, edge) {
+  return canvasTexture(128, 256, (g, w, h) => {
+    g.fillStyle = base;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = edge;
+    g.fillRect(8, 0, 5, h);
+    g.fillRect(w - 13, 0, 5, h);
+    g.globalAlpha = 0.16;
+    for (let y = 0; y < h; y += 64) {
+      g.beginPath();
+      g.moveTo(w / 2, y + 12);
+      g.lineTo(w / 2 + 20, y + 32);
+      g.lineTo(w / 2, y + 52);
+      g.lineTo(w / 2 - 20, y + 32);
+      g.closePath();
+      g.fill();
+    }
+  }, true);
+}
+
+function edgeShade() {
+  return canvasTexture(64, 8, (g, w, h) => {
+    const r = g.createLinearGradient(0, 0, w, 0);
+    r.addColorStop(0, 'rgba(0,0,0,.42)');
+    r.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = r;
+    g.fillRect(0, 0, w, h);
+  });
 }
 
 function canvasTexture(w, h, draw, repeat) {
@@ -311,6 +353,23 @@ export class MuseumWorld {
         geos.push(shadedBox(0.08, 0.1, depth, side * (halfW - 0.04), height - 0.5, mid, rail));
       }
     }
+    // Золотые наличники дверей
+    for (let i = 0; i < hallCount; i += 1) {
+      const z = -vestDepth - i * depth;
+      for (const side of [-1, 1]) {
+        geos.push(tinted(new THREE.BoxGeometry(0.14, doorTop, wallT + 0.1), rail, side * (doorHalf + 0.07), doorTop / 2, z));
+      }
+      geos.push(tinted(new THREE.BoxGeometry(doorHalf * 2 + 0.28, 0.14, wallT + 0.1), rail, 0, doorTop + 0.07, z));
+    }
+    // Растения в кадках
+    for (const p of this.layout.plants) {
+      geos.push(tinted(new THREE.CylinderGeometry(0.2, 0.15, 0.42, 12), '#b9774f', p.x, 0.21, p.z));
+      geos.push(tinted(new THREE.CylinderGeometry(0.025, 0.03, 0.5, 6), '#5a4030', p.x, 0.6, p.z));
+      const leaves = [[0, 1.02, 0, 0.3], [0.16, 0.86, 0.08, 0.2], [-0.15, 0.9, -0.06, 0.21], [0.02, 1.3, -0.04, 0.2], [-0.05, 0.8, 0.15, 0.17]];
+      leaves.forEach(([dx, y, dz, r], n) => {
+        geos.push(tinted(new THREE.IcosahedronGeometry(r, 1), n % 2 ? '#3f8a5a' : '#2f7350', p.x + dx, y, p.z + dz));
+      });
+    }
     // Стены входа по бокам от двери в первый зал и торцевая стена
     for (const side of [-1, 1]) {
       const part = vestHalfW - doorHalf;
@@ -363,6 +422,7 @@ export class MuseumWorld {
     }
 
     if (this.theme.frieze) this.buildFrieze();
+    this.buildFloorDecor();
     this.buildArrows();
 
     const panel = new THREE.Mesh(
@@ -371,6 +431,60 @@ export class MuseumWorld {
     );
     panel.position.set(0, 1.8, -5.23);
     this.scene.add(panel);
+  }
+
+  /** Ковровая дорожка и тени у стен: зал перестаёт выглядеть пустой коробкой. */
+  buildFloorDecor() {
+    const { halfW, depth, vestDepth } = HALL;
+    const { hallCount, totalEnd } = this.layout;
+    const hallsLength = hallCount * depth;
+    const mid = -vestDepth - hallsLength / 2;
+
+    const carpet = this.track(carpetTexture(this.theme.entrance, this.theme.rail));
+    carpet.repeat.set(1, hallsLength / 4);
+    const runner = new THREE.Mesh(
+      this.track(new THREE.PlaneGeometry(2.5, hallsLength - 1.4)),
+      this.track(new THREE.MeshBasicMaterial({ map: carpet })),
+    );
+    runner.rotation.x = -Math.PI / 2;
+    runner.position.set(0, 0.006, mid + 0.3);
+    this.scene.add(runner);
+
+    const shade = this.track(new THREE.MeshBasicMaterial({ map: this.track(edgeShade()), transparent: true, depthWrite: false }));
+    const strip = this.track(new THREE.PlaneGeometry(1.1, hallsLength));
+    for (const side of [-1, 1]) {
+      const m = new THREE.Mesh(strip, shade);
+      m.rotation.x = -Math.PI / 2;
+      m.rotation.z = side > 0 ? Math.PI : 0;
+      m.position.set(side * (halfW - 0.55), 0.012, mid);
+      this.scene.add(m);
+    }
+    const endStrip = new THREE.Mesh(this.track(new THREE.PlaneGeometry(1.1, halfW * 2)), shade);
+    endStrip.rotation.x = -Math.PI / 2;
+    endStrip.rotation.z = -Math.PI / 2;
+    endStrip.position.set(0, 0.012, totalEnd + 0.7);
+    this.scene.add(endStrip);
+
+    // Мягкая тень под каждой скамейкой
+    const blob = this.track(new THREE.MeshBasicMaterial({ map: this.track(softSpot('rgba(0,0,0,.4)', 'rgba(0,0,0,0)')), transparent: true, depthWrite: false }));
+    const blobGeo = this.track(new THREE.PlaneGeometry(1, 1));
+    for (const b of this.layout.benches) {
+      const m = new THREE.Mesh(blobGeo, blob);
+      m.rotation.x = -Math.PI / 2;
+      m.scale.set(b.alongZ ? 1.5 : 3.4, b.alongZ ? 3.4 : 1.5, 1);
+      m.position.set(b.x, 0.016, b.z);
+      this.scene.add(m);
+    }
+
+    // Кольцо-цель для «нажми, куда идти»
+    this.marker = new THREE.Mesh(
+      this.track(new THREE.RingGeometry(0.2, 0.27, 28)),
+      this.track(new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.85, depthWrite: false })),
+    );
+    this.marker.rotation.x = -Math.PI / 2;
+    this.marker.position.y = 0.03;
+    this.marker.visible = false;
+    this.scene.add(this.marker);
   }
 
   buildArrows() {
@@ -566,7 +680,18 @@ export class MuseumWorld {
       this.buildPlaque(pic, n, plane);
     });
 
-    for (const mesh of [washes, shadows, frames, mats]) {
+    // Латунная лампа над каждой картиной, как в настоящей галерее
+    const lamps = new THREE.InstancedMesh(box, this.track(new THREE.MeshBasicMaterial({ color: '#e7c98a' })), count);
+    pictures.forEach((pic, i) => {
+      q.setFromAxisAngle(up, pic.rotY);
+      n.set(0, 0, 1).applyQuaternion(q);
+      p.set(pic.x, pic.y + pic.h / 2 + (pic.index === 0 ? 0.36 : 0.3), pic.z).addScaledVector(n, 0.16);
+      s.set(Math.min(1.1, pic.w * 0.5), 0.05, 0.1);
+      m.compose(p, q, s);
+      lamps.setMatrixAt(i, m);
+    });
+
+    for (const mesh of [washes, shadows, frames, mats, lamps]) {
       mesh.instanceMatrix.needsUpdate = true;
       mesh.frustumCulled = false;
       this.scene.add(mesh);
@@ -773,13 +898,83 @@ export class MuseumWorld {
     this.raycaster.far = 14;
     const targets = [...this.pictureMeshes, ...this.guestMeshes, ...(this.screen ? [this.screen] : [])];
     const hit = this.raycaster.intersectObjects(targets, false)[0];
-    if (!hit) return;
+    if (!hit) {
+      // Нажатие на пол: идём туда сами, джойстик не обязателен
+      const ray = this.raycaster.ray;
+      if (ray.direction.y < -0.05) {
+        const k = -ray.origin.y / ray.direction.y;
+        if (k < 26) this.walkTo(ray.origin.x + ray.direction.x * k, ray.origin.z + ray.direction.z * k);
+      }
+      return;
+    }
+    const far = hit.distance > (this.cameraMode === 'third' ? 6.6 : 4.6);
+    if (far && hit.object.userData.photoIndex !== undefined) {
+      // Далёкое фото: сначала подходим, смотреть будем вблизи
+      const pic = this.layout.pictures.find((x) => x.index === hit.object.userData.photoIndex);
+      this.walkTo(pic.x + Math.sin(pic.rotY) * 2.5, pic.z + Math.cos(pic.rotY) * 2.5, pic.rotY);
+      return;
+    }
     if (hit.object.userData.isScreen) this.toggleFilm();
     else if (hit.object.userData.guestIndex !== undefined) this.cb.onGuestTap?.(hit.object.userData.guestIndex);
     else this.cb.onPhotoTap?.(hit.object.userData.photoIndex);
   }
 
+  walkTo(x, z, faceYaw = null) {
+    if (this.seatAnim) return;
+    const goal = { x, z };
+    resolveCollisions(goal, this.layout.colliders);
+    if (this.seat) this.stand();
+    this.followId = null;
+    this.walk = { points: planRoute(this.pos, goal, this.layout.hallCount), faceYaw, stuck: 0, detoured: false };
+    this.marker.position.set(goal.x, 0.03, goal.z);
+    this.marker.visible = true;
+  }
+
+  cancelWalk() {
+    this.walk = null;
+    if (this.marker) this.marker.visible = false;
+  }
+
+  stepWalk(dt) {
+    const w = this.walk;
+    const target = w.points[0];
+    const dx = target.x - this.pos.x;
+    const dz = target.z - this.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.12) {
+      w.points.shift();
+      w.stuck = 0;
+      w.detoured = false;
+      if (!w.points.length) {
+        if (w.faceYaw !== null) this.yawGoal = w.faceYaw;
+        this.cancelWalk();
+      }
+      return;
+    }
+    const step = Math.min(SPEED * dt, d);
+    const before = { x: this.pos.x, z: this.pos.z };
+    this.pos.x += (dx / d) * step;
+    this.pos.z += (dz / d) * step;
+    resolveCollisions(this.pos, this.layout.colliders);
+    const progress = d - Math.hypot(target.x - this.pos.x, target.z - this.pos.z);
+    w.stuck = progress < step * 0.3 ? w.stuck + dt : 0;
+    if (w.stuck > 0.3) {
+      // Упёрлись (обычно в скамейку): один раз обходим сбоку, иначе останавливаемся
+      if (w.detoured) { this.cancelWalk(); return; }
+      const sideX = -dz / d;
+      const sideZ = dx / d;
+      const sign = Math.abs(before.x + sideX * 1.5) < HALL.halfW - 0.7 ? 1 : -1;
+      w.points.unshift({ x: before.x + sideX * 1.5 * sign, z: before.z + sideZ * 1.5 * sign });
+      w.detoured = true;
+      w.stuck = 0;
+    }
+    // Камера мягко доворачивается по ходу движения
+    const heading = Math.atan2(-dx, -dz);
+    this.yaw += Math.atan2(Math.sin(heading - this.yaw), Math.cos(heading - this.yaw)) * Math.min(1, dt * 1.6);
+  }
+
   addLook(dx, dy) {
+    this.yawGoal = null;
     this.yaw -= dx * LOOK;
     this.pitch = THREE.MathUtils.clamp(this.pitch - dy * LOOK, -1.1, 1.1);
   }
@@ -787,12 +982,13 @@ export class MuseumWorld {
   setMove(x, y) {
     this.move.x = x;
     this.move.y = y;
-    if (x || y) this.followId = null;
+    if (x || y) { this.followId = null; this.cancelWalk(); }
     if ((x || y) && this.seat) this.stand();
   }
 
   /** «Следуй за мной»: идём за выбранным человеком, пока сами не тронем управление. */
   follow(id) {
+    this.cancelWalk();
     this.followId = id;
     if (this.seat) this.stand();
     this.emitHud();
@@ -837,6 +1033,7 @@ export class MuseumWorld {
     const seat = this.nearestSeat();
     if (!seat) return;
     this.followId = null;
+    this.cancelWalk();
     this.seatAnim = { kind: 'approach', seat, front: seatFront(seat), t: 0 };
     this.emitHud();
   }
@@ -898,13 +1095,76 @@ export class MuseumWorld {
     }
   }
 
-  wave() {
-    this.me.waveTime = 2;
+  emote(kind) {
+    emote(this.me, kind);
+    if (kind === 'heart') this.burstAt(this.pos.x, 1.9, this.pos.z);
   }
 
-  peerWave(id) {
+  peerEmote(id, kind) {
     const p = this.peers.get(id);
-    if (p) p.avatar.waveTime = 2;
+    if (!p) return;
+    emote(p.avatar, kind);
+    if (kind === 'heart') this.burstAt(p.group.position.x, 1.9, p.group.position.z);
+  }
+
+  burstAt(x, y, z) {
+    for (let i = 0; i < 5; i += 1) {
+      const s = labelSprite('♥', { bg: 'rgba(0,0,0,0)', color: '#ff6f96', width: 0.42, size: 90 });
+      s.position.set(x + (Math.random() - 0.5) * 0.5, y, z + (Math.random() - 0.5) * 0.5);
+      this.scene.add(s);
+      this.bursts.push({ sprite: s, born: performance.now() + i * 110 });
+    }
+  }
+
+  /**
+   * Общее фото: камера встаёт напротив, за спиной оказывается ближайшая картина,
+   * все, кто рядом, поворачиваются и машут. Возвращает кадр как картинку.
+   */
+  snapshot() {
+    const near = [...this.peers.values()].filter((p) => p.seen && Math.hypot(p.group.position.x - this.pos.x, p.group.position.z - this.pos.z) < 3.2);
+    const cx = (this.pos.x + near.reduce((sum, p) => sum + p.group.position.x, 0)) / (near.length + 1);
+    const cz = (this.pos.z + near.reduce((sum, p) => sum + p.group.position.z, 0)) / (near.length + 1);
+    let dir = { x: -Math.sin(this.bodyYaw), z: -Math.cos(this.bodyYaw) };
+    let best = 4.6;
+    for (const pic of this.layout.pictures) {
+      const d = Math.hypot(pic.x - cx, pic.z - cz);
+      if (d < best && d > 0.4) { best = d; dir = { x: (cx - pic.x) / d, z: (cz - pic.z) / d }; }
+    }
+    const dist = Math.max(1.5, clearCameraDistance({ x: cx, z: cz }, dir, 3.1 + near.length * 0.35, this.layout.colliders));
+    const camX = cx + dir.x * dist;
+    const camZ = cz + dir.z * dist;
+    const faceCam = (x, z) => Math.atan2(-(camX - x), -(camZ - z));
+
+    const saved = { pos: this.camera.position.clone(), rot: this.camera.rotation.clone(), fov: this.camera.fov, visible: this.me.root.visible, marker: this.marker.visible };
+    this.bodyYaw = faceCam(this.pos.x, this.pos.z);
+    this.me.root.rotation.y = this.bodyYaw;
+    this.me.root.visible = true;
+    this.marker.visible = false;
+    if (!this.seat) emote(this.me, 'wave');
+    this.me.emoteMix = this.seat ? 0 : 1;
+    poseAvatar(this.me, 0, { moving: 0, sit: this.seat ? 1 : 0, look: 0 });
+    for (const p of near) {
+      if (!p.sit) p.group.rotation.y = faceCam(p.group.position.x, p.group.position.z);
+      emote(p.avatar, 'wave');
+      p.avatar.emoteMix = 1;
+      poseAvatar(p.avatar, 0, { moving: 0, sit: p.sit ? 1 : 0 });
+      p.tag.visible = false;
+    }
+    this.camera.fov = 52;
+    this.camera.updateProjectionMatrix();
+    this.camera.position.set(camX, 1.42, camZ);
+    this.camera.lookAt(cx, 1.16, cz);
+    this.renderer.render(this.scene, this.camera);
+    const url = this.canvas.toDataURL('image/jpeg', 0.92);
+
+    this.camera.fov = saved.fov;
+    this.camera.updateProjectionMatrix();
+    this.camera.position.copy(saved.pos);
+    this.camera.rotation.copy(saved.rot);
+    this.me.root.visible = saved.visible;
+    this.marker.visible = saved.marker;
+    for (const p of near) p.tag.visible = true;
+    return url;
   }
 
   toggleCamera() {
@@ -919,6 +1179,7 @@ export class MuseumWorld {
       nearHero: Math.hypot(hero.x - this.pos.x, hero.z - this.pos.z) < 7.5,
       nearEntrance: this.pos.z > -HALL.vestDepth,
       hall: hallAt(this.pos.z, this.layout.hallCount),
+      walking: Boolean(this.walk),
       following: this.followId || null,
       canSit: !this.seat && !this.seatAnim && Boolean(this.nearestSeat()),
       sitting: Boolean(this.seat),
@@ -1001,7 +1262,14 @@ export class MuseumWorld {
     if (k.has('KeyA') || k.has('ArrowLeft')) mx -= 1;
     if (k.has('KeyD') || k.has('ArrowRight')) mx += 1;
     if ((mx || my) && this.followId) this.followId = null;
+    if ((mx || my) && this.walk) this.cancelWalk();
+    if (this.yawGoal !== null && this.yawGoal !== undefined) {
+      const diff = Math.atan2(Math.sin(this.yawGoal - this.yaw), Math.cos(this.yawGoal - this.yaw));
+      this.yaw += diff * Math.min(1, dt * 5);
+      if (Math.abs(diff) < 0.02) this.yawGoal = null;
+    }
     if (this.seatAnim) { this.stepSeat(dt); return; }
+    if (this.walk) { this.stepWalk(dt); return; }
     if ((mx || my) && this.seat) { this.stand(); return; }
     if (this.followId) { this.stepFollow(dt); return; }
     if (this.seat || (!mx && !my)) return;
@@ -1054,7 +1322,9 @@ export class MuseumWorld {
     const a = this.me;
     a.root.position.set(this.pos.x, 0, this.pos.z);
     a.root.rotation.y = this.bodyYaw;
-    poseAvatar(a, dt, { moving: walking ? 1 : 0, sit: lowered });
+    const look = Math.atan2(Math.sin(this.yaw - this.bodyYaw), Math.cos(this.yaw - this.bodyYaw));
+    poseAvatar(a, dt, { moving: walking ? 1 : 0, sit: lowered, look: Math.abs(look) > 2.2 ? 0 : look });
+    if (this.marker.visible) this.marker.scale.setScalar(1 + Math.sin(performance.now() / 180) * 0.12);
   }
 
   updateCamera(dt) {

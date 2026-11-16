@@ -28,25 +28,70 @@ function paint(canvas, [sky, mid, land], i, label) {
   const w = canvas.width;
   const h = canvas.height;
   const g = canvas.getContext('2d');
+  let seed = 17 + i * 31;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const grad = g.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, sky);
   grad.addColorStop(1, mid);
   g.fillStyle = grad;
   g.fillRect(0, 0, w, h);
-  g.fillStyle = 'rgba(255,255,255,.75)';
-  g.beginPath();
-  g.arc(w * (0.2 + (i % 5) * 0.14), h * 0.3, h * 0.11, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = land;
-  g.beginPath();
-  g.moveTo(0, h);
-  for (let x = 0; x <= w; x += w / 12) g.lineTo(x, h * (0.68 + 0.12 * Math.sin(x / w * 7 + i * 1.7)));
-  g.lineTo(w, h);
-  g.fill();
-  g.fillStyle = 'rgba(255,255,255,.85)';
-  g.font = `600 ${Math.round(h * 0.06)}px "Cormorant Garamond", serif`;
+
+  // Солнце с мягким свечением
+  const sx = w * (0.22 + rnd() * 0.56);
+  const sy = h * (0.3 + rnd() * 0.14);
+  const glow = g.createRadialGradient(sx, sy, 0, sx, sy, h * 0.42);
+  glow.addColorStop(0, 'rgba(255,250,235,.95)');
+  glow.addColorStop(0.16, 'rgba(255,244,214,.75)');
+  glow.addColorStop(1, 'rgba(255,244,214,0)');
+  g.fillStyle = glow;
+  g.fillRect(0, 0, w, h);
+
+  // Облака
+  g.fillStyle = 'rgba(255,255,255,.5)';
+  for (let c = 0; c < 4; c += 1) {
+    const cx = rnd() * w;
+    const cy = h * (0.1 + rnd() * 0.3);
+    for (let k = 0; k < 4; k += 1) {
+      g.beginPath();
+      g.ellipse(cx + k * w * 0.035, cy + (k % 2) * h * 0.01, w * 0.06, h * 0.022, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+
+  // Три гряды холмов: дальние светлее, ближние темнее
+  [0.55, 0.78, 1].forEach((depthTone, layer) => {
+    g.globalAlpha = 0.5 + layer * 0.25;
+    g.fillStyle = layer < 2 ? mid : land;
+    if (layer === 1) g.fillStyle = land;
+    g.beginPath();
+    g.moveTo(0, h);
+    const base = 0.56 + layer * 0.1;
+    const a = rnd() * 6;
+    for (let x = 0; x <= w; x += w / 40) {
+      g.lineTo(x, h * (base + 0.07 * Math.sin((x / w) * (4 + layer * 2) + a) + 0.03 * Math.sin((x / w) * 13 + a * 2)) * depthTone ** 0.08);
+    }
+    g.lineTo(w, h);
+    g.fill();
+  });
+  g.globalAlpha = 1;
+
+  // Птицы
+  g.strokeStyle = 'rgba(40,20,30,.55)';
+  g.lineWidth = Math.max(2, w / 400);
+  for (let b = 0; b < 3; b += 1) {
+    const bx = w * (0.15 + rnd() * 0.7);
+    const by = h * (0.14 + rnd() * 0.2);
+    const r = w * 0.016;
+    g.beginPath();
+    g.arc(bx - r, by, r, Math.PI * 1.15, Math.PI * 1.9);
+    g.arc(bx + r, by, r, Math.PI * 1.1, Math.PI * 1.85);
+    g.stroke();
+  }
+
+  g.fillStyle = 'rgba(255,255,255,.9)';
+  g.font = `600 ${Math.round(h * 0.05)}px "Cormorant Garamond", serif`;
   g.textAlign = 'center';
-  g.fillText(label, w / 2, h * 0.92);
+  g.fillText(label, w / 2, h * 0.94);
 }
 
 function samplePhotos(count) {
