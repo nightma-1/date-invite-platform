@@ -61,9 +61,9 @@ export default function MuseumStatsSection() {
   }, [days]);
 
   return (
-    <section style={{ marginTop: 28, padding: 18, borderRadius: 16, background: '#fff', border: '1px solid #f0dfe4', fontFamily: 'Manrope, sans-serif', color: '#2a1f2b' }}>
+    <section style={{ padding: 18, borderRadius: 12, background: '#fff', border: '1px solid #E7E5E4', fontFamily: 'Manrope, sans-serif', color: '#1C1917' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 17 }}>Наш музей</h2>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Наш музей</h2>
         <select aria-label="Период" value={days} onChange={(e) => setDays(Number(e.target.value))} style={{ padding: 6, borderRadius: 8 }}>
           <option value={7}>7 дней</option>
           <option value={30}>30 дней</option>
