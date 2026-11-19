@@ -12,8 +12,10 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
   // Заголовок обращён к получателю ("ты сказала") — род от пола получателя.
   // Текст написан от лица отправителя ("я была готова") — предполагаем
   // гетеросексуальную пару, поэтому род отправителя обратный полу получателя.
-  const defaultTitle = recipientGender === 'male' ? t('screens.reactionTitleMale') : t('screens.reactionTitleFemale');
-  const defaultText = recipientGender === 'male' ? t('screens.reactionTextToMale') : t('screens.reactionTextToFemale');
+  // Пол больше не спрашиваем — у новых приглашений он null, тексты без рода.
+  const g = recipientGender === 'male' ? 'Male' : recipientGender === 'female' ? 'Female' : null;
+  const defaultTitle = g ? t(`screens.reactionTitle${g}`) : t('screens.reactionTitleNeutral');
+  const defaultText = g ? t(`screens.reactionTextTo${g}`) : t('screens.reactionTextNeutral');
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}

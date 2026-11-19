@@ -191,6 +191,28 @@ function escapeHtml(s) {
   return String(s || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
+// На языке самого приглашения: каким человек пользовался в конструкторе,
+// таким и пишем напоминание (uz — на «Siz», как в интерфейсе).
+function formatDraftReminder(invitation, lang) {
+  const name = `<b>${escapeHtml(invitation.recipient_name || '')}</b>`;
+  if (lang === 'uz') {
+    return [
+      `💌 ${name} uchun taklifnoma deyarli tayyor — to'lovni amalga oshirsangiz, havolani yuborishingiz mumkin.\n\nU kabinetingizda saqlangan, qaytadan hech narsa qilish shart emas.`,
+      "To'lash va yuborish",
+    ];
+  }
+  if (lang === 'en') {
+    return [
+      `💌 Your invitation for ${name} is almost ready — just pay and you can send the link.\n\nIt's saved in your dashboard, no need to start over.`,
+      'Pay and send',
+    ];
+  }
+  return [
+    `💌 Приглашение для ${name} почти готово — осталось оплатить, и можно отправлять ссылку.\n\nОно сохранено в кабинете, заново ничего делать не нужно.`,
+    'Оплатить и отправить',
+  ];
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
@@ -224,7 +246,7 @@ export default async function handler(req, res) {
 
   const { data: invitation, error: invError } = await supabaseAdmin
     .from('invitations')
-    .select('id, slug, kind, recipient_name, recipient_gender, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
+    .select('id, slug, kind, status, recipient_name, recipient_gender, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
     .eq('id', invitationId)
     .maybeSingle();
 
@@ -238,6 +260,15 @@ export default async function handler(req, res) {
   if (!chatId) {
     // Автор не привязал Telegram — тихо выходим, это нормальное состояние
     return res.status(200).json({ ok: false, reason: 'no telegram linked' });
+  }
+
+  // Напоминание о неоплаченном черновике (pg_cron → send_draft_reminders).
+  // К моменту отправки человек мог уже оплатить — тогда молчим.
+  if (event === 'draft_reminder') {
+    if (invitation.status !== 'draft') return res.status(200).json({ ok: false, reason: 'already paid' });
+    const lang = invitation.invitation_steps?.find((s) => s.step_type === 'question')?.configuration_json?.lang;
+    const [text, buttonText] = formatDraftReminder(invitation, lang);
+    return res.status(200).json(await sendMessage(chatId, text, { text: buttonText, url: appUrl('/dashboard') }));
   }
 
   // Кнопка ведёт прямо на ответ в кабинете — повод вернуться на сайт.

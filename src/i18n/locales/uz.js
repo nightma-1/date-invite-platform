@@ -123,6 +123,7 @@ export default {
       reaction: 'tasdiqlash\nekranini sozlang',
       date: 'sana va vaqt\nekranini sozlang',
       choice_place: "joy va ovqat tanlash\nekranini sozlang",
+      style: 'bezakni\nsozlang',
       final: "yakuniy\nekran",
     },
     stepEditingComingSoon: "Bosqich — tahrirlash tez orada qo'shiladi",
@@ -141,6 +142,7 @@ export default {
     editLockedTitle: 'Bu taklifnomani endi o‘zgartirib bo‘lmaydi',
     editLockedText: 'Yuborilganidan keyin 3 kun ichida tahrirlash mumkin. Havola esa muddati tugaguncha ishlashda davom etadi.',
     nameRequired: 'Taklif qilayotgan kishingizning ismini yozing — u taklifnomada ham, havola ko‘rinishida ham chiqadi',
+    networkError: "Internet aloqasi uzildi. Qayta urinib ko'rdik, lekin bo'lmadi — tarmoqni tekshiring va yana «To'lash»ni bosing, taklifnoma yo'qolmaydi.",
     publishGenericError: "Taklifnomani saqlab bo'lmadi",
     choosePaymentTitle: "Qanday to'lamoqchisiz?",
     payWithClick: "💳 CLICK orqali to'lash",
@@ -211,6 +213,8 @@ export default {
     questionDefault: 'Men bilan uchrashuvga borasanmi?',
     letterForYou: 'Senga xat 💌',
     noButtonAria: '«Yo‘q» tugmasi — u qochib ketadi',
+    reactionTitleNeutral: 'Voy… HA dedingmi?! 😱',
+    reactionTextNeutral: 'Juda xursandman! Endi uchrashuvimizga tayyorlanishga sabab bor ❤️',
     reactionTitleMale: 'Voy… HA dedingmi?! 😱',
     reactionTitleFemale: 'Voy… HA dedingmi?! 😱',
     reactionTextToMale: 'Juda xursandman! Endi uchrashuvimizga tayyorlanishga sabab bor ❤️',
@@ -255,15 +259,23 @@ export default {
   questionScreen: {
     yesDefault: "Ha, albatta ❤️",
     noPhrases: ["Yo'q", "Ishonchingiz komilmi?", "Rostdanmi?", "O'ylab ko'rasizmi?", 'Iltimoooos', "Yana bir marta", "Yo'qqqq 😭", "Tutolmaysan!"],
+    saidYesNeutral: 'Javob — HA!',
     saidYesMale: "U HA dedi!",
     saidYesFemale: "U HA dedi!",
     continuing: "Davom etamiz…",
   },
 
   steps: {
+
+    style: {
+
+      hint: "Oxirgi qadam: ranglar va karta shaklini tanlang. Hech narsani o'zgartirmasangiz ham bo'ladi — standart ko'rinish ham chiroyli.",
+
+    },
     question: {
       imageTitle: 'Ekrandagi rasm',
       cardShapeTitle: 'Karta shakli',
+      editButtons: "«Ha» va «Yo'q» tugmalari matnini o'zgartirish",
       cardShapeHint: "Shakl taklifnomaning barcha ekranlariga qo'llaniladi — faqat shu bittasiga emas.",
       textTitle: 'Taklifnoma matni',
       recipientName: "Qabul qiluvchining ismi",

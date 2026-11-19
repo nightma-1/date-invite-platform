@@ -320,7 +320,7 @@ export default function QuestionScreen({
                 🥰
               </motion.div>
               <h1 style={{ fontFamily: tokens.fontDisplay, color: tokens.ink, fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
-                {recipientGender === 'male' ? t('questionScreen.saidYesMale') : t('questionScreen.saidYesFemale')}
+                {recipientGender === 'male' ? t('questionScreen.saidYesMale') : recipientGender === 'female' ? t('questionScreen.saidYesFemale') : t('questionScreen.saidYesNeutral')}
               </h1>
               <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 14, opacity: 0.8 }}>
                 {t('questionScreen.continuing')}
