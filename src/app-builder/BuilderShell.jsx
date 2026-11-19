@@ -441,10 +441,8 @@ export default function BuilderShell() {
     setShowPaymentChoice(false);
     setPublishError(null);
     track('payment_method_choose', { method });
-    // Регистрация больше не стоит перед оплатой: если человек не вошёл,
-    // заводим ему гостевой аккаунт (см. src/lib/guestAccount.js), а войти и
-    // «сохранить доступ» предлагаем уже после оплаты. Экран входа остаётся
-    // запасным вариантом, если гостевой вход выключен в Supabase.
+    // Не вошёл — экран входа. Оплата без регистрации (гостевой аккаунт)
+    // готова, но выключена: см. GUEST_CHECKOUT_ENABLED в src/lib/guestAccount.js.
     setPublishing(true);
     const session = await ensureGuestSession();
     setPublishing(false);

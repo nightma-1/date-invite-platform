@@ -22,6 +22,13 @@
 import { supabase } from './supabaseClient.js';
 import { track } from './analytics.js';
 
+// Выключено по решению владельца (19.11.2026): регистрация остаётся перед
+// оплатой. Чтобы включить оплату без регистрации, поставить true и включить
+// «Allow anonymous sign-ins» в Supabase (Authentication → Sign In / Providers,
+// не забыть Save). Остальной код (перенос гостя, карточка «Сохранить
+// доступ») без гостей просто ничего не делает.
+export const GUEST_CHECKOUT_ENABLED = false;
+
 const CLAIM_KEY = 'senti_guest_claim';
 // Токен гостя живёт час — дольше ждать возврата из Telegram нет смысла.
 const CLAIM_TTL_MS = 55 * 60 * 1000;
@@ -37,6 +44,7 @@ export function isGuest(session) {
 export async function ensureGuestSession() {
   const { data } = await supabase.auth.getSession();
   if (data.session) return data.session;
+  if (!GUEST_CHECKOUT_ENABLED) return null;
   try {
     const { data: anon, error } = await supabase.auth.signInAnonymously();
     if (error || !anon?.session) {
