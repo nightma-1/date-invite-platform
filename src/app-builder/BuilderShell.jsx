@@ -11,10 +11,11 @@ import StepQuestion from './steps/StepQuestion.jsx';
 import StepReaction from './steps/StepReaction.jsx';
 import StepDate from './steps/StepDate.jsx';
 import StepChoicePlaceAndFood from './steps/StepChoicePlaceAndFood.jsx';
+import StepStyle from './steps/StepStyle.jsx';
 import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
 import { ensureGuestSession } from '../lib/guestAccount.js';
-import { publishDraft } from './publishDraft.js';
+import { publishDraft, withRetry, isNetworkError } from './publishDraft.js';
 import { buildPreviewInvitation } from './previewInvitation.js';
 import PreviewOverlay from './PreviewOverlay.jsx';
 import { updateInvitationDraft } from './updateInvitation.js';
@@ -31,18 +32,16 @@ import DoubleChoiceScreen from '../components/screens/DoubleChoiceScreen.jsx';
 import FinalScreen from '../components/screens/FinalScreen.jsx';
 import { inviteShareUrl, isPlaceholderName, normalizeName } from '../lib/shareLink.js';
 
+const STYLE_STEP = { step_type: 'style', configuration_json: {} };
+
 const STEP_COMPONENTS = {
   question: StepQuestion,
   reaction: StepReaction,
   date: StepDate,
   choice_place: StepChoicePlaceAndFood,
   final: StepFinal,
+  style: StepStyle,
 };
-
-const GENDER_OPTIONS = [
-  { value: 'female', emoji: '👩' },
-  { value: 'male', emoji: '👨' },
-];
 
 export default function BuilderShell() {
   const { t } = useTranslation();
@@ -53,7 +52,12 @@ export default function BuilderShell() {
   // choice_food больше не отдельная страница конструктора — она редактируется
   // вместе с choice_place на одной странице (StepChoicePlaceAndFood), как и
   // видит получатель на одном экране (DoubleChoiceScreen).
-  const orderedStepsForWizard = orderedSteps.filter((s) => s.step_type !== 'choice_food');
+  // «Оформление» (настроение + форма карточки) — не экран для получателя и
+  // не строка в invitation_steps, а последняя страница мастера (StepStyle).
+  const orderedStepsForWizard = [
+    ...orderedSteps.filter((s) => s.step_type !== 'choice_food'),
+    STYLE_STEP,
+  ];
   const activeStep = orderedStepsForWizard[state.activeStepIndex];
   const StepComponent = STEP_COMPONENTS[activeStep?.step_type];
   const isLastStep = state.activeStepIndex === orderedStepsForWizard.length - 1;
@@ -64,8 +68,9 @@ export default function BuilderShell() {
   function renderActiveStepPreview() {
     if (!activeStep) return null;
     switch (activeStep.step_type) {
+      case 'style':
       case 'question': {
-        const c = activeStep.configuration_json;
+        const c = state.steps.find((s) => s.step_type === 'question').configuration_json;
         return (
           <QuestionScreen
             recipientName={c.recipientName || t('steps.question.previewDefaultRecipient')}
@@ -166,10 +171,10 @@ export default function BuilderShell() {
 
   // По этим событиям видно, на каком шаге люди бросают конструктор
   useEffect(() => {
-    if (state.loading || !state.recipientGender || !activeStep) return;
+    if (state.loading || !activeStep) return;
     track('builder_step', { index: state.activeStepIndex, step: activeStep.step_type });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.activeStepIndex, state.loading, state.recipientGender]);
+  }, [state.activeStepIndex, state.loading]);
 
   // Возврат после входа через Telegram. Перед уходом на сайт
   // провайдера AuthGate запоминает, что человек собирался сделать, — здесь
@@ -276,112 +281,15 @@ export default function BuilderShell() {
     );
   }
 
-  // Gender selection screen
-  if (!state.recipientGender) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-        fontFamily: T.font,
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {/* Decorative blobs — several sizes/positions for depth, not just two circles */}
-        <div style={{ position: 'absolute', top: -60, left: -60, width: 220, height: 220, borderRadius: '50%', background: T.pinkMid, opacity: 0.55, filter: 'blur(2px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -50, right: -50, width: 200, height: 200, borderRadius: '50%', background: T.pinkMid, opacity: 0.5, filter: 'blur(2px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', top: '18%', right: '8%', width: 46, height: 46, borderRadius: '50%', background: T.pinkBorder, opacity: 0.7, pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '22%', left: '10%', width: 30, height: 30, borderRadius: '50%', background: T.pink, opacity: 0.18, pointerEvents: 'none' }} />
-        <motion.span
-          initial={{ y: 0 }} animate={{ y: [0, -10, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ position: 'absolute', top: '12%', left: '14%', fontSize: 22, opacity: 0.5, pointerEvents: 'none' }}
-        >💗</motion.span>
-        <motion.span
-          initial={{ y: 0 }} animate={{ y: [0, 12, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-          style={{ position: 'absolute', bottom: '16%', right: '12%', fontSize: 20, opacity: 0.45, pointerEvents: 'none' }}
-        >✨</motion.span>
-
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          style={{ maxWidth: 380, width: '100%', textAlign: 'center', position: 'relative', zIndex: 1 }}
-        >
-          {/* Language switcher */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-            <LanguageSwitcher />
-          </div>
-
-          {/* Logo */}
-          <img src="/logo.png" alt="Senti" style={{ height: 40, width: 'auto', margin: '0 auto 18px', display: 'block' }} />
-
-          <h1 style={{
-            fontFamily: T.font,
-            fontWeight: 700,
-            fontSize: 30,
-            color: T.darkPurple,
-            textAlign: 'center',
-            lineHeight: 1.3,
-            marginBottom: 10,
-          }}>
-            {t('builder.genderTitle')}
-          </h1>
-          <p style={{
-            fontFamily: T.font,
-            fontSize: 14,
-            color: T.muted,
-            marginBottom: 32,
-            lineHeight: 1.5,
-          }}>
-            {t('builder.genderSubtitle')}
-          </p>
-
-          <div style={{ display: 'flex', gap: 14 }}>
-            {GENDER_OPTIONS.map((g) => (
-              <motion.button
-                key={g.value}
-                type="button"
-                whileHover={{ y: -3, borderColor: T.pink }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  track('builder_gender', { gender: g.value });
-                  dispatch({ type: 'SET_GENDER', gender: g.value });
-                }}
-                style={{
-                  flex: 1,
-                  background: 'white',
-                  borderRadius: 24,
-                  padding: '30px 18px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 12,
-                  cursor: 'pointer',
-                  border: '1.5px solid #f0dbe2',
-                  boxShadow: '0 10px 30px rgba(248, 85, 137, 0.10)',
-                }}
-              >
-                <div style={{
-                  width: 68, height: 68, borderRadius: '50%',
-                  background: T.pinkLight,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 36,
-                }}>
-                  {g.emoji}
-                </div>
-                <span style={{ fontFamily: T.font, fontWeight: 600, fontSize: 16, color: T.dark }}>
-                  {t(`builder.gender${g.value === 'male' ? 'Male' : 'Female'}`)}
-                </span>
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-    );
+  // Черновик, уже сохранённый из этого конструктора перед оплатой
+  function savedDraftKey() {
+    return `senti:saved-draft:${state.draftId}`;
+  }
+  function readSavedDraft() {
+    try { return JSON.parse(window.localStorage.getItem(savedDraftKey()) || 'null'); } catch { return null; }
+  }
+  function rememberSavedDraft(value) {
+    try { window.localStorage.setItem(savedDraftKey(), JSON.stringify(value)); } catch { /* не критично */ }
   }
 
   function resumeKey() {
@@ -467,16 +375,24 @@ export default function BuilderShell() {
       // затем уходим на оплату Click. Сама публикация (status: 'published')
       // происходит в /api/click/webhook.js после реального списания —
       // отсюда мы просто редиректим на страницу оплаты и ничего не ждём.
-      const { invitationId, slug } = await publishDraft(state, userId);
-      track('draft_created', { template: state.templateId, shape: state.cardShape || 'classic' });
+      // Если прошлая попытка оплаты уже сохранила черновик (а дальше оборвалась
+      // связь или человек вернулся с Click), перезаписываем его, а не создаём ещё один.
+      const reuse = readSavedDraft();
+      const { invitationId, slug } = await publishDraft(state, userId, reuse);
+      rememberSavedDraft({ invitationId, slug });
+      if (reuse?.invitationId !== invitationId) {
+        track('draft_created', { template: state.templateId, shape: state.cardShape || 'classic' });
+      }
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
-      const res = await fetch('/api/click/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ invitationId, method }),
+      const { res, data } = await withRetry(async () => {
+        const r = await fetch('/api/click/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify({ invitationId, method }),
+        });
+        return { res: r, data: await r.json().catch(() => ({})) };
       });
-      const data = await res.json();
       // Владелец сервиса публикует без оплаты: сервер уже опубликовал
       // приглашение, показываем ссылку сразу, без перехода на Click.
       if (res.ok && data.published) {
@@ -492,8 +408,9 @@ export default function BuilderShell() {
       await trackBeforeLeaving('payment_redirect', { method });
       window.location.href = data.paymentUrl;
     } catch (err) {
-      track('publish_error', { message: String(err.message || '').slice(0, 120) });
-      setPublishError(err.message || t('builder.publishGenericError'));
+      const network = isNetworkError(err);
+      track('publish_error', { message: String(err.message || '').slice(0, 120), network });
+      setPublishError(network ? t('builder.networkError') : (err.message || t('builder.publishGenericError')));
     } finally {
       setPublishing(false);
     }

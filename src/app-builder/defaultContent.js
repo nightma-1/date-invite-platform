@@ -18,17 +18,18 @@ export function normalizeLang(lang) {
   return INVITE_LANGS.includes(short) ? short : 'ru';
 }
 
-// m/f — род получателя ('recipient') или отправителя ('sender', см. GENDER_DIRECTION)
+// n — без рода (по умолчанию: пол получателя больше не спрашиваем).
+// m/f — только для старых приглашений, где пол был выбран: род получателя ('recipient') или отправителя ('sender', см. GENDER_DIRECTION)
 const TEXTS = {
   ru: {
     question: { questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет' },
     reaction: {
-      title: { m: 'Подожди, ты действительно сказал да?', f: 'Подожди, ты действительно сказала да?' },
-      text: { m: 'Я был готов что скажешь «нет» ахах', f: 'Я была готова что скажешь «нет» ахах' },
+      title: { n: 'Подожди, это правда «да»?', m: 'Подожди, ты действительно сказал да?', f: 'Подожди, ты действительно сказала да?' },
+      text: { n: 'Честно, это лучший ответ, на который можно было надеяться ахах', m: 'Я был готов что скажешь «нет» ахах', f: 'Я была готова что скажешь «нет» ахах' },
       confirmText: 'Да Да ДА!',
     },
     date: {
-      title: { m: 'И так... Когда ты свободен?', f: 'И так... Когда ты свободна?' },
+      title: { n: 'Итак... когда тебе удобно?', m: 'И так... Когда ты свободен?', f: 'И так... Когда ты свободна?' },
       buttonText: 'Выбери дату и время 💌',
     },
     choice_place: {
@@ -100,16 +101,14 @@ const PLAIN_FIELDS = {
 
 function genderKey(stepType, field, recipientGender) {
   const direction = GENDER_DIRECTION[`${stepType}.${field}`] || 'recipient';
-  if (recipientGender !== 'male' && recipientGender !== 'female') {
-    // Пол не выбран — исторически дефолты: обращение в мужском роде, от лица девушки
-    return direction === 'sender' ? 'f' : 'm';
-  }
+  // Пол не выбран (теперь так у всех новых приглашений) — нейтральные тексты
+  if (recipientGender !== 'male' && recipientGender !== 'female') return 'n';
   const g = recipientGender === 'female' ? 'f' : 'm';
   return direction === 'sender' ? (g === 'f' ? 'm' : 'f') : g;
 }
 
 function pick(value, gk) {
-  return value && typeof value === 'object' ? value[gk] : value;
+  return value && typeof value === 'object' ? (value[gk] ?? value.m) : value;
 }
 
 function allVariants(value) {
