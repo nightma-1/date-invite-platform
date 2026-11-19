@@ -69,7 +69,7 @@ function writeStore(store, key, value) {
   } catch { /* не сохранилось — просто будем считать визит новым */ }
 }
 
-function getVisitorId() {
+export function getVisitorId() {
   let id = readStore('localStorage', VISITOR_KEY);
   if (!id) {
     id = uuid();
@@ -125,6 +125,14 @@ function getAttribution() {
     attribution.utm_content = params.get('utm_content');
     // ?ref=blogger — реферальные ссылки инфлюенсеров
     attribution.ref_code = params.get('ref');
+    // Короткая партнёрская ссылка senti.uz/r/<код>: первый просмотр страницы
+    // случается ещё на /r/<код>, до перехода на главную, — тут и ловим код.
+    const short = window.location.pathname.match(/^\/r\/([a-z0-9_-]{3,32})\/?$/i);
+    if (short) {
+      attribution.ref_code = attribution.ref_code || short[1].toLowerCase();
+      attribution.utm_source = attribution.utm_source || 'partner';
+      attribution.utm_medium = attribution.utm_medium || 'referral';
+    }
 
     const ref = document.referrer;
     if (ref) {
