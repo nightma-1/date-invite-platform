@@ -1,27 +1,20 @@
 /**
  * © 2026 Senti. Все права защищены (см. LICENSE в корне проекта).
  *
- * ВАЖНО про безопасность: проверка is_admin здесь — только для UI.
- * Настоящая защита данных живёт в RLS-политиках Postgres.
+ * Библиотека гифок для конструктора. Перенесена из старой одностраничной
+ * админки; добавлены поиск, фильтры (статус, категория) и сортировка.
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { supabase } from '../lib/supabaseClient.js';
-import AuthGate from '../app-builder/AuthGate.jsx';
-import NotFound from '../components/ui/NotFound.jsx';
-import MuseumStatsSection from './MuseumStatsSection.jsx';
-import AnalyticsSection from './AnalyticsSection.jsx';
-import LandingDemoSection from './LandingDemoSection.jsx';
-import { getTemplateTokens } from '../templates/registry.js';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   listAllGifs, addGifByUrl, addGifByFile, setGifActive, deleteGif, setGifDefaultForStep,
   setGifCategory, normalizeCategory, listGifCategories, createGifCategory,
   updateGifCategoryLabels, deleteGifCategory, slugFromLabel, CATEGORY_LANGS,
 } from '../lib/mediaLibrary.js';
-import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
 import SmartMedia from '../components/ui/SmartMedia.jsx';
+import { A, Card, Segmented, inputStyle } from './adminUi.jsx';
 
-const t = getTemplateTokens('romantic');
+const t = A;
 
 const NEW_CATEGORY_OPTION = '__new__';
 
@@ -60,105 +53,7 @@ const DEFAULT_STEP_BADGES = [
   { stepType: 'final', column: 'default_for_final', icon: '💌', label: 'Финал' },
 ];
 
-export default function AdminPanel() {
-  const [session, setSession] = useState(undefined);
-  const [isAdmin, setIsAdmin] = useState(null);
-  const [loaded, setLoaded] = useState(false);
-  const [invitations, setInvitations] = useState([]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    let cancelled = false;
-
-    async function load() {
-      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).maybeSingle();
-      if (cancelled) return;
-      if (!profile?.is_admin) {
-        setIsAdmin(false);
-        return;
-      }
-      setIsAdmin(true);
-
-      // Счётчики переехали в AnalyticsSection — здесь остался только список
-      // последних приглашений.
-      const { data: invRows } = await supabase
-        .from('invitations')
-        .select('id, slug, recipient_name, status, created_at')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (cancelled) return;
-      setInvitations(invRows || []);
-      setLoaded(true);
-    }
-
-    load();
-    return () => { cancelled = true; };
-  }, [session]);
-
-  const wrap = (children) => (
-    <div style={{
-      background: `linear-gradient(180deg, #ffffff 0%, ${T.pinkLight} 55%, #ffeef5 100%)`,
-      backgroundAttachment: 'fixed',
-      backgroundSize: '100% 100vh',
-      backgroundRepeat: 'no-repeat',
-      minHeight: '100vh',
-      position: 'relative',
-    }}>
-      <DecorativeBlobs />
-      <div className="mx-auto max-w-3xl px-5 py-14" style={{ position: 'relative', zIndex: 1 }}>{children}</div>
-    </div>
-  );
-
-  if (session === undefined) return wrap(<p className="text-sm opacity-60">Загрузка…</p>);
-  // Гостевая сессия (купил без регистрации) — не вход в админку.
-  if (!session || session.user?.is_anonymous) return wrap(<AuthGate context="admin" onAuthenticated={() => {}} />);
-
-  if (isAdmin === false) return <NotFound />;
-
-  if (isAdmin === null || !loaded) return wrap(<p className="text-sm opacity-60">Загрузка…</p>);
-
-  return wrap(
-    <>
-      <h1 className="mb-8 text-2xl" style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700 }}>
-        Админ-панель
-      </h1>
-
-      {/* Вся статистика — в своём разделе: он считает период целиком на
-          стороне базы, включая посещаемость и воронку. */}
-      <div className="mb-12">
-        <><AnalyticsSection /><MuseumStatsSection /></>
-      </div>
-
-      <h2 className="mb-3 text-base font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>Последние приглашения</h2>
-      <div className="space-y-2">
-        {invitations.map((inv) => (
-          <div key={inv.id} className="flex items-center justify-between border-b py-2.5 text-sm" style={{ fontFamily: t.fontUI }}>
-            <span style={{ color: t.ink }}>{inv.recipient_name}</span>
-            <span style={{ color: t.ink, opacity: 0.5 }}>/i/{inv.slug} · {inv.status}</span>
-          </div>
-        ))}
-      </div>
-      {invitations.length === 0 && <p className="text-sm opacity-60">Пока пусто.</p>}
-
-      <div className="mt-12">
-        <LandingDemoSection />
-      </div>
-
-      <div className="mt-12">
-        <GifLibrarySection />
-      </div>
-    </>
-  );
-}
-
-function GifLibrarySection() {
+export default function GifLibrary() {
   const [gifs, setGifs] = useState(null);
   const [error, setError] = useState(null);
   const [urlForm, setUrlForm] = useState({ url: '', title: '', category: 'romantic' });
@@ -167,6 +62,11 @@ function GifLibrarySection() {
   const [progress, setProgress] = useState(null);
   const [categories, setCategories] = useState([]);
   const fileInputRef = useRef(null);
+  // Панель над сеткой: поиск, фильтры и порядок
+  const [search, setSearch] = useState('');
+  const [visibility, setVisibility] = useState('all'); // all | active | hidden
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [order, setOrder] = useState('grouped'); // grouped | title | defaults | hidden
 
   function reload() {
     listAllGifs().then(setGifs).catch(() => setError('Не получилось загрузить библиотеку гифок.'));
@@ -356,89 +256,48 @@ function GifLibrarySection() {
     fontFamily: t.fontUI, fontSize: 13, color: t.ink, background: t.card,
   };
 
+  const isDefault = (g) => DEFAULT_STEP_BADGES.some((b) => g[b.column]);
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (gifs || []).filter((g) => {
+      if (visibility === 'active' && !g.active) return false;
+      if (visibility === 'hidden' && g.active) return false;
+      if (categoryFilter !== 'all' && g.category !== categoryFilter) return false;
+      if (q && !String(g.title || g.url || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [gifs, search, visibility, categoryFilter]);
+
+  // Плоский список, если выбран порядок не «по категориям».
+  const flat = useMemo(() => {
+    if (order === 'grouped') return null;
+    const byTitle = (a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'ru');
+    const copy = [...visible];
+    if (order === 'title') copy.sort(byTitle);
+    if (order === 'defaults') copy.sort((a, b) => Number(isDefault(b)) - Number(isDefault(a)) || byTitle(a, b));
+    if (order === 'hidden') copy.sort((a, b) => Number(a.active) - Number(b.active) || byTitle(a, b));
+    return copy;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, order]);
+
+  const filtersOn = search.trim() || visibility !== 'all' || categoryFilter !== 'all';
+
   // Показываем все категории из таблицы, даже пустые — иначе в пустую нечем
-  // было бы переносить гифки и её не было бы видно.
-  const grouped = categories.map((category) => ({
-    category,
-    items: (gifs || []).filter((g) => g.category === category.slug),
-  }));
+  // было бы переносить гифки и её не было бы видно. Под фильтром пустые
+  // группы прячем, чтобы не мешали.
+  const grouped = categories
+    .filter((category) => categoryFilter === 'all' || category.slug === categoryFilter)
+    .map((category) => ({
+      category,
+      items: visible.filter((g) => g.category === category.slug),
+    }))
+    .filter((group) => !filtersOn || group.items.length > 0);
 
-  return (
-    <div>
-      <h2 className="mb-1 text-base font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>Библиотека гифок</h2>
-      <p className="mb-4 text-xs" style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}>
-        Гифки отсюда видны всем в конструкторе. Значки под гифкой — ❓ Вопрос, 🎉 Реакция, 🗓️ Дата, 💌 Финал —
-        назначают её гифкой по умолчанию для нового приглашения и для демо на главной странице
-        (на каждый шаг — только одна дефолтная гифка).
-      </p>
 
-      {error && <p style={{ color: '#C0392B', fontSize: 12, marginBottom: 10, whiteSpace: 'pre-line' }}>{error}</p>}
-
-      <div className="mb-6 grid gap-3 md:grid-cols-2">
-        <form onSubmit={handleAddByUrl} className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: `${t.ink}20` }}>
-          <p className="text-xs font-semibold" style={{ color: t.ink }}>Добавить по ссылке</p>
-          <input type="url" required placeholder="https://media.giphy.com/…" value={urlForm.url}
-                 onChange={(e) => setUrlForm((f) => ({ ...f, url: e.target.value }))} style={inp} />
-          <input type="text" placeholder="Название (необязательно)" value={urlForm.title}
-                 onChange={(e) => setUrlForm((f) => ({ ...f, title: e.target.value }))} style={inp} />
-          <CategorySelect value={urlForm.category} categories={categories} style={inp}
-                          onCreate={promptNewCategory}
-                          onChange={(c) => setUrlForm((f) => ({ ...f, category: c }))} />
-          <button type="submit" disabled={saving}
-                  style={{ ...inp, background: t.berry, color: '#fff', border: 'none', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
-            {saving ? 'Добавляем…' : '+ Добавить'}
-          </button>
-        </form>
-
-        <div className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: `${t.ink}20` }}>
-          <p className="text-xs font-semibold" style={{ color: t.ink }}>Загрузить свой файл</p>
-          <input type="text" placeholder="Название (необязательно)" value={fileForm.title}
-                 onChange={(e) => setFileForm((f) => ({ ...f, title: e.target.value }))} style={inp} />
-          <CategorySelect value={fileForm.category} categories={categories} style={inp} disabled={saving}
-                          onCreate={promptNewCategory}
-                          onChange={(c) => setFileForm((f) => ({ ...f, category: c }))} />
-          <input ref={fileInputRef} type="file" multiple
-                 accept="image/gif,image/webp,image/png,image/jpeg,video/webm,video/mp4,.tgs,application/x-tgsticker,application/gzip"
-                 onChange={handleAddByFile} disabled={saving} style={{ fontSize: 12 }} />
-          <p className="text-[11px]" style={{ color: t.ink, opacity: 0.5 }}>
-            GIF, WebP, PNG, JPG, WebM, MP4 или TGS — до 20 МБ. Можно выбрать сразу несколько файлов:
-            тогда названием станет имя файла, а категория применится ко всем.
-          </p>
-          {progress && (
-            <p className="text-[11px]" style={{ color: t.berry, fontWeight: 600 }}>
-              Загружаем… {progress.done} из {progress.total}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {gifs === null && <p className="text-sm opacity-60">Загрузка…</p>}
-      {gifs?.length === 0 && <p className="text-sm opacity-60">В библиотеке пока нет гифок.</p>}
-
-      {grouped.map((group) => (
-        <div key={group.category.slug} className="mb-6">
-          <div className="mb-2 flex items-center gap-2">
-            <p className="text-xs font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>
-              {group.category.label_ru}
-              <span style={{ opacity: 0.45, fontWeight: 400 }}> · {group.items.length}</span>
-            </p>
-            <button type="button" onClick={() => renameCategory(group.category)}
-                    title="Переименовать на всех трёх языках"
-                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11 }}>
-              ✏️
-            </button>
-            <button type="button" onClick={() => removeCategory(group.category, group.items.length)}
-                    title="Удалить категорию"
-                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11 }}>
-              🗑
-            </button>
-          </div>
-          {group.items.length === 0 && (
-            <p className="mb-2 text-xs" style={{ color: t.ink, opacity: 0.4 }}>Пусто — в конструкторе эта категория не показывается.</p>
-          )}
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
-          {group.items.map((gif) => (
-            <div key={gif.id} className="overflow-hidden rounded-lg border" style={{ borderColor: `${t.ink}20`, opacity: gif.active ? 1 : 0.4 }}>
+  function renderGif(gif) {
+    return (
+            <div key={gif.id} className="overflow-hidden rounded-lg border" style={{ borderColor: A.line, background: A.surface, opacity: gif.active ? 1 : 0.4 }}>
               <SmartMedia src={gif.url} alt={gif.title || 'gif'} objectFit="cover" objectPosition="top" style={{ width: '100%', aspectRatio: '1', display: 'block' }} />
               <div className="flex items-center justify-between gap-1 px-1.5 py-1">
                 <button type="button" onClick={() => toggleActive(gif)}
@@ -485,7 +344,142 @@ function GifLibrarySection() {
                 })}
               </div>
             </div>
-          ))}
+    );
+  }
+
+  const counts = {
+    all: (gifs || []).length,
+    active: (gifs || []).filter((g) => g.active).length,
+    hidden: (gifs || []).filter((g) => !g.active).length,
+  };
+
+  return (
+    <div>
+      <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: t.ink, fontFamily: t.fontUI }}>Библиотека гифок</h2>
+      <p className="mb-4 text-xs" style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}>
+        Гифки отсюда видны всем в конструкторе. Значки под гифкой — ❓ Вопрос, 🎉 Реакция, 🗓️ Дата, 💌 Финал —
+        назначают её гифкой по умолчанию для нового приглашения и для демо на главной странице
+        (на каждый шаг — только одна дефолтная гифка).
+      </p>
+
+      {error && <p style={{ color: '#C0392B', fontSize: 12, marginBottom: 10, whiteSpace: 'pre-line' }}>{error}</p>}
+
+      <div className="mb-6 grid gap-3 md:grid-cols-2">
+        <form onSubmit={handleAddByUrl} className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: `${t.ink}20` }}>
+          <p className="text-xs font-semibold" style={{ color: t.ink }}>Добавить по ссылке</p>
+          <input type="url" required placeholder="https://media.giphy.com/…" value={urlForm.url}
+                 onChange={(e) => setUrlForm((f) => ({ ...f, url: e.target.value }))} style={inp} />
+          <input type="text" placeholder="Название (необязательно)" value={urlForm.title}
+                 onChange={(e) => setUrlForm((f) => ({ ...f, title: e.target.value }))} style={inp} />
+          <CategorySelect value={urlForm.category} categories={categories} style={inp}
+                          onCreate={promptNewCategory}
+                          onChange={(c) => setUrlForm((f) => ({ ...f, category: c }))} />
+          <button type="submit" disabled={saving}
+                  style={{ ...inp, background: t.berry, color: '#fff', border: 'none', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
+            {saving ? 'Добавляем…' : '+ Добавить'}
+          </button>
+        </form>
+
+        <div className="flex flex-col gap-2 rounded-lg border p-3" style={{ borderColor: `${t.ink}20` }}>
+          <p className="text-xs font-semibold" style={{ color: t.ink }}>Загрузить свой файл</p>
+          <input type="text" placeholder="Название (необязательно)" value={fileForm.title}
+                 onChange={(e) => setFileForm((f) => ({ ...f, title: e.target.value }))} style={inp} />
+          <CategorySelect value={fileForm.category} categories={categories} style={inp} disabled={saving}
+                          onCreate={promptNewCategory}
+                          onChange={(c) => setFileForm((f) => ({ ...f, category: c }))} />
+          <input ref={fileInputRef} type="file" multiple
+                 accept="image/gif,image/webp,image/png,image/jpeg,video/webm,video/mp4,.tgs,application/x-tgsticker,application/gzip"
+                 onChange={handleAddByFile} disabled={saving} style={{ fontSize: 12 }} />
+          <p className="text-[11px]" style={{ color: t.ink, opacity: 0.5 }}>
+            GIF, WebP, PNG, JPG, WebM, MP4 или TGS — до 20 МБ. Можно выбрать сразу несколько файлов:
+            тогда названием станет имя файла, а категория применится ко всем.
+          </p>
+          {progress && (
+            <p className="text-[11px]" style={{ color: t.berry, fontWeight: 600 }}>
+              Загружаем… {progress.done} из {progress.total}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Поиск, фильтры и порядок */}
+      <Card pad={12} style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск по названию"
+            style={{ ...inputStyle, flex: '1 1 180px' }}
+          />
+          <Segmented
+            value={visibility}
+            onChange={setVisibility}
+            options={[
+              { value: 'all', label: 'Все', count: counts.all },
+              { value: 'active', label: 'Видимые', count: counts.active },
+              { value: 'hidden', label: 'Скрытые', count: counts.hidden },
+            ]}
+          />
+          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={inputStyle} aria-label="Категория">
+            <option value="all">Все категории</option>
+            {categories.map((c) => <option key={c.slug} value={c.slug}>{c.label_ru}</option>)}
+          </select>
+          <select value={order} onChange={(e) => setOrder(e.target.value)} style={inputStyle} aria-label="Порядок">
+            <option value="grouped">По категориям</option>
+            <option value="title">По названию</option>
+            <option value="defaults">Сначала по умолчанию</option>
+            <option value="hidden">Сначала скрытые</option>
+          </select>
+        </div>
+        {filtersOn && (
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: A.muted }}>
+            Найдено: {visible.length}
+            {' · '}
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setVisibility('all'); setCategoryFilter('all'); }}
+              style={{ background: 'none', border: 'none', padding: 0, color: A.berry, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}
+            >
+              сбросить фильтры
+            </button>
+          </p>
+        )}
+      </Card>
+
+      {gifs === null && <p className="text-sm opacity-60">Загрузка…</p>}
+      {gifs?.length === 0 && <p className="text-sm opacity-60">В библиотеке пока нет гифок.</p>}
+      {gifs?.length > 0 && visible.length === 0 && <p className="text-sm opacity-60">Под фильтр ничего не попало.</p>}
+
+      {flat && flat.length > 0 && (
+        <div className="mb-6 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+          {flat.map(renderGif)}
+        </div>
+      )}
+
+      {!flat && grouped.map((group) => (
+        <div key={group.category.slug} className="mb-6">
+          <div className="mb-2 flex items-center gap-2">
+            <p className="text-xs font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>
+              {group.category.label_ru}
+              <span style={{ opacity: 0.45, fontWeight: 400 }}> · {group.items.length}</span>
+            </p>
+            <button type="button" onClick={() => renameCategory(group.category)}
+                    title="Переименовать на всех трёх языках"
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11 }}>
+              ✏️
+            </button>
+            <button type="button" onClick={() => removeCategory(group.category, group.items.length)}
+                    title="Удалить категорию"
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11 }}>
+              🗑
+            </button>
+          </div>
+          {group.items.length === 0 && (
+            <p className="mb-2 text-xs" style={{ color: t.ink, opacity: 0.4 }}>Пусто — в конструкторе эта категория не показывается.</p>
+          )}
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+          {group.items.map(renderGif)}
           </div>
         </div>
       ))}

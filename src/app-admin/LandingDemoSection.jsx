@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import i18n from '../i18n/index.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { getTemplateTokens } from '../templates/registry.js';
+import { A } from './adminUi.jsx';
 import {
   LANDING_DEMO_KEY,
   LANDING_DEMO_FIELDS,
@@ -22,7 +22,8 @@ import {
   optionsToLines,
 } from '../lib/siteContent.js';
 
-const t = getTemplateTokens('romantic');
+// Цвета и шрифты админки; имя t осталось от старого стиля.
+const t = A;
 const LANGS = [
   { code: 'ru', label: '🇷🇺 RU' },
   { code: 'uz', label: '🇺🇿 UZ' },

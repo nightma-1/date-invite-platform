@@ -11,7 +11,6 @@ import BuilderShell from './app-builder/BuilderShell.jsx';
 import InvitationRuntime from './app-recipient/InvitationRuntime.jsx';
 import InvitationList from './app-dashboard/InvitationList.jsx';
 import ResponseView from './app-dashboard/ResponseView.jsx';
-import AdminPanel from './app-admin/AdminPanel.jsx';
 import Landing from './app-marketing/Landing.jsx';
 import NotFound from './components/ui/NotFound.jsx';
 import PaymentStatus from './app-builder/PaymentStatus.jsx';
@@ -19,6 +18,8 @@ import OccasionBuilder from './app-builder/OccasionBuilder.jsx';
 
 // «Наш музей»: пока MUSEUM_PUBLIC = false, страницы видит только владелец (MuseumGate).
 const MuseumBuilder = lazy(() => import('./app-museum/MuseumBuilder.jsx'));
+// Админка грузится отдельным файлом только при заходе в неё — покупатели её не скачивают.
+const AdminApp = lazy(() => import('./app-admin/AdminApp.jsx'));
 const MuseumDemo = lazy(() => import('./app-museum/MuseumDemo.jsx'));
 const MuseumAbout = lazy(() => import('./app-museum/MuseumAbout.jsx'));
 const MuseumGate = lazy(() => import('./app-museum/MuseumGate.jsx'));
@@ -102,7 +103,14 @@ export default function App() {
         <Route path="/museum/edit/:invitationId" element={<Lazy><MuseumGate><MuseumBuilder /></MuseumGate></Lazy>} />
         <Route path="/lab/museum" element={<Navigate to="/museum/create" replace />} />
         <Route path="/lab/museum/demo" element={<Navigate to="/museum/demo" replace />} />
-        <Route path={ADMIN_PATH} element={<AdminPanel />} />
+        <Route
+          path={`${ADMIN_PATH}/*`}
+          element={(
+            <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#F6F5F3' }} />}>
+              <AdminApp basePath={ADMIN_PATH} />
+            </Suspense>
+          )}
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

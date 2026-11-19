@@ -11,10 +11,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
-import { getTemplateTokens } from '../templates/registry.js';
-import TicketCard from '../components/ui/TicketCard.jsx';
+import { A, DataTable, Stat } from './adminUi.jsx';
 
-const t = getTemplateTokens('romantic');
+// Цвета и шрифты админки (см. adminUi.jsx); имя t осталось от старого стиля.
+const t = A;
 
 // Все даты в разделе — календарные дни по Ташкенту (UTC+5, без перехода на
 // летнее время), независимо от часового пояса браузера. Так «сегодня» и
@@ -222,7 +222,7 @@ export default function AnalyticsSection() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: t.ink, fontFamily: t.fontUI, letterSpacing: '-0.01em' }}>
           Аналитика
           {data?.live?.visitors_30m > 0 && (
             <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 600, color: t.berry }}>
@@ -353,7 +353,7 @@ export default function AnalyticsSection() {
               className="mb-8"
               head={['Когда', 'Что', 'Ошибка', 'Устройство']}
               rows={data.issues.map((i) => [
-                new Date(i.at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                { d: new Date(i.at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }), v: i.at },
                 i.event === 'payment_timeout' ? 'оплата без публикации' : 'ошибка публикации',
                 i.message || '—',
                 i.device || '—',
@@ -654,7 +654,7 @@ function SpendManager({ rows, campaigns, onChanged }) {
       <Table
         head={['День', 'Кампания', 'Ролик', 'Сумма', 'Заметка', '']}
         rows={rows.map((r) => [
-          formatYmd(r.day), r.campaign || '—', r.content || '—', money(r.amount), r.note || '—',
+          { d: formatYmd(r.day), v: r.day }, r.campaign || '—', r.content || '—', money(r.amount), r.note || '—',
           <button
             key={r.id}
             type="button"
@@ -905,78 +905,16 @@ function RangeCalendar({ value, maxYmd, minYmd, onApply, onClose }) {
 
 function SubTitle({ children }) {
   return (
-    <h3 className="mb-2 text-sm font-semibold" style={{ color: t.ink, fontFamily: t.fontUI }}>
+    <h3 style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 700, color: t.ink, fontFamily: t.fontUI }}>
       {children}
     </h3>
   );
 }
 
-/**
- * Карточка с числом. delta — изменение к прошлому периоду ({ text, good }),
- * muted — число пока не имеет смысла (например, расходы не внесены),
- * alert — что-то сломалось и требует внимания.
- */
-function Stat({ label, value, sub, delta: change = null, muted = false, alert = false }) {
-  const deltaColor = change?.good === true ? '#2E7D4F' : change?.good === false ? '#C0392B' : t.ink;
-  return (
-    <TicketCard tokens={t}>
-      <div className="p-4">
-        <p className="text-xs" style={{ color: alert ? '#C0392B' : t.ink, opacity: alert ? 0.9 : 0.55, fontFamily: t.fontUI }}>{label}</p>
-        <p className="text-xl" style={{ color: alert ? '#C0392B' : t.ink, fontFamily: t.fontDisplay, fontWeight: 700, opacity: muted ? 0.35 : 1 }}>
-          {value}
-          {change && (
-            <span style={{ marginLeft: 6, fontSize: 12, fontFamily: t.fontUI, fontWeight: 700, color: deltaColor, opacity: change.good === null ? 0.5 : 1 }}>
-              {change.text}
-            </span>
-          )}
-        </p>
-        {sub && <p className="text-[11px]" style={{ color: t.ink, opacity: 0.45, fontFamily: t.fontUI }}>{sub}</p>}
-      </div>
-    </TicketCard>
-  );
-}
-
 function Table({ head, rows, empty = 'Нет данных.', className = '' }) {
-  if (!rows || rows.length === 0) {
-    return <p className={`text-sm opacity-60 ${className}`}>{empty}</p>;
-  }
   return (
-    <div className={`overflow-x-auto ${className}`}>
-      <table className="w-full text-xs" style={{ fontFamily: t.fontUI, color: t.ink, borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            {head.map((h, i) => (
-              <th
-                key={h}
-                style={{
-                  textAlign: i === 0 ? 'left' : 'right', padding: '6px 8px', opacity: 0.5,
-                  fontWeight: 600, borderBottom: `1px solid ${t.ink}15`, whiteSpace: 'nowrap',
-                }}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri}>
-              {row.map((cell, ci) => (
-                <td
-                  key={ci}
-                  style={{
-                    textAlign: ci === 0 ? 'left' : 'right', padding: '6px 8px',
-                    borderBottom: `1px solid ${t.ink}0D`,
-                    whiteSpace: ci === 0 ? 'normal' : 'nowrap',
-                  }}
-                >
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className={className}>
+      <DataTable head={head} rows={rows} empty={empty} />
     </div>
   );
 }
