@@ -10,7 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { safeEqual } from '../_lib/telegramLink.js';
-import { sendDailyReport, sendAdminAlert } from '../_lib/adminReport.js';
+import { sendDailyReport, sendAdminAlert, broadcast } from '../_lib/adminReport.js';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -213,6 +213,25 @@ function formatDraftReminder(invitation, lang) {
   ];
 }
 
+async function formatReminderCopy(invitation, lang, result, text) {
+  let owner = invitation.user_id?.slice(0, 8);
+  try {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(invitation.user_id);
+    const u = data?.user;
+    owner = u?.email || u?.user_metadata?.full_name || u?.user_metadata?.name || owner;
+  } catch { /* не критично — покажем короткий id */ }
+  const status = result.ok ? '✅ доставлено' : `❌ не доставлено: ${escapeHtml(result.description || result.status || '')}`;
+  return [
+    '📨 <b>Отправлено напоминание об оплате</b>',
+    `Кому: ${escapeHtml(owner)} · язык: ${escapeHtml(lang)}`,
+    `Приглашение для <b>${escapeHtml(invitation.recipient_name || '—')}</b>`,
+    status,
+    '',
+    '<i>Текст, который получил человек:</i>',
+    text,
+  ].join('\n');
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
@@ -240,6 +259,16 @@ export default async function handler(req, res) {
     }
   }
 
+  // Кнопка «Прислать себе» в админке: тот же текст, что получают люди
+  if (event === 'draft_reminder_test') {
+    const { data: me } = await supabaseAdmin.from('profiles')
+      .select('telegram_chat_id, is_admin').eq('id', extra?.user_id || '').maybeSingle();
+    if (!me?.is_admin || !me.telegram_chat_id) return res.status(200).json({ ok: false, reason: 'no admin chat' });
+    const sample = { recipient_name: { ru: 'Алия', uz: 'Aliya', en: 'Aliya' }[extra?.lang] || 'Алия' };
+    const [text, buttonText] = formatDraftReminder(sample, extra?.lang);
+    return res.status(200).json(await sendMessage(me.telegram_chat_id, text, { text: buttonText, url: appUrl('/dashboard') }));
+  }
+
   if (!invitationId || !event) {
     return res.status(400).json({ error: 'invitation_id и event обязательны' });
   }
@@ -264,11 +293,32 @@ export default async function handler(req, res) {
 
   // Напоминание о неоплаченном черновике (pg_cron → send_draft_reminders).
   // К моменту отправки человек мог уже оплатить — тогда молчим.
+  // Итог пишем в журнал draft_reminders, копию — админам (страница
+  // /xujayin/reminders показывает историю и что было после).
   if (event === 'draft_reminder') {
-    if (invitation.status !== 'draft') return res.status(200).json({ ok: false, reason: 'already paid' });
-    const lang = invitation.invitation_steps?.find((s) => s.step_type === 'question')?.configuration_json?.lang;
+    const reminderId = extra?.reminder_id || null;
+    const logResult = async (delivered, error) => {
+      if (!reminderId) return;
+      const { error: e } = await supabaseAdmin.from('draft_reminders')
+        .update({ delivered, error: error ? String(error).slice(0, 300) : null }).eq('id', reminderId);
+      if (e) console.error('telegram/notify: draft_reminders log failed', e.message);
+    };
+    if (invitation.status !== 'draft') {
+      await logResult(false, 'already paid');
+      return res.status(200).json({ ok: false, reason: 'already paid' });
+    }
+    const lang = invitation.invitation_steps?.find((s) => s.step_type === 'question')?.configuration_json?.lang || 'ru';
     const [text, buttonText] = formatDraftReminder(invitation, lang);
-    return res.status(200).json(await sendMessage(chatId, text, { text: buttonText, url: appUrl('/dashboard') }));
+    const result = await sendMessage(chatId, text, { text: buttonText, url: appUrl('/dashboard') });
+    await logResult(Boolean(result.ok), result.ok ? null : result.description || `status ${result.status}`);
+    try {
+      await broadcast(supabaseAdmin, sendMessage, await formatReminderCopy(invitation, lang, result, text), {
+        text: 'Все напоминания', url: 'https://senti.uz/xujayin/reminders',
+      });
+    } catch (err) {
+      console.error('telegram/notify: reminder copy failed', err?.message || err);
+    }
+    return res.status(200).json(result);
   }
 
   // Кнопка ведёт прямо на ответ в кабинете — повод вернуться на сайт.
