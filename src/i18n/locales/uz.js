@@ -242,6 +242,16 @@ export default {
     makeYourOwn: 'Sen ham kimnidir taklif qilmoqchimisan? O‘zingnikini yarat →',
   },
 
+  invite: {
+    opening: 'Taklifnoma ochilmoqda…',
+    museumExpired: "🖼 Bu muzeyning muddati tugadi. Uni yaratgan odam muddatini uzaytirishi mumkin.",
+    notFound: "Bu havola endi ishlamayotganga o'xshaydi.",
+    expired: '💌 Bu taklifnoma endi mavjud emas.',
+    back: 'Orqaga',
+    summaryDate: 'Sana',
+    summaryTime: 'Vaqt',
+  },
+
   questionScreen: {
     yesDefault: "Ha, albatta ❤️",
     noPhrases: ["Yo'q", "Ishonchingiz komilmi?", "Rostdanmi?", "O'ylab ko'rasizmi?", 'Iltimoooos', "Yana bir marta", "Yo'qqqq 😭", "Tutolmaysan!"],
@@ -290,7 +300,7 @@ export default {
       title: 'Sarlavha',
       titlePlaceholder: "Xo'sh... qachon bo'sh bo'lasan?",
       buttonText: 'Tugma matni',
-      buttonPlaceholder: 'Sana va vaqtni tanlang 💌',
+      buttonPlaceholder: 'Sana va vaqtni tanla 💌',
       buttonHint: "Qabul qiluvchida tugma faqat sana va vaqt tanlangandan keyin faollashadi",
     },
     final: {

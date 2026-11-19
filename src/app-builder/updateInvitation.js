@@ -11,6 +11,7 @@ import i18n from '../i18n/index.js';
 import { isEditLocked } from '../lib/editWindow.js';
 import { uploadMedia } from '../lib/uploadMedia.js';
 import { getPendingMedia, clearPendingMedia } from './pendingMedia.js';
+import { fallbackRecipientName } from './defaultContent.js';
 
 export async function updateInvitationDraft(state, userId, invitationId) {
   // Проверяем срок правки ДО загрузки картинок и записи: база всё равно
@@ -69,7 +70,7 @@ export async function updateInvitationDraft(state, userId, invitationId) {
   const { error: invError } = await supabase
     .from('invitations')
     .update({
-      recipient_name: String(questionConfig.recipientName || '').replace(/\s+/g, ' ').trim() || 'Тебя',
+      recipient_name: String(questionConfig.recipientName || '').replace(/\s+/g, ' ').trim() || fallbackRecipientName(state.lang),
       recipient_gender: state.recipientGender || null,
       mood: state.mood,
       template_key: state.templateId,

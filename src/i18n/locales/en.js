@@ -242,6 +242,16 @@ export default {
     makeYourOwn: 'Want to invite someone too? Make your own →',
   },
 
+  invite: {
+    opening: 'Opening the invitation…',
+    museumExpired: '🖼 This museum has expired. Whoever made it can extend it.',
+    notFound: 'Looks like this link no longer works.',
+    expired: '💌 This invitation is no longer available.',
+    back: 'Back',
+    summaryDate: 'Date',
+    summaryTime: 'Time',
+  },
+
   questionScreen: {
     yesDefault: 'Yes, of course ❤️',
     noPhrases: ['No', 'Are you sure?', 'Really?', 'Think about it?', 'Pleeease', 'One more try', 'Nooo 😭', "Can't catch me!"],
