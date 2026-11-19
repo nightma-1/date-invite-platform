@@ -4,7 +4,8 @@
 
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
-import { trackPageView } from './lib/analytics.js';
+import { trackPageView, initAnalytics } from './lib/analytics.js';
+import { initGuestClaim } from './lib/guestAccount.js';
 import { BuilderProvider } from './app-builder/builderStore.jsx';
 import BuilderShell from './app-builder/BuilderShell.jsx';
 import InvitationRuntime from './app-recipient/InvitationRuntime.jsx';
@@ -38,6 +39,10 @@ const ADMIN_PATH = '/xujayin';
  */
 function PageViewTracker() {
   const location = useLocation();
+  useEffect(() => {
+    initAnalytics();
+    initGuestClaim();
+  }, []);
   useEffect(() => {
     trackPageView(location.pathname);
   }, [location.pathname]);

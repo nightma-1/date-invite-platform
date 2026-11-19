@@ -140,7 +140,9 @@ export default function AnalyticsSection() {
       { label: 'Зашли на сайт',         value: totals.visitors },
       { label: 'Открыли конструктор',   value: totals.builder_started },
       { label: 'Дошли до «Опубликовать»', value: totals.builder_finished },
-      { label: 'Вошли в аккаунт',       value: totals.auth_passed },
+      // Регистрации перед оплатой больше нет (гостевой аккаунт), поэтому
+      // следующий шаг — выбор способа оплаты, а вход вынесен в отдельный блок.
+      { label: 'Выбрали способ оплаты', value: totals.payment_chosen },
       { label: 'Ушли на оплату',        value: totals.payment_started },
       { label: 'Оплатили',              value: totals.paid },
     ];
@@ -207,7 +209,7 @@ export default function AnalyticsSection() {
       </div>
 
       <p className="mb-4 text-xs" style={{ color: t.ink, opacity: 0.55, fontFamily: t.fontUI }}>
-        Период: {rangeLabel} · по времени Ташкента
+        Период: {rangeLabel} · по времени Ташкента · без ваших устройств, приглашений и оплат
       </p>
 
       {error && (
@@ -233,7 +235,7 @@ export default function AnalyticsSection() {
           </div>
 
           <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="Регистрации" value={num(totals.signups)} />
+            <Stat label="Регистрации" value={num(totals.signups)} sub={`гостей: ${num(totals.guest_accounts)}`} />
             <Stat label="Черновики" value={num(totals.drafts)} sub={`опубликовано: ${num(totals.published)}`} />
             <Stat label="Просмотры приглашений" value={num(totals.invite_views)} sub={`уникальных: ${num(totals.invite_viewers)}`} />
             <Stat
@@ -273,6 +275,31 @@ export default function AnalyticsSection() {
                 Верх воронки считается по событиям счётчика — пока их нет, шаги пустые.
               </p>
             )}
+          </div>
+
+          {/* То, что воронка не показывает: где людей останавливает форма */}
+          <SubTitle>Препятствия по дороге</SubTitle>
+          <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Stat
+              label="Остановило «нет имени»"
+              value={num(totals.name_blocked)}
+              sub="забыли вписать имя получателя"
+            />
+            <Stat
+              label="Увидели экран входа"
+              value={num(totals.auth_viewed)}
+              sub={`вошли: ${num(totals.auth_passed)}`}
+            />
+            <Stat
+              label="Оформляли без регистрации"
+              value={num(totals.guest_sessions)}
+              sub="гостевой аккаунт перед оплатой"
+            />
+            <Stat
+              label="Сохранили доступ"
+              value={num(totals.guest_claimed)}
+              sub="гость вошёл после оплаты"
+            />
           </div>
 
           {/* График по дням */}

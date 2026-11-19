@@ -99,6 +99,17 @@ export default {
     withTelegram: 'Sign in with Telegram',
     orEmail: 'or with email',
     oauthError: "Couldn't sign you in. Try again or use email.",
+    inAppHint: 'You opened the site inside Instagram. Telegram login may open in another browser, where your invitation won\'t be found. It\'s safer to open Senti in your browser: tap ⋯ at the top → “Open in browser”.',
+    copyLink: 'Copy link to this page',
+    linkCopied: 'Link copied',
+  },
+
+  guest: {
+    title: 'Keep access to your invitation',
+    text: 'You paid without signing up, so the invitation and replies are only visible in this browser. Sign in with Telegram or email — everything moves to your account and you can open it from any phone.',
+    button: 'Keep access',
+    authTitle: 'Sign in to keep your invitation',
+    saved: '✓ Access saved: the invitation is now in your account.',
   },
 
   builder: {
