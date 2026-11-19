@@ -11,7 +11,7 @@ import { useBuilder } from '../builderStore.jsx';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
-import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
+import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker, ButtonTextEditor } from '../BuilderUI.jsx';
 import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
 export default function StepDate() {
@@ -147,15 +147,10 @@ export default function StepDate() {
         />
         <CharCount value={config.title} max={300} />
 
-        <FieldLabel style={{ marginTop: 12 }}>{t('steps.date.buttonText')}</FieldLabel>
-        <Inp
-          value={config.buttonText || ''}
-          onChange={(e) => update({ buttonText: e.target.value })}
-          placeholder={t('steps.date.buttonPlaceholder')}
+        <ButtonTextEditor
+          fields={[{ label: t('steps.date.buttonText'), value: config.buttonText, fallback: t('screens.dateContinue'), onChange: (v) => update({ buttonText: v }) }]}
+          hint={t('steps.date.buttonHint')}
         />
-        <p style={{ fontSize: 12, color: T.muted, marginTop: 4, fontFamily: T.font }}>
-          {t('steps.date.buttonHint')}
-        </p>
       </SectionCard>
     </div>
   );

@@ -11,7 +11,7 @@ import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
 import { isPlaceholderName, normalizeName } from '../../lib/shareLink.js';
-import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
+import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker, ButtonTextEditor } from '../BuilderUI.jsx';
 import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
 export default function StepQuestion() {
@@ -28,9 +28,6 @@ export default function StepQuestion() {
   const [gifs, setGifs] = useState([]);
   const [gifsLoading, setGifsLoading] = useState(false);
   const [gifsError, setGifsError] = useState(null);
-  // Тексты кнопок «Да/Нет» почти никто не меняет — прячем, чтобы первый
-  // экран был короче (на нём уходило больше всего людей).
-  const [showButtons, setShowButtons] = useState(false);
 
   // Load gifs on mount
   useEffect(() => {
@@ -108,29 +105,13 @@ export default function StepQuestion() {
         />
         <CharCount value={config.questionText} max={300} />
 
-        <details style={{ marginTop: 14 }} open={showButtons} onToggle={(e) => setShowButtons(e.currentTarget.open)}>
-          <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: T.pink, fontFamily: T.font, listStyle: 'none' }}>
-            {showButtons ? '−' : '+'} {t('steps.question.editButtons')}
-          </summary>
-          <FieldLabel style={{ marginTop: 12 }}>{t('steps.question.yesButton')}</FieldLabel>
-          <Inp
-            type="text"
-            value={config.yesText}
-            onChange={(e) => update({ yesText: e.target.value })}
-            placeholder={t('steps.question.yesPlaceholder')}
-          />
-
-          <FieldLabel style={{ marginTop: 12 }}>{t('steps.question.noButton')}</FieldLabel>
-          <Inp
-            type="text"
-            value={config.noText || ''}
-            onChange={(e) => update({ noText: e.target.value })}
-            placeholder={t('steps.question.noPlaceholder')}
-          />
-          <p style={{ fontSize: 12, color: T.muted, marginTop: 4, lineHeight: 1.4, fontFamily: T.font }}>
-            {t('steps.question.noButtonHint')}
-          </p>
-        </details>
+        <ButtonTextEditor
+          fields={[
+            { label: t('steps.question.yesButton'), value: config.yesText, fallback: t('steps.question.yesPlaceholder'), onChange: (v) => update({ yesText: v }) },
+            { label: t('steps.question.noButton'), value: config.noText, fallback: t('steps.question.noPlaceholder'), onChange: (v) => update({ noText: v }) },
+          ]}
+          hint={t('steps.question.noButtonHint')}
+        />
       </SectionCard>
 
       <SectionCard number="2" title={t('steps.question.imageTitle')}>

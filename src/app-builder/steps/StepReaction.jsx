@@ -10,7 +10,7 @@ import { getTemplateTokens } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
-import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
+import { T, SectionCard, FieldLabel, TxtArea, CharCount, GifImagePicker, ButtonTextEditor } from '../BuilderUI.jsx';
 import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
 export default function StepReaction() {
@@ -117,11 +117,8 @@ export default function StepReaction() {
         />
         <CharCount value={config.text} max={300} />
 
-        <FieldLabel style={{ marginTop: 12 }}>{t('steps.reaction.confirmButton')}</FieldLabel>
-        <Inp
-          value={config.confirmText || ''}
-          onChange={(e) => update({ confirmText: e.target.value })}
-          placeholder={t('steps.reaction.confirmPlaceholder')}
+        <ButtonTextEditor
+          fields={[{ label: t('steps.reaction.confirmButton'), value: config.confirmText, fallback: t('screens.reactionContinue'), onChange: (v) => update({ confirmText: v }) }]}
         />
       </SectionCard>
 

@@ -485,3 +485,43 @@ export function GifImagePicker({
     </div>
   );
 }
+
+/**
+ * Тексты кнопок свёрнуты в одну строку «+ Кнопка: «…» — изменить»: их почти
+ * никто не меняет, а открытые поля удлиняют каждый шаг. В свёрнутой строке
+ * видно, что сейчас написано на кнопке, — превью не застанет врасплох.
+ * fields: [{ label, value, fallback, onChange, placeholder }]
+ */
+export function ButtonTextEditor({ fields, hint, style }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const shown = fields.map((f) => `«${String(f.value || '').trim() || f.fallback || ''}»`).join(' / ');
+  return (
+    <div style={{ marginTop: 14, ...style }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        style={{
+          display: 'block', width: '100%', textAlign: 'left', padding: 0, border: 'none', background: 'none',
+          cursor: 'pointer', fontFamily: T.font, fontSize: 13, lineHeight: 1.45, color: T.muted,
+        }}
+      >
+        <span style={{ color: T.pink, fontWeight: 700 }}>{open ? '−' : '+'} </span>
+        {fields.length > 1 ? t('builderUI.buttonsSummary') : t('builderUI.buttonSummary')}: <span style={{ color: T.darkPurple, fontWeight: 600 }}>{shown}</span>
+        {!open && <span style={{ color: T.pink, fontWeight: 700 }}> — {t('builderUI.change')}</span>}
+      </button>
+      {open && (
+        <div style={{ marginTop: 8 }}>
+          {fields.map((f, i) => (
+            <div key={i} style={{ marginTop: i ? 12 : 0 }}>
+              <FieldLabel>{f.label}</FieldLabel>
+              <Inp type="text" value={f.value || ''} onChange={(e) => f.onChange(e.target.value)} placeholder={f.placeholder || f.fallback} maxLength={60} />
+            </div>
+          ))}
+          {hint && <p style={{ fontSize: 12, color: T.muted, marginTop: 4, lineHeight: 1.4, fontFamily: T.font }}>{hint}</p>}
+        </div>
+      )}
+    </div>
+  );
+}

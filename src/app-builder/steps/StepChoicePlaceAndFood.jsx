@@ -8,7 +8,8 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { T } from '../BuilderUI.jsx';
+import { T, ButtonTextEditor } from '../BuilderUI.jsx';
+import { useBuilder } from '../builderStore.jsx';
 import ChoiceStepFields from './ChoiceStepFields.jsx';
 
 function GroupLabel({ icon, text }) {
@@ -22,6 +23,9 @@ function GroupLabel({ icon, text }) {
 
 export default function StepChoicePlaceAndFood() {
   const { t } = useTranslation();
+  const { state, dispatch } = useBuilder();
+  // Кнопка одна на весь экран «место + еда» — храним её в шаге choice_place
+  const place = state.steps.find((s) => s.step_type === 'choice_place')?.configuration_json || {};
   return (
     <div>
       <GroupLabel icon="📍" text={t('steps.choicePlaceFood.whereGroup')} />
@@ -31,6 +35,14 @@ export default function StepChoicePlaceAndFood() {
 
       <GroupLabel icon="🍽️" text={t('steps.choicePlaceFood.foodGroup')} />
       <ChoiceStepFields stepType="choice_food" />
+
+      <div style={{ height: 1, background: T.pinkBorder, margin: '24px 0 4px' }} />
+      <ButtonTextEditor
+        fields={[{
+          label: t('builderUI.buttonLabel'), value: place.buttonText, fallback: t('screens.choiceContinue'),
+          onChange: (v) => dispatch({ type: 'UPDATE_STEP_CONFIG', stepType: 'choice_place', payload: { buttonText: v } }),
+        }]}
+      />
     </div>
   );
 }
