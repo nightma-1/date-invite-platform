@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import SmartMedia from '../ui/SmartMedia.jsx';
 import { QuestionCardFrame } from './questionCardShapes.jsx';
 
-export default function ReactionScreen({ title, text, mediaUrl, recipientGender, tokens, onContinue, cardShape = 'classic' }) {
+export default function ReactionScreen({ title, text, confirmText, mediaUrl, recipientGender, tokens, onContinue, cardShape = 'classic' }) {
   const { t } = useTranslation();
   // Заголовок обращён к получателю ("ты сказала") — род от пола получателя.
   // Текст написан от лица отправителя ("я была готова") — предполагаем
@@ -67,7 +67,9 @@ export default function ReactionScreen({ title, text, mediaUrl, recipientGender,
           boxShadow: `0 14px 30px -8px ${tokens.berry}60`,
         }}
       >
-        {t('screens.reactionContinue')}
+        {/* Текст кнопки задаёт автор («Кнопка подтверждения» в конструкторе);
+            запасной — только для пустого поля */}
+        {String(confirmText || '').trim() || t('screens.reactionContinue')}
       </motion.button>
     </QuestionCardFrame>
     </motion.div>
