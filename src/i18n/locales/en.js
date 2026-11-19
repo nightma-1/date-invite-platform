@@ -123,6 +123,7 @@ export default {
       reaction: 'set up the\nconfirmation screen',
       date: 'set up the\ndate & time screen',
       choice_place: 'set up the\nplace & food screen',
+      style: 'customize\nthe look',
       final: 'final\nscreen',
     },
     stepEditingComingSoon: 'Step — editing coming soon',
@@ -141,6 +142,7 @@ export default {
     editLockedTitle: "This invitation can't be changed anymore",
     editLockedText: 'You can edit for 3 days after sending. The link keeps working until it expires.',
     nameRequired: "Enter the name of the person you're inviting — it shows in the invitation and in the link preview",
+    networkError: "The internet connection dropped. We retried but it didn't work — check your connection and tap Pay again; your invitation won't be lost.",
     publishGenericError: "Couldn't save the invitation",
     choosePaymentTitle: 'How would you like to pay?',
     payWithClick: '💳 Pay via CLICK',
@@ -211,6 +213,8 @@ export default {
     questionDefault: 'Will you go on a date with me?',
     letterForYou: 'A letter for you 💌',
     noButtonAria: 'The “No” button — it runs away',
+    reactionTitleNeutral: 'Wow… you said YES?! 😱',
+    reactionTextNeutral: "I'm so happy! Now I have a reason to get ready for our date ❤️",
     reactionTitleMale: 'Wow… you said YES?! 😱',
     reactionTitleFemale: 'Wow… you said YES?! 😱',
     reactionTextToMale: "I'm so happy! Now I have a reason to get ready for our date ❤️",
@@ -242,18 +246,36 @@ export default {
     makeYourOwn: 'Want to invite someone too? Make your own →',
   },
 
+  invite: {
+    opening: 'Opening the invitation…',
+    museumExpired: '🖼 This museum has expired. Whoever made it can extend it.',
+    notFound: 'Looks like this link no longer works.',
+    expired: '💌 This invitation is no longer available.',
+    back: 'Back',
+    summaryDate: 'Date',
+    summaryTime: 'Time',
+  },
+
   questionScreen: {
     yesDefault: 'Yes, of course ❤️',
     noPhrases: ['No', 'Are you sure?', 'Really?', 'Think about it?', 'Pleeease', 'One more try', 'Nooo 😭', "Can't catch me!"],
+    saidYesNeutral: 'The answer is YES!',
     saidYesMale: 'He said YES!',
     saidYesFemale: 'She said YES!',
     continuing: 'Continuing…',
   },
 
   steps: {
+
+    style: {
+
+      hint: 'Final touch: pick the colors and card shape. You can leave it as is — the default already looks great.',
+
+    },
     question: {
       imageTitle: 'Picture on screen',
       cardShapeTitle: 'Card shape',
+      editButtons: 'Edit the “Yes” and “No” button text',
       cardShapeHint: 'The shape applies to every screen of the invitation, not just this one.',
       textTitle: 'Invitation text',
       recipientName: "Recipient's name",

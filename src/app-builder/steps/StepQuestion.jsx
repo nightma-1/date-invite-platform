@@ -6,12 +6,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBuilder } from '../builderStore.jsx';
 import QuestionScreen from '../../components/screens/QuestionScreen.jsx';
-import { getTemplateTokens, TEMPLATE_LIST } from '../../templates/registry.js';
+import { getTemplateTokens } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
 import { isPlaceholderName, normalizeName } from '../../lib/shareLink.js';
-import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker, CardShapePicker } from '../BuilderUI.jsx';
+import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
 import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
 export default function StepQuestion() {
@@ -28,6 +28,9 @@ export default function StepQuestion() {
   const [gifs, setGifs] = useState([]);
   const [gifsLoading, setGifsLoading] = useState(false);
   const [gifsError, setGifsError] = useState(null);
+  // Тексты кнопок «Да/Нет» почти никто не меняет — прячем, чтобы первый
+  // экран был короче (на нём уходило больше всего людей).
+  const [showButtons, setShowButtons] = useState(false);
 
   // Load gifs on mount
   useEffect(() => {
@@ -76,77 +79,7 @@ export default function StepQuestion() {
 
   return (
     <div>
-      <SectionCard number="1" title={t('landing.templatesTitle')}>
-        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
-          {TEMPLATE_LIST.map((tpl) => {
-            const selected = state.templateId === tpl.id;
-            return (
-              <button
-                key={tpl.id}
-                type="button"
-                onClick={() => dispatch({ type: 'SET_TEMPLATE', templateId: tpl.id })}
-                style={{
-                  flexShrink: 0, width: 88, border: 'none', background: 'none', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0,
-                }}
-              >
-                <div style={{
-                  width: 76, height: 56, padding: 6, boxSizing: 'border-box',
-                  border: selected ? `3px solid ${T.pink}` : '2px solid transparent',
-                  borderRadius: 14, background: tpl.bg,
-                  transform: selected ? 'scale(1.06)' : 'scale(1)',
-                  boxShadow: selected ? `0 0 0 2px ${T.pink}55, 0 6px 16px ${T.pink}35` : 'none',
-                  transition: 'transform 0.18s, box-shadow 0.18s, border-color 0.18s',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <div style={{ height: 4, width: 26, borderRadius: 2, background: tpl.berry }} />
-                </div>
-                <span style={{
-                  fontFamily: T.font, fontSize: 11, textAlign: 'center', lineHeight: 1.2,
-                  color: selected ? T.pink : T.muted, fontWeight: selected ? 700 : 500,
-                }}>
-                  {tpl.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </SectionCard>
-
-      <SectionCard number="2" title={t('steps.question.imageTitle')}>
-        <GifImagePicker
-          currentUrl={config.mediaUrl}
-          gifs={gifs}
-          gifsLoading={gifsLoading}
-          gifsError={gifsError}
-          onSelect={selectGif}
-          onRemove={removeMedia}
-          onUploadClick={() => fileInputRef.current?.click()}
-          fileInputRef={fileInputRef}
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif,video/webm,video/mp4"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-        {fileError && (
-          <p style={{ color: '#C0392B', fontSize: 12, marginTop: 4, fontFamily: T.font }}>{fileError}</p>
-        )}
-      </SectionCard>
-
-      <SectionCard number="3" title={t('steps.question.cardShapeTitle')}>
-        <CardShapePicker
-          value={state.cardShape}
-          onChange={(cardShape) => dispatch({ type: 'SET_CARD_SHAPE', cardShape })}
-        />
-        <p style={{ fontSize: 12, color: T.muted, marginTop: 10, lineHeight: 1.4, fontFamily: T.font }}>
-          {t('steps.question.cardShapeHint')}
-        </p>
-      </SectionCard>
-
-      <SectionCard number="4" title={t('steps.question.textTitle')}>
+      <SectionCard number="1" title={t('steps.question.textTitle')}>
         <FieldLabel>{t('steps.question.recipientName')}</FieldLabel>
         <Inp
           id="builder-recipient-name"
@@ -175,24 +108,52 @@ export default function StepQuestion() {
         />
         <CharCount value={config.questionText} max={300} />
 
-        <FieldLabel style={{ marginTop: 12 }}>{t('steps.question.yesButton')}</FieldLabel>
-        <Inp
-          type="text"
-          value={config.yesText}
-          onChange={(e) => update({ yesText: e.target.value })}
-          placeholder={t('steps.question.yesPlaceholder')}
-        />
+        <details style={{ marginTop: 14 }} open={showButtons} onToggle={(e) => setShowButtons(e.currentTarget.open)}>
+          <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: T.pink, fontFamily: T.font, listStyle: 'none' }}>
+            {showButtons ? '−' : '+'} {t('steps.question.editButtons')}
+          </summary>
+          <FieldLabel style={{ marginTop: 12 }}>{t('steps.question.yesButton')}</FieldLabel>
+          <Inp
+            type="text"
+            value={config.yesText}
+            onChange={(e) => update({ yesText: e.target.value })}
+            placeholder={t('steps.question.yesPlaceholder')}
+          />
 
-        <FieldLabel style={{ marginTop: 12 }}>{t('steps.question.noButton')}</FieldLabel>
-        <Inp
-          type="text"
-          value={config.noText || ''}
-          onChange={(e) => update({ noText: e.target.value })}
-          placeholder={t('steps.question.noPlaceholder')}
+          <FieldLabel style={{ marginTop: 12 }}>{t('steps.question.noButton')}</FieldLabel>
+          <Inp
+            type="text"
+            value={config.noText || ''}
+            onChange={(e) => update({ noText: e.target.value })}
+            placeholder={t('steps.question.noPlaceholder')}
+          />
+          <p style={{ fontSize: 12, color: T.muted, marginTop: 4, lineHeight: 1.4, fontFamily: T.font }}>
+            {t('steps.question.noButtonHint')}
+          </p>
+        </details>
+      </SectionCard>
+
+      <SectionCard number="2" title={t('steps.question.imageTitle')}>
+        <GifImagePicker
+          currentUrl={config.mediaUrl}
+          gifs={gifs}
+          gifsLoading={gifsLoading}
+          gifsError={gifsError}
+          onSelect={selectGif}
+          onRemove={removeMedia}
+          onUploadClick={() => fileInputRef.current?.click()}
+          fileInputRef={fileInputRef}
         />
-        <p style={{ fontSize: 12, color: T.muted, marginTop: 4, lineHeight: 1.4, fontFamily: T.font }}>
-          {t('steps.question.noButtonHint')}
-        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/webm,video/mp4"
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
+        {fileError && (
+          <p style={{ color: '#C0392B', fontSize: 12, marginTop: 4, fontFamily: T.font }}>{fileError}</p>
+        )}
       </SectionCard>
 
       {/* Live preview — на широких экранах превью уже показано сбоку (см. BuilderShell) */}
