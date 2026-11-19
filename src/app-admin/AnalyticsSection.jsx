@@ -279,7 +279,7 @@ export default function AnalyticsSection() {
 
           {/* То, что воронка не показывает: где людей останавливает форма */}
           <SubTitle>Препятствия по дороге</SubTitle>
-          <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-2">
             <Stat
               label="Остановило «нет имени»"
               value={num(totals.name_blocked)}
@@ -290,16 +290,8 @@ export default function AnalyticsSection() {
               value={num(totals.auth_viewed)}
               sub={`вошли: ${num(totals.auth_passed)}`}
             />
-            <Stat
-              label="Оформляли без регистрации"
-              value={num(totals.guest_sessions)}
-              sub="гостевой аккаунт перед оплатой"
-            />
-            <Stat
-              label="Сохранили доступ"
-              value={num(totals.guest_claimed)}
-              sub="гость вошёл после оплаты"
-            />
+            {/* Блоки про оплату без регистрации вернутся вместе с ней
+                (GUEST_CHECKOUT_ENABLED в src/lib/guestAccount.js) */}
           </div>
 
           {/* График по дням */}
