@@ -180,6 +180,10 @@ export default {
     confirmSave: 'Saqlash 💾',
   },
   builderUI: {
+    buttonLabel: 'Tugma matni',
+    buttonSummary: 'Tugma',
+    buttonsSummary: 'Tugmalar',
+    change: "o'zgartirish",
     cardShapes: {
       classic: 'Klassik',
       arch: 'Ark',

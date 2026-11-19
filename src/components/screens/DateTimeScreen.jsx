@@ -97,7 +97,7 @@ export default function DateTimeScreen({ title, buttonText, mode = 'recipient_pi
           boxShadow: canContinue ? `0 14px 30px -8px ${tokens.berry}60` : 'none',
         }}
       >
-        {buttonText || t('screens.dateContinue')}
+        {String(buttonText || '').trim() || t('screens.dateContinue')}
       </motion.button>
     </QuestionCardFrame>
     </motion.div>

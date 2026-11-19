@@ -180,6 +180,10 @@ export default {
     confirmSave: 'Save 💾',
   },
   builderUI: {
+    buttonLabel: 'Button text',
+    buttonSummary: 'Button',
+    buttonsSummary: 'Buttons',
+    change: 'edit',
     cardShapes: {
       classic: 'Classic',
       arch: 'Arch',

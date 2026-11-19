@@ -8,7 +8,7 @@ import { useBuilder } from '../builderStore.jsx';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
-import { T, SectionCard, FieldLabel, TxtArea, CharCount, GifImagePicker } from '../BuilderUI.jsx';
+import { T, SectionCard, TxtArea, CharCount, GifImagePicker, ButtonTextEditor } from '../BuilderUI.jsx';
 import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
 export default function StepFinal() {
@@ -108,6 +108,9 @@ export default function StepFinal() {
         <p style={{ fontSize: 12, color: T.muted, marginTop: 6, lineHeight: 1.5, fontFamily: T.font }}>
           {t('steps.final.descriptionHint')}
         </p>
+        <ButtonTextEditor
+          fields={[{ label: t('builderUI.buttonLabel'), value: config.buttonText, fallback: t('screens.submit'), onChange: (v) => update({ buttonText: v }) }]}
+        />
       </SectionCard>
     </div>
   );

@@ -141,7 +141,7 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
 }
 
 export default function FinalScreen({
-  title, description, summary, mediaUrl, tokens, onSubmit, submitting, submitted, cardShape = 'classic',
+  title, description, buttonText, summary, mediaUrl, tokens, onSubmit, submitting, submitted, cardShape = 'classic',
   // Для экрана после ответа (см. AfterAnswer). isPreview — автор смотрит черновик.
   templateKey, noAttempts = 0, slug, isPreview = false,
 }) {
@@ -226,7 +226,7 @@ export default function FinalScreen({
               boxShadow: submitting ? 'none' : `0 14px 30px -8px ${tokens.berry}60`,
             }}
           >
-            {submitting ? t('screens.submitting') : t('screens.submit')}
+            {submitting ? t('screens.submitting') : (String(buttonText || '').trim() || t('screens.submit'))}
           </motion.button>
 
           {localError && (

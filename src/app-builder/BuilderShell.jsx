@@ -126,6 +126,7 @@ export default function BuilderShell() {
             foodTitle={food.title}
             foodOptions={food.options}
             foodAllowMultiple={food.allowMultiple}
+            buttonText={place.buttonText}
             tokens={tokens}
             onContinue={() => {}}
           />
@@ -137,6 +138,7 @@ export default function BuilderShell() {
           <FinalScreen
             title={c.title}
             description={c.description}
+            buttonText={c.buttonText}
             mediaUrl={c.mediaUrl}
             tokens={tokens}
             cardShape={state.cardShape}
