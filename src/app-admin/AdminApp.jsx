@@ -23,12 +23,14 @@ import PaymentsPage from './PaymentsPage.jsx';
 import ContentPage from './ContentPage.jsx';
 import MuseumStatsSection from './MuseumStatsSection.jsx';
 import PartnersPage from './PartnersPage.jsx';
+import RemindersPage from './RemindersPage.jsx';
 
 const NAV = [
   { to: '', label: 'Обзор', icon: '◎', end: true },
   { to: 'analytics', label: 'Аналитика', icon: '↗' },
   { to: 'invitations', label: 'Приглашения', icon: '✉' },
   { to: 'payments', label: 'Платежи', icon: '₸' },
+  { to: 'reminders', label: 'Напоминания', icon: '⏰' },
   { to: 'content', label: 'Контент', icon: '▦' },
   { to: 'museum', label: 'Музей', icon: '⌂' },
   { to: 'partners', label: 'Партнёры', icon: '★' },
@@ -104,6 +106,7 @@ export default function AdminApp({ basePath }) {
       <Route path="analytics" element={<AnalyticsSection />} />
       <Route path="invitations" element={<InvitationsPage />} />
       <Route path="payments" element={<PaymentsPage />} />
+      <Route path="reminders" element={<RemindersPage />} />
       <Route path="content" element={<ContentPage />} />
       <Route path="museum" element={<MuseumStatsSection />} />
       <Route path="partners" element={<PartnersPage />} />

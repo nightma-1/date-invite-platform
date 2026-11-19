@@ -52,7 +52,7 @@ async function adminChats(supabaseAdmin) {
   return (data || []).map((r) => r.telegram_chat_id);
 }
 
-async function broadcast(supabaseAdmin, sendMessage, text, button) {
+export async function broadcast(supabaseAdmin, sendMessage, text, button) {
   const chats = await adminChats(supabaseAdmin);
   const results = [];
   for (const chatId of chats) {
