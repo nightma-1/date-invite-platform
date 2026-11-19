@@ -112,7 +112,7 @@ function getAttribution() {
   }
 
   const attribution = {
-    utm_source: null, utm_medium: null, utm_campaign: null,
+    utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null,
     ref_code: null, referrer_host: null,
   };
 
@@ -121,6 +121,8 @@ function getAttribution() {
     attribution.utm_source = params.get('utm_source');
     attribution.utm_medium = params.get('utm_medium');
     attribution.utm_campaign = params.get('utm_campaign');
+    // Какой именно ролик/креатив: в Meta Ads — {{ad.name}} или {{ad.id}}
+    attribution.utm_content = params.get('utm_content');
     // ?ref=blogger — реферальные ссылки инфлюенсеров
     attribution.ref_code = params.get('ref');
 
@@ -209,6 +211,7 @@ export function track(event, props = {}, opts = {}) {
       p_referrer_host: attribution.referrer_host,
       p_device: detectDevice(),
       p_lang: (navigator.language || '').slice(0, 12) || null,
+      p_utm_content: attribution.utm_content || null,
     }).then(() => true, () => false); // статистика не должна шуметь в консоли
   } catch {
     return Promise.resolve(false); // аналитика никогда не ломает страницу

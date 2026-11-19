@@ -10,6 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { safeEqual } from '../_lib/telegramLink.js';
+import { sendDailyReport, sendAdminAlert } from '../_lib/adminReport.js';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -201,6 +202,22 @@ export default async function handler(req, res) {
   }
 
   const { invitation_id: invitationId, event, extra } = req.body || {};
+
+  // Сообщения владельцу сервиса, не привязанные к приглашению:
+  // утренняя сводка (pg_cron → send_daily_report) и тревоги о сбоях
+  // (track_event при payment_timeout/publish_error). См. _lib/adminReport.js.
+  if (event === 'daily_report' || event === 'admin_alert') {
+    try {
+      const result = event === 'daily_report'
+        ? await sendDailyReport(supabaseAdmin, sendMessage)
+        : await sendAdminAlert(supabaseAdmin, sendMessage, extra || {});
+      return res.status(200).json(result);
+    } catch (err) {
+      console.error(`telegram/notify: ${event} failed`, err?.message || err);
+      return res.status(500).json({ ok: false });
+    }
+  }
+
   if (!invitationId || !event) {
     return res.status(400).json({ error: 'invitation_id и event обязательны' });
   }
