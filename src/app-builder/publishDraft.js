@@ -9,6 +9,7 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { uploadMedia } from '../lib/uploadMedia.js';
 import { getPendingMedia, clearPendingMedia } from './pendingMedia.js';
+import { fallbackRecipientName } from './defaultContent.js';
 
 function generateSlug() {
   return Math.random().toString(36).slice(2, 10);
@@ -70,7 +71,7 @@ export async function publishDraft(state, userId) {
       mood: state.mood,
       template_key: state.templateId,
       card_shape: state.cardShape || 'classic',
-      recipient_name: String(questionConfig.recipientName || '').replace(/\s+/g, ' ').trim() || 'Тебя',
+      recipient_name: String(questionConfig.recipientName || '').replace(/\s+/g, ' ').trim() || fallbackRecipientName(state.lang),
       recipient_gender: state.recipientGender || null,
       status: 'draft',
     })

@@ -14,6 +14,8 @@
  * нужны — картинка видна до загрузки в Storage.
  */
 
+import { fallbackRecipientName } from './defaultContent.js';
+
 export function buildPreviewInvitation(state) {
   const configOf = (type) => state.steps.find((s) => s.step_type === type)?.configuration_json || {};
   const question = configOf('question');
@@ -26,7 +28,7 @@ export function buildPreviewInvitation(state) {
     mood: state.mood,
     template_key: state.templateId,
     card_shape: state.cardShape || 'classic',
-    recipient_name: question.recipientName || 'Тебя',
+    recipient_name: question.recipientName || fallbackRecipientName(state.lang),
     recipient_gender: state.recipientGender || null,
     status: 'preview',
   };

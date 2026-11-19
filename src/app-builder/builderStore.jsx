@@ -7,54 +7,43 @@ import { createContext, useContext, useEffect, useMemo, useReducer } from 'react
 import { supabase } from '../lib/supabaseClient.js';
 import { isEditLocked } from '../lib/editWindow.js';
 import { listDefaultGifs } from '../lib/mediaLibrary.js';
+import i18n from '../i18n/index.js';
+import { useTranslation } from 'react-i18next';
+import { buildDefaultConfigs, localizeSteps, normalizeLang, invitationLang } from './defaultContent.js';
 
 const STORAGE_PREFIX = 'date-invite-draft:';
 
-export const DEFAULT_STEPS = [
-  // mediaUrl у вопроса/реакции/даты/финала изначально пустой — актуальная
-  // дефолтная гифка каждого шага подтягивается из админки при заходе в
-  // конструктор (см. эффект APPLY_DEFAULT_MEDIA ниже). Раньше здесь были
-  // зашитые в код URL, из-за которых на долю секунды мелькала СТАРАЯ
-  // картинка перед тем, как подставлялась актуальная.
-  { step_type: 'question', step_order: 0, enabled: true, configuration_json: { recipientName: '', questionText: 'Пойдёшь со мной на свидание?', yesText: 'Да, конечно ❤️', noText: 'Нет', mediaUrl: null } },
-  { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: { title: 'Подожди, ты действительно сказал да?', text: 'Я была готова что скажешь «нет» ахах', confirmText: 'Да Да ДА!', mediaUrl: null } },
-  // Дата и время — один шаг с двумя полями, получатель тоже видит их на одном экране
-  { step_type: 'date', step_order: 2, enabled: true, configuration_json: { mode: 'recipient_picks', title: 'И так... Когда ты свободен?', buttonText: 'Выбери дату и время 💌' } },
-  // Раньше был один шаг с переключателем категории и пустым списком —
-  // теперь два отдельных экрана с уже готовым набором вариантов
-  {
-    step_type: 'choice_place', step_order: 3, enabled: true, configuration_json: {
-      title: 'Куда пойдём?', allowMultiple: false,
-      options: [
-        { id: 'opt_place_1', icon: '🎬', label: 'Кино' },
-        { id: 'opt_place_2', icon: '🍽️', label: 'Ресторан' },
-        { id: 'opt_place_3', icon: '🚶', label: 'Прогулка' },
-        { id: 'opt_place_4', icon: '🎳', label: 'Боулинг' },
-        { id: 'opt_place_5', icon: '☕', label: 'Кафе' },
-        { id: 'opt_place_6', icon: '✨', label: 'Своё' },
-      ],
-    },
-  },
-  {
-    step_type: 'choice_food', step_order: 4, enabled: true, configuration_json: {
-      title: 'Что будем есть?', allowMultiple: false,
-      options: [
-        { id: 'opt_food_1', icon: '🍕', label: 'Пицца' },
-        { id: 'opt_food_2', icon: '🍣', label: 'Суши' },
-        { id: 'opt_food_3', icon: '🍔', label: 'Бургеры' },
-        { id: 'opt_food_4', icon: '🍝', label: 'Паста' },
-        { id: 'opt_food_5', icon: '🥗', label: 'Салаты' },
-        { id: 'opt_food_6', icon: '🍦', label: 'Десерт' },
-      ],
-    },
-  },
-  { step_type: 'final', step_order: 5, enabled: true, configuration_json: { title: 'Ну всё, теперь пути назад нет 😄❤️', description: 'Наше свидание официально запланировано!', mediaUrl: null } },
-];
+// mediaUrl у вопроса/реакции/даты/финала изначально пустой — актуальная
+// дефолтная гифка каждого шага подтягивается из админки при заходе в
+// конструктор (см. эффект APPLY_DEFAULT_MEDIA ниже).
+// Тексты — на языке конструктора, см. defaultContent.js.
+export function buildDefaultSteps(lang, recipientGender = null) {
+  const c = buildDefaultConfigs(lang, recipientGender);
+  return [
+    { step_type: 'question', step_order: 0, enabled: true, configuration_json: c.question },
+    { step_type: 'reaction', step_order: 1, enabled: true, configuration_json: c.reaction },
+    // Дата и время — один шаг с двумя полями, получатель тоже видит их на одном экране
+    { step_type: 'date', step_order: 2, enabled: true, configuration_json: c.date },
+    // Два отдельных экрана выбора с уже готовым набором вариантов
+    { step_type: 'choice_place', step_order: 3, enabled: true, configuration_json: c.choice_place },
+    { step_type: 'choice_food', step_order: 4, enabled: true, configuration_json: c.choice_food },
+    { step_type: 'final', step_order: 5, enabled: true, configuration_json: c.final },
+  ];
+}
+
+export const DEFAULT_STEPS = buildDefaultSteps('ru');
+
+function currentUiLang() {
+  return normalizeLang(i18n.resolvedLanguage || i18n.language);
+}
 
 function initialDraft(draftId, initialTemplateId) {
   const templateId = initialTemplateId || 'romantic';
   return {
-    draftId, templateId, mood: templateId, cardShape: 'polaroid', activeStepIndex: 0, steps: DEFAULT_STEPS,
+    draftId, templateId, mood: templateId, cardShape: 'polaroid', activeStepIndex: 0,
+    // Язык приглашения = язык конструктора; меняется вместе с переключателем
+    lang: currentUiLang(),
+    steps: buildDefaultSteps(currentUiLang()),
     // Какие шаги ещё ни разу не получали картинку от самого пользователя —
     // пока шаг не тронут, картинку на нём можно свободно подменять свежим
     // дефолтом из админки (см. APPLY_DEFAULT_MEDIA и эффект в BuilderProvider).
@@ -96,6 +85,8 @@ async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplate
 
   return {
     draftId: editDraftId,
+    // У старых приглашений поля языка нет — их тексты были на русском
+    lang: invitationLang(savedSteps) || 'ru',
     templateId: inv.template_key || initialTemplateId || 'romantic',
     mood: inv.mood || inv.template_key || 'romantic',
     cardShape: inv.card_shape || 'polaroid',
@@ -112,44 +103,6 @@ async function fetchInvitationForEdit(invitationId, editDraftId, initialTemplate
   };
 }
 
-// Дефолтные тексты в DEFAULT_STEPS написаны для получателя мужского пола
-// ("свободен", "сказал") — при выборе пола получателя (см. AudienceGate в
-// BuilderShell) подправляем род в ещё не тронутых пользователем полях, чтобы
-// черновик сразу открывался с правильной грамматикой. Кастомный текст,
-// который уже не совпадает с исходным дефолтом, не трогаем.
-//
-// direction: 'recipient' — фраза обращена К получателю ("ты свободен?") —
-// род берём напрямую из пола получателя.
-// direction: 'sender' — фраза написана ОТ ЛИЦА отправителя ("я была готова…")
-// — предполагаем гетеросексуальную пару, так что род отправителя обратный
-// полу получателя (пригласили девушку → пишет парень, и наоборот).
-const GENDERED_STEP_DEFAULTS = [
-  { step_type: 'date', field: 'title', direction: 'recipient', masculine: 'И так... Когда ты свободен?', feminine: 'И так... Когда ты свободна?' },
-  { step_type: 'reaction', field: 'title', direction: 'recipient', masculine: 'Подожди, ты действительно сказал да?', feminine: 'Подожди, ты действительно сказала да?' },
-  { step_type: 'reaction', field: 'text', direction: 'sender', masculine: 'Я был готов что скажешь «нет» ахах', feminine: 'Я была готова что скажешь «нет» ахах' },
-];
-
-function genderizeSteps(steps, recipientGender) {
-  if (recipientGender !== 'male' && recipientGender !== 'female') return steps;
-  return steps.map((s) => {
-    const rules = GENDERED_STEP_DEFAULTS.filter((g) => g.step_type === s.step_type);
-    if (rules.length === 0) return s;
-    let configuration_json = s.configuration_json;
-    for (const rule of rules) {
-      const effectiveGender = rule.direction === 'sender'
-        ? (recipientGender === 'female' ? 'male' : 'female')
-        : recipientGender;
-      const current = configuration_json?.[rule.field];
-      if (effectiveGender === 'female' && current === rule.masculine) {
-        configuration_json = { ...configuration_json, [rule.field]: rule.feminine };
-      } else if (effectiveGender === 'male' && current === rule.feminine) {
-        configuration_json = { ...configuration_json, [rule.field]: rule.masculine };
-      }
-    }
-    return configuration_json === s.configuration_json ? s : { ...s, configuration_json };
-  });
-}
-
 function draftReducer(state, action) {
   switch (action.type) {
     case 'HYDRATE':
@@ -158,8 +111,16 @@ function draftReducer(state, action) {
       return { ...state, templateId: action.templateId };
     case 'SET_CARD_SHAPE':
       return { ...state, cardShape: action.cardShape };
+    // Ещё не тронутые автором тексты подстраиваем под род получателя
+    // ("свободен"/"свободна") — свой текст автора не трогаем (defaultContent.js)
     case 'SET_GENDER':
-      return { ...state, recipientGender: action.gender, steps: genderizeSteps(state.steps, action.gender) };
+      return { ...state, recipientGender: action.gender, steps: localizeSteps(state.steps, state.lang, action.gender) };
+    // Смена языка конструктора: язык приглашения и все не тронутые тексты
+    // (вопрос, кнопки, варианты, заголовки) переходят на новый язык
+    case 'SET_LANG': {
+      const lang = normalizeLang(action.lang);
+      return { ...state, lang, steps: localizeSteps(state.steps, lang, state.recipientGender) };
+    }
     case 'SET_ACTIVE_STEP':
       return { ...state, activeStepIndex: action.index, nameMissing: action.nameMissing || false };
     case 'TOGGLE_STEP':
@@ -266,6 +227,19 @@ export function BuilderProvider({ draftId, initialTemplateId, editInvitationId, 
       // не роняем билдер из-за этого
     }
   }, [draftId, state]);
+
+  // Язык приглашения всегда совпадает с языком конструктора: переключили
+  // язык в шапке — переводим черновик (кроме того, что автор написал сам).
+  // Срабатывает и для старых черновиков без state.lang, и при открытии на
+  // правку приглашения, созданного на другом языке.
+  const { i18n: i18nInstance } = useTranslation();
+  const uiLang = normalizeLang(i18nInstance.resolvedLanguage || i18nInstance.language);
+  const draftLang = state.lang;
+  const questionLang = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.lang;
+  useEffect(() => {
+    if (state.loading) return;
+    if (draftLang !== uiLang || questionLang !== uiLang) dispatch({ type: 'SET_LANG', lang: uiLang });
+  }, [uiLang, draftLang, questionLang, state.loading]);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);
 

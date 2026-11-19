@@ -5,10 +5,13 @@
 
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { I18nextProvider, useTranslation } from 'react-i18next';
+import i18n from '../i18n/index.js';
+import { invitationLang } from '../app-builder/defaultContent.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
 import { getTemplateTokens } from '../templates/registry.js';
-import QuestionScreen, { DEFAULT_NO_PHRASES } from '../components/screens/QuestionScreen.jsx';
+import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
 import ChoiceScreen from '../components/screens/ChoiceScreen.jsx';
@@ -34,7 +37,28 @@ const RENDERABLE_STEP_TYPES = new Set(['question', 'reaction', 'date', 'choice_b
  * приглашением и начало бы врать автору. В этом режиме ничего не пишется в базу
  * и не уходит в Telegram — автор смотрит, а не отвечает сам себе.
  */
-export default function InvitationRuntime({ previewData = null }) {
+/**
+ * Приглашение показывается на том языке, на котором его собрали в конструкторе
+ * (question.configuration_json.lang), а не на языке браузера получателя: иначе
+ * текст автора на узбекском соседствует с кнопками на русском. Для этого всё
+ * дерево экранов получает свой экземпляр i18n с языком приглашения — глобальный
+ * язык сайта не трогаем. У старых приглашений без поля lang — как раньше.
+ */
+export default function InvitationRuntime(props) {
+  const [inviteLang, setInviteLang] = useState(null);
+  const scoped = useMemo(
+    () => (inviteLang ? i18n.cloneInstance({ lng: inviteLang }) : i18n),
+    [inviteLang],
+  );
+  return (
+    <I18nextProvider i18n={scoped}>
+      <InvitationRuntimeInner {...props} onLang={setInviteLang} />
+    </I18nextProvider>
+  );
+}
+
+function InvitationRuntimeInner({ previewData = null, onLang }) {
+  const { t } = useTranslation();
   const isPreview = Boolean(previewData);
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
@@ -98,6 +122,7 @@ export default function InvitationRuntime({ previewData = null }) {
 
     // В превью всё уже есть на руках: ни запроса, ни отметки о просмотре.
     if (previewData) {
+      onLang?.(invitationLang(previewData.steps));
       setInvitation(previewData.invitation);
       setContent(previewData.content);
       setSteps(
@@ -133,6 +158,7 @@ export default function InvitationRuntime({ previewData = null }) {
         return;
       }
 
+      onLang?.(invitationLang(inv.invitation_steps));
       setInvitation(inv);
       setContent(inv.invitation_content);
       setSteps(
@@ -235,7 +261,7 @@ export default function InvitationRuntime({ previewData = null }) {
   }
 
   if (state.status === 'loading') {
-    return <CenteredMessage text="Открываем приглашение…" tokens={tokens} />;
+    return <CenteredMessage text={t('invite.opening')} tokens={tokens} />;
   }
   if (invitation?.kind === 'museum') {
     return (
@@ -245,13 +271,13 @@ export default function InvitationRuntime({ previewData = null }) {
     );
   }
   if (state.status === 'museum_expired') {
-    return <CenteredMessage text="🖼 Срок этого музея закончился. Его может продлить тот, кто его собрал." tokens={tokens} />;
+    return <CenteredMessage text={t('invite.museumExpired')} tokens={tokens} />;
   }
   if (state.status === 'not_found') {
-    return <CenteredMessage text="Кажется, ссылка больше не работает." tokens={tokens} />;
+    return <CenteredMessage text={t('invite.notFound')} tokens={tokens} />;
   }
   if (state.status === 'expired') {
-    return <CenteredMessage text="💌 Это приглашение больше недоступно." tokens={tokens} />;
+    return <CenteredMessage text={t('invite.expired')} tokens={tokens} />;
   }
   // Поводы (день рождения, извинение и т.д.) рисует своя страница — см. OccasionFrame.jsx
   if (invitation?.kind === 'occasion') {
@@ -260,8 +286,8 @@ export default function InvitationRuntime({ previewData = null }) {
 
   const activeStep = steps[activeIndex];
   const summaryLines = [
-    answers.selectedDate ? `📅 Дата: ${answers.selectedDate}` : null,
-    answers.selectedTime ? `🕒 Время: ${answers.selectedTime}` : null,
+    answers.selectedDate ? `📅 ${t('invite.summaryDate')}: ${answers.selectedDate}` : null,
+    answers.selectedTime ? `🕒 ${t('invite.summaryTime')}: ${answers.selectedTime}` : null,
   ].filter(Boolean);
 
   return (
@@ -318,7 +344,7 @@ export default function InvitationRuntime({ previewData = null }) {
         <button
           type="button"
           onClick={goPrev}
-          aria-label="Назад"
+          aria-label={t('invite.back')}
           style={{
             // fixed прилип бы к окну браузера и уехал из рамки телефона
             position: isPreview ? 'absolute' : 'fixed', top: 18, left: 18, zIndex: 2,
@@ -341,8 +367,10 @@ export default function InvitationRuntime({ previewData = null }) {
           questionText={content?.question_text?.ru?.question}
           yesText={content?.question_text?.ru?.yes || undefined}
           noPhrases={
+            // Первая фраза — текст автора, остальные (когда кнопка убегает) —
+            // на языке приглашения
             content?.question_text?.ru?.no
-              ? [content.question_text.ru.no, ...DEFAULT_NO_PHRASES.slice(1)]
+              ? [content.question_text.ru.no, ...t('questionScreen.noPhrases', { returnObjects: true }).slice(1)]
               : undefined
           }
           mediaUrl={content?.gif_url}
