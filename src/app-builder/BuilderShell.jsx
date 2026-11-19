@@ -90,6 +90,7 @@ export default function BuilderShell() {
           <ReactionScreen
             title={c.title}
             text={c.text}
+            confirmText={c.confirmText}
             mediaUrl={c.mediaUrl}
             tokens={tokens}
             cardShape={state.cardShape}

@@ -387,6 +387,7 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
         <ReactionScreen
           title={content?.reaction_text?.ru?.title}
           text={content?.reaction_text?.ru?.text}
+          confirmText={activeStep.configuration_json?.confirmText}
           mediaUrl={activeStep.configuration_json?.mediaUrl}
           recipientGender={invitation.recipient_gender}
           tokens={tokens}

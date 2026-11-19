@@ -134,6 +134,7 @@ export default function StepReaction() {
           <ReactionScreen
             title={config.title}
             text={config.text}
+            confirmText={config.confirmText}
             mediaUrl={currentMediaUrl}
             tokens={tokens}
             cardShape={state.cardShape}
