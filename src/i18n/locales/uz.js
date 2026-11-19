@@ -99,6 +99,17 @@ export default {
     withTelegram: 'Telegram orqali kirish',
     orEmail: 'yoki pochta orqali',
     oauthError: 'Kirib bo‘lmadi. Qayta urinib ko‘ring yoki pochta orqali kiring.',
+    inAppHint: 'Sayt Instagram ichida ochilgan. Telegram orqali kirish boshqa brauzerda ochilishi mumkin — u yerda taklifnomangiz topilmaydi. Senti’ni brauzerda ochgan ma’qul: yuqoridagi ⋯ → «Brauzerda ochish».',
+    copyLink: 'Bu sahifa havolasini nusxalash',
+    linkCopied: 'Havola nusxalandi',
+  },
+
+  guest: {
+    title: 'Taklifnomaga kirishni saqlang',
+    text: 'Siz ro‘yxatdan o‘tmasdan to‘ladingiz, shuning uchun taklifnoma va javoblar faqat shu brauzerda ko‘rinadi. Telegram yoki pochta orqali kiring — hammasi akkauntingizga bog‘lanadi va istalgan telefondan ocha olasiz.',
+    button: 'Kirishni saqlash',
+    authTitle: 'Taklifnomani saqlash uchun kiring',
+    saved: '✓ Kirish saqlandi: taklifnoma endi akkauntingizda.',
   },
 
   builder: {

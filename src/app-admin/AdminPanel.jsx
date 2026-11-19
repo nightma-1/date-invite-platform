@@ -117,7 +117,8 @@ export default function AdminPanel() {
   );
 
   if (session === undefined) return wrap(<p className="text-sm opacity-60">Загрузка…</p>);
-  if (!session) return wrap(<AuthGate onAuthenticated={() => {}} />);
+  // Гостевая сессия (купил без регистрации) — не вход в админку.
+  if (!session || session.user?.is_anonymous) return wrap(<AuthGate context="admin" onAuthenticated={() => {}} />);
 
   if (isAdmin === false) return <NotFound />;
 

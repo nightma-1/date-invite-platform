@@ -10,6 +10,7 @@ import { getTemplateTokens, TEMPLATE_LIST } from '../../templates/registry.js';
 import { validateMediaFile } from '../../lib/uploadMedia.js';
 import { setPendingMedia, clearPendingMedia } from '../pendingMedia.js';
 import { listActiveGifs } from '../../lib/mediaLibrary.js';
+import { isPlaceholderName, normalizeName } from '../../lib/shareLink.js';
 import { T, SectionCard, FieldLabel, Inp, TxtArea, CharCount, GifImagePicker, CardShapePicker } from '../BuilderUI.jsx';
 import { registerBlobMediaType } from '../../components/ui/SmartMedia.jsx';
 
@@ -17,9 +18,9 @@ export default function StepQuestion() {
   const { t } = useTranslation();
   const { state, dispatch } = useBuilder();
   // Подсвечиваем поле имени, только пока оно пустое после попытки оплатить.
-  const nameMissing = Boolean(state.nameMissing) && !String(
-    state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName || ''
-  ).trim();
+  // Пустое имя и заглушки вроде «Имя» считаем одинаково — как и проверка в BuilderShell.
+  const currentName = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName;
+  const nameMissing = Boolean(state.nameMissing) && (!normalizeName(currentName) || isPlaceholderName(currentName));
   const tokens = getTemplateTokens(state.templateId);
   const config = state.steps.find((s) => s.step_type === 'question').configuration_json;
   const fileInputRef = useRef(null);
