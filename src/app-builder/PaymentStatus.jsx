@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
 import { inviteShareUrl } from '../lib/shareLink.js';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
+import SaveAccessCard from '../components/ui/SaveAccessCard.jsx';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 
 const POLL_INTERVAL_MS = 2500;
@@ -47,9 +48,15 @@ export default function PaymentStatus() {
       if (cancelled) return;
 
       if (error || !data) {
-        // RLS не пустит чужой/несуществующий черновик — для владельца, не
-        // вошедшего в сессию (вкладка открылась заново), тоже придёт пусто
-        setStatus('notfound');
+        // Черновик видит только владелец, а опубликованное — все. Если Click
+        // вернул человека в другой браузер (без его сессии), черновик тут не
+        // виден, но станет виден, как только вебхук его опубликует. Поэтому
+        // «не найдено» показываем, только когда ждать уже нечего.
+        if (attempt >= MAX_ATTEMPTS) {
+          setStatus('notfound');
+          return;
+        }
+        setTimeout(poll, POLL_INTERVAL_MS);
         return;
       }
 
@@ -209,6 +216,10 @@ export default function PaymentStatus() {
                 </button>
               </div>
             )}
+
+            {/* Купил без регистрации — предлагаем войти, чтобы приглашение
+                и ответы не потерялись вместе с этим браузером */}
+            <SaveAccessCard context="payment_success" />
 
             {telegramLinked === false && (
               <div style={{

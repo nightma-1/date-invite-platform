@@ -23,6 +23,21 @@ import { supabase } from './supabaseClient.js';
 const VISITOR_KEY = 'senti_visitor_id';
 const SESSION_KEY = 'senti_session_id';
 const ATTRIBUTION_KEY = 'senti_attribution';
+// Браузер владельца сервиса. Ставится один раз (зашёл в админку или вошёл
+// админским аккаунтом) и дальше выключает счётчик на этом устройстве, даже
+// без входа: иначе свои тесты смешиваются с настоящими посетителями.
+const INTERNAL_KEY = 'senti_internal';
+const AUTH_TRACKED_KEY = 'senti_auth_tracked';
+
+// Вернулись ли мы сейчас со страницы входа через Telegram. Считываем при
+// загрузке модуля: Supabase очень скоро уберёт ?code= из адреса.
+const RETURNED_FROM_OAUTH = (() => {
+  try {
+    return /[?&]code=/.test(window.location.search) || /access_token=/.test(window.location.hash);
+  } catch {
+    return false;
+  }
+})();
 
 // Путь админки трекать нельзя: владелец сам ходит туда десятки раз в день.
 const IGNORED_PATH_PREFIXES = ['/xujayin'];
@@ -123,13 +138,22 @@ function getAttribution() {
   return attribution;
 }
 
+export function markInternalBrowser() {
+  writeStore('localStorage', INTERNAL_KEY, '1');
+}
+
 function isTrackable(path) {
   try {
+    if (readStore('localStorage', INTERNAL_KEY) === '1') return false;
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) return false;
     if (navigator.webdriver) return false;
     const p = path || window.location.pathname;
-    return !IGNORED_PATH_PREFIXES.some((prefix) => p.startsWith(prefix));
+    if (IGNORED_PATH_PREFIXES.some((prefix) => p.startsWith(prefix))) {
+      markInternalBrowser();
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
@@ -206,4 +230,53 @@ export function trackBeforeLeaving(event, props = {}, opts = {}) {
 /** Просмотр страницы. Вызывается автоматически на каждую смену роута. */
 export function trackPageView(path) {
   track('page_view', {}, { path });
+}
+
+/**
+ * Подписки на вход, общие для всего приложения. Вызывается один раз из App.
+ *
+ * 1. Успешный вход через Telegram. Раньше он считался только в
+ *    конструкторе и только если человек вернулся в ту же вкладку с
+ *    сохранённым черновиком, поэтому регистраций в базе было больше, чем
+ *    событий auth_success. Теперь событие одно и ставится здесь.
+ * 2. Админский аккаунт помечает браузер как свой (markInternalBrowser).
+ */
+let initialized = false;
+export function initAnalytics() {
+  if (initialized) return;
+  initialized = true;
+
+  async function onSession(event, session) {
+    const user = session?.user;
+    if (!user) return;
+
+    // Гостевую сессию (оплата без регистрации) входом не считаем.
+    if (!user.is_anonymous) {
+      const viaOAuth = (user.app_metadata?.provider || '').startsWith('custom:');
+      const fresh = event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && RETURNED_FROM_OAUTH);
+      if (viaOAuth && fresh) {
+        // Supabase присылает SIGNED_IN повторно при возврате на вкладку —
+        // считаем один вход на пользователя за сессию браузера.
+        const key = `${AUTH_TRACKED_KEY}:${user.id}`;
+        if (readStore('sessionStorage', key) !== '1') {
+          writeStore('sessionStorage', key, '1');
+          track('auth_success', { mode: 'oauth', provider: user.app_metadata.provider });
+        }
+      }
+    }
+
+    if (readStore('localStorage', INTERNAL_KEY) !== '1' && !user.is_anonymous) {
+      try {
+        const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+        if (data?.is_admin) markInternalBrowser();
+      } catch { /* не узнали — посчитаем как обычного посетителя */ }
+    }
+  }
+
+  try {
+    supabase.auth.onAuthStateChange((event, session) => {
+      // Внутри колбэка нельзя ждать запросы Supabase — откладываем.
+      setTimeout(() => onSession(event, session), 0);
+    });
+  } catch { /* без подписки просто не будет этих двух событий */ }
 }

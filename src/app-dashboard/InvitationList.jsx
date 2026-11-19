@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
+import SaveAccessCard from '../components/ui/SaveAccessCard.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
@@ -202,10 +203,18 @@ export default function InvitationList() {
     setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
   }
 
+  // Растёт, когда приглашения гостя перенесли на аккаунт, — перечитываем список.
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => sub.subscription.unsubscribe();
+    const onClaimed = () => setReloadKey((k) => k + 1);
+    window.addEventListener('senti:guest-claimed', onClaimed);
+    return () => {
+      sub.subscription.unsubscribe();
+      window.removeEventListener('senti:guest-claimed', onClaimed);
+    };
   }, []);
 
   useEffect(() => {
@@ -277,7 +286,7 @@ export default function InvitationList() {
     const onFocus = () => { loadProfile(); };
     window.addEventListener('focus', onFocus);
     return () => { cancelled = true; window.removeEventListener('focus', onFocus); };
-  }, [session]);
+  }, [session, reloadKey]);
 
   // Вошёл через Telegram — значит, Telegram у человека под рукой. Зовём
   // включить уведомления крупной карточкой, а не тихой строкой.
@@ -293,7 +302,7 @@ export default function InvitationList() {
       <div style={{ ...PAGE_BG_STYLE, minHeight: '100vh', position: 'relative' }}>
         <DecorativeBlobs />
         <div className="mx-auto max-w-4xl px-4 py-8" style={{ position: 'relative', zIndex: 1 }}>
-          <AuthGate onAuthenticated={() => {}} />
+          <AuthGate context="dashboard" onAuthenticated={() => {}} />
         </div>
       </div>
     );
@@ -316,6 +325,9 @@ export default function InvitationList() {
         <h1 className="mb-4 text-2xl" style={{ fontFamily: t.fontDisplay, color: t.ink, fontWeight: 700 }}>
           {tr('dashboard.title')}
         </h1>
+
+        {/* Гость (купил без регистрации) — зовём войти, чтобы не потерять доступ */}
+        <SaveAccessCard context="dashboard" />
 
         {isAdmin && (
           <Link

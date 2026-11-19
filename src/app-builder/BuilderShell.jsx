@@ -13,6 +13,7 @@ import StepDate from './steps/StepDate.jsx';
 import StepChoicePlaceAndFood from './steps/StepChoicePlaceAndFood.jsx';
 import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
+import { ensureGuestSession } from '../lib/guestAccount.js';
 import { publishDraft } from './publishDraft.js';
 import { buildPreviewInvitation } from './previewInvitation.js';
 import PreviewOverlay from './PreviewOverlay.jsx';
@@ -190,7 +191,8 @@ export default function BuilderShell() {
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
       if (data.session) {
-        track('auth_success', { mode: 'oauth', provider: pending.provider });
+        // Сам вход считает initAnalytics; здесь — что черновик пережил возврат.
+        track('auth_resume', { provider: pending.provider });
         await runPublish(data.session.user.id, pending.method || 'invoice');
       } else {
         // Вернулись без сессии: человек отменил вход или провайдер вернул ошибку.
@@ -210,6 +212,25 @@ export default function BuilderShell() {
 
   function goTo(index) {
     dispatch({ type: 'SET_ACTIVE_STEP', index });
+  }
+
+  function recipientNameMissing() {
+    const name = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName;
+    return !normalizeName(name) || isPlaceholderName(name);
+  }
+
+  // «Далее». Имя получателя проверяем сразу на его шаге: раньше проверка
+  // была только на «Опубликовать», и человек проходил весь конструктор, а
+  // потом его отбрасывало на первый шаг. По аналитике так терялось больше
+  // половины тех, кого блокировало (28 → дальше пошли 11).
+  function goNext() {
+    if (activeStep?.step_type === 'question' && recipientNameMissing()) {
+      dispatch({ type: 'SET_ACTIVE_STEP', index: state.activeStepIndex, nameMissing: true });
+      track('builder_blocked_no_name');
+      focusRecipientName();
+      return;
+    }
+    goTo(state.activeStepIndex + 1);
   }
 
   // Режим редактирования: приглашение ещё грузится из Supabase
@@ -390,8 +411,7 @@ export default function BuilderShell() {
     setPublishError(null);
     // Без имени получателя превью ссылки в Telegram выйдет «Имя, это тебе».
     // Возвращаем на шаг с именем, а не публикуем заглушку.
-    const questionName = state.steps.find((s) => s.step_type === 'question')?.configuration_json?.recipientName;
-    if (!normalizeName(questionName) || isPlaceholderName(questionName)) {
+    if (recipientNameMissing()) {
       const idx = orderedStepsForWizard.findIndex((s) => s.step_type === 'question');
       if (idx >= 0) dispatch({ type: 'SET_ACTIVE_STEP', index: idx, nameMissing: true });
       setPublishError(t('builder.nameRequired'));
@@ -421,13 +441,19 @@ export default function BuilderShell() {
     setShowPaymentChoice(false);
     setPublishError(null);
     track('payment_method_choose', { method });
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
+    // Регистрация больше не стоит перед оплатой: если человек не вошёл,
+    // заводим ему гостевой аккаунт (см. src/lib/guestAccount.js), а войти и
+    // «сохранить доступ» предлагаем уже после оплаты. Экран входа остаётся
+    // запасным вариантом, если гостевой вход выключен в Supabase.
+    setPublishing(true);
+    const session = await ensureGuestSession();
+    setPublishing(false);
+    if (!session) {
       setPendingPaymentMethod(method);
       setShowAuthGate(true);
       return;
     }
-    await runPublish(sessionData.session.user.id, method);
+    await runPublish(session.user.id, method);
   }
 
   async function runPublish(userId, method = 'invoice') {
@@ -546,6 +572,7 @@ export default function BuilderShell() {
         <DecorativeBlobs />
         <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
           <AuthGate
+            context="checkout"
             initialError={authError}
             onBeforeRedirect={rememberResume}
             onAuthenticated={(user) => { setShowAuthGate(false); setAuthError(null); runPublish(user.id, pendingPaymentMethod); }}
@@ -877,7 +904,7 @@ export default function BuilderShell() {
         <motion.button
           whileTap={{ scale: 0.98 }}
           type="button"
-          onClick={isLastStep ? handlePublish : () => goTo(state.activeStepIndex + 1)}
+          onClick={isLastStep ? handlePublish : goNext}
           disabled={publishing || (!isLastStep && !canGoNext)}
           style={{
             flex: 1,

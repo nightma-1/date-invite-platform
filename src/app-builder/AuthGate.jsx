@@ -2,11 +2,12 @@
  * © 2026 Senti. Все права защищены.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
+import { isInAppBrowser, rememberGuestForClaim } from '../lib/guestAccount.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 
 // Вход через Telegram уводит человека со страницы на сайт
@@ -35,8 +36,26 @@ function TelegramIcon() {
   );
 }
 
-export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialError = null }) {
+export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialError = null, context = 'default', title = null }) {
   const { t } = useTranslation();
+  const [inApp] = useState(isInAppBrowser);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // Сколько людей вообще увидели экран входа — без этого не понять, какая
+  // доля уходит на нём, ничего не нажав (auth_start ставится только на клик).
+  useEffect(() => {
+    track('auth_view', { context, in_app: inApp });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function copyPageLink() {
+    try {
+      navigator.clipboard?.writeText(cleanReturnUrl());
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+      track('auth_inapp_copy_link');
+    } catch { /* нет буфера обмена — человек скопирует адрес сам */ }
+  }
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -69,6 +88,9 @@ export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialErr
     if (!email || !password) { setError(t('auth.fillFields')); return; }
     setLoading(true);
     track('auth_start', { mode });
+    // Гость (купил без регистрации) входит — запоминаем его, чтобы после
+    // входа перенести приглашения на аккаунт (см. src/lib/guestAccount.js).
+    await rememberGuestForClaim();
     try {
       const { data, error: authError } = mode === 'signin'
         ? await supabase.auth.signInWithPassword({ email, password })
@@ -110,6 +132,7 @@ export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialErr
       // Запоминаем, что человек собирался сделать (например, оплатить), —
       // после возврата из Telegram страница загрузится заново.
       if (onBeforeRedirect) onBeforeRedirect(provider);
+      await rememberGuestForClaim();
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo: cleanReturnUrl() },
@@ -140,9 +163,33 @@ export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialErr
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>💌</div>
         <h2 style={{ fontFamily: '"Cormorant Garamond", serif', color: '#2A1F2B', fontSize: 22, fontWeight: 700, margin: 0 }}>
-          {mode === 'signin' ? t('auth.signinTitle') : t('auth.signupTitle')}
+          {title || (mode === 'signin' ? t('auth.signinTitle') : t('auth.signupTitle'))}
         </h2>
       </div>
+
+      {inApp && (
+        // Во встроенном браузере Instagram вход через Telegram может
+        // вернуть человека уже в Safari/Chrome — там нет ни черновика, ни
+        // гостевой покупки. Предупреждаем и даём скопировать ссылку.
+        <div style={{
+          background: '#FFF6E5', border: '1px solid #F2D49B', borderRadius: 8,
+          padding: '10px 12px', marginBottom: 16, fontFamily: '"Manrope", sans-serif',
+          fontSize: 12.5, lineHeight: 1.45, color: '#6B4D1F',
+        }}>
+          {t('auth.inAppHint')}
+          <button
+            type="button"
+            onClick={copyPageLink}
+            style={{
+              display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0,
+              color: '#C23B62', fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
+              fontFamily: '"Manrope", sans-serif', textDecoration: 'underline',
+            }}
+          >
+            {linkCopied ? t('auth.linkCopied') : t('auth.copyLink')}
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
         {OAUTH_PROVIDERS.map((p) => (
