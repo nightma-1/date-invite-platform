@@ -8,10 +8,8 @@
  * Деньги здесь не считаются — суммы приходят из admin_partner_overview(),
  * «выплачено» — через admin_mark_paid(): проверка прав живёт в базе.
  *
- * ВНИМАНИЕ: в main пока нет самой партнёрской части сайта — короткой
- * ссылки /r/<код> и кабинета /partner. Они остались в ветке
- * feat/referral-program. Пока их нет, клики и регистрации по партнёрам
- * здесь будут нулевыми.
+ * Сайт для партнёров: короткая ссылка /r/<код> (src/app-referral/
+ * ReferralRedirect.jsx) и кабинет блогера /partner (PartnerPanel.jsx).
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -29,6 +27,15 @@ export default function PartnersPage() {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+
+  function copyLink(row) {
+    try {
+      navigator.clipboard?.writeText(`${window.location.origin}/r/${row.code}`);
+      setCopiedId(row.id);
+      setTimeout(() => setCopiedId((id) => (id === row.id ? null : id)), 2000);
+    } catch { /* без буфера обмена — ссылка видна в строке */ }
+  }
 
   const reload = useCallback(async () => {
     const { data, error: err } = await supabase.rpc('admin_partner_overview');
@@ -160,11 +167,11 @@ export default function PartnersPage() {
         actions={<Button variant="primary" onClick={() => setShowForm((v) => !v)}>{showForm ? 'Отмена' : '+ Партнёр'}</Button>}
       />
 
-      <Card style={{ background: A.warnSoft, borderColor: '#F5D9AE', marginBottom: 16 }}>
-        <p style={{ margin: 0, fontSize: 13, color: A.warn, lineHeight: 1.5 }}>
-          Партнёрская часть сайта — короткая ссылка <b>senti.uz/r/код</b> и кабинет блогера — ещё не выпущена:
-          она лежит в ветке <code>feat/referral-program</code>. Пока её нет, клики и регистрации здесь будут нулевыми.
-          Переходы по <code>?ref=код</code> уже видны в «Аналитике».
+      <Card style={{ marginBottom: 16 }}>
+        <p style={{ margin: 0, fontSize: 13, color: A.muted, lineHeight: 1.55 }}>
+          Ссылка блогера — <b style={{ color: A.ink }}>senti.uz/r/код</b> (или senti.uz/?ref=код). Покупатель закрепляется
+          за первым блогером, по чьей ссылке пришёл, на 30 дней и навсегда — после входа на сайт. Блогер видит свою
+          статистику в кабинете <b style={{ color: A.ink }}>senti.uz/partner</b>, когда вы привяжете его аккаунт кнопкой «Привязать».
         </p>
       </Card>
 
@@ -232,6 +239,7 @@ export default function PartnersPage() {
                 <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <Button size="sm" variant="primary" disabled={busyId === r.id || Number(r.available) <= 0} onClick={() => markPaid(r)}>Выплачено</Button>
                   {!r.linked && <Button size="sm" disabled={busyId === r.id} onClick={() => linkAccount(r)}>Привязать</Button>}
+                  <Button size="sm" onClick={() => copyLink(r)}>{copiedId === r.id ? 'Скопировано' : 'Ссылка'}</Button>
                   <Button size="sm" disabled={busyId === r.id} onClick={() => changePercent(r)}>%</Button>
                   <Button size="sm" disabled={busyId === r.id} onClick={() => toggleActive(r)}>{r.is_active ? 'Выкл.' : 'Вкл.'}</Button>
                 </span>

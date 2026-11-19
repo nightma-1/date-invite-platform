@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import SaveAccessCard from '../components/ui/SaveAccessCard.jsx';
+import { loadPartnerStats } from '../lib/referral.js';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
@@ -132,6 +133,9 @@ export default function InvitationList() {
   // Владелец видит вход в новые поводы — пока они тестовые и скрыты от остальных
   const [isAdmin, setIsAdmin] = useState(false);
   const [payingId, setPayingId] = useState(null);
+  // Партнёрский кабинет показываем только тем, кто реально партнёр, —
+  // обычному автору приглашений эта ссылка ничего не говорит.
+  const [partner, setPartner] = useState(null);
 
   // Черновик (status: 'draft') — это приглашение, за которое ещё не
   // заплатили: человек мог закрыть вкладку Click на полпути. Публикует его
@@ -279,8 +283,18 @@ export default function InvitationList() {
       }
     }
 
+    async function loadPartner() {
+      try {
+        const stats = await loadPartnerStats();
+        if (!cancelled) setPartner(stats);
+      } catch {
+        // Не партнёр или RPC недоступна — просто не показываем блок.
+      }
+    }
+
     load();
     loadProfile();
+    loadPartner();
     // Человек уходит в бота, жмёт «Start» и возвращается на вкладку —
     // перепроверяем, привязался ли Telegram, чтобы карточка исчезла сама.
     const onFocus = () => { loadProfile(); };
@@ -328,6 +342,21 @@ export default function InvitationList() {
 
         {/* Гость (купил без регистрации) — зовём войти, чтобы не потерять доступ */}
         <SaveAccessCard context="dashboard" />
+
+        {partner && (
+          <Link
+            to="/partner"
+            className="mb-6 flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3.5 no-underline"
+            style={{ background: '#FFF1F5', border: `1.5px solid ${T.pinkBorder}` }}
+          >
+            <span style={{ color: t.berry, fontFamily: t.fontUI, fontSize: 13.5, fontWeight: 600 }}>
+              {tr('dashboard.partnerBanner', { available: Number(partner.available).toLocaleString('ru-RU') })}
+            </span>
+            <span style={{ color: t.berry, fontFamily: t.fontUI, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+              {tr('dashboard.partnerBannerAction')}
+            </span>
+          </Link>
+        )}
 
         {isAdmin && (
           <Link

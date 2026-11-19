@@ -6,6 +6,9 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { trackPageView, initAnalytics } from './lib/analytics.js';
 import { initGuestClaim } from './lib/guestAccount.js';
+import { supabase } from './lib/supabaseClient.js';
+import { attachReferralIfAny, trackReferralVisit } from './lib/referral.js';
+import ReferralRedirect from './app-referral/ReferralRedirect.jsx';
 import { BuilderProvider } from './app-builder/builderStore.jsx';
 import BuilderShell from './app-builder/BuilderShell.jsx';
 import InvitationRuntime from './app-recipient/InvitationRuntime.jsx';
@@ -20,6 +23,8 @@ import OccasionBuilder from './app-builder/OccasionBuilder.jsx';
 const MuseumBuilder = lazy(() => import('./app-museum/MuseumBuilder.jsx'));
 // Админка грузится отдельным файлом только при заходе в неё — покупатели её не скачивают.
 const AdminApp = lazy(() => import('./app-admin/AdminApp.jsx'));
+// Кабинет блогера нужен единицам — тоже отдельным файлом.
+const PartnerPanel = lazy(() => import('./app-referral/PartnerPanel.jsx'));
 const MuseumDemo = lazy(() => import('./app-museum/MuseumDemo.jsx'));
 const MuseumAbout = lazy(() => import('./app-museum/MuseumAbout.jsx'));
 const MuseumGate = lazy(() => import('./app-museum/MuseumGate.jsx'));
@@ -48,6 +53,33 @@ function PageViewTracker() {
     trackPageView(location.pathname);
   }, [location.pathname]);
   return null;
+}
+
+/**
+ * Привязка покупателя к блогеру живёт здесь, а не в AuthGate: войти можно с
+ * нескольких экранов, а привязать партнёра надо ровно один раз и независимо
+ * от того, через какой. RPC идемпотентна, лишний вызов безвреден.
+ */
+function useReferralAttachment() {
+  useEffect(() => {
+    // Блогер может дать и обычную ссылку senti.uz/?ref=<код> — засчитываем
+    // её так же, как короткую /r/<код>.
+    try {
+      const ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref && !window.location.pathname.startsWith('/r/')) trackReferralVisit(ref);
+    } catch { /* кривой адрес — просто без партнёра */ }
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) attachReferralIfAny();
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+        // Внутри колбэка нельзя ждать запросы Supabase — откладываем.
+        setTimeout(() => attachReferralIfAny(), 0);
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 }
 
 function newDraftId() {
@@ -81,6 +113,8 @@ function EditBuilderRoute() {
 }
 
 export default function App() {
+  useReferralAttachment();
+
   return (
     <BrowserRouter>
       <PageViewTracker />
@@ -95,6 +129,9 @@ export default function App() {
         <Route path="/builder/:draftId" element={<BuilderRoute />} />
         <Route path="/payment/:invitationId" element={<PaymentStatus />} />
         <Route path="/i/:slug" element={<InvitationRuntime />} />
+        {/* Реферальные ссылки блогеров: senti.uz/r/<код>, кабинет — /partner */}
+        <Route path="/r/:code" element={<ReferralRedirect />} />
+        <Route path="/partner" element={<Lazy><PartnerPanel /></Lazy>} />
         <Route path="/dashboard" element={<InvitationList />} />
         <Route path="/dashboard/response/:invitationId" element={<ResponseView />} />
         <Route path="/museum" element={<Lazy><MuseumGate><MuseumAbout /></MuseumGate></Lazy>} />
