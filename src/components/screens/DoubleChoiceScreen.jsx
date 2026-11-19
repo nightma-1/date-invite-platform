@@ -56,7 +56,7 @@ function ChoiceSection({ title, options, allowMultiple, tokens, selected, onTogg
 export default function DoubleChoiceScreen({
   placeTitle, placeOptions = [], placeAllowMultiple,
   foodTitle, foodOptions = [], foodAllowMultiple,
-  tokens, onContinue,
+  tokens, onContinue, buttonText,
 }) {
   const { t } = useTranslation();
   const [place, setPlace] = useState([]);
@@ -123,7 +123,7 @@ export default function DoubleChoiceScreen({
           boxShadow: canContinue ? `0 14px 30px -8px ${tokens.berry}60` : 'none',
         }}
       >
-        {t('screens.choiceContinue')}
+        {String(buttonText || '').trim() || t('screens.choiceContinue')}
       </motion.button>
     </motion.div>
   );

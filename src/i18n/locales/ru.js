@@ -182,6 +182,10 @@ export default {
     confirmSave: 'Сохранить 💾',
   },
   builderUI: {
+    buttonLabel: 'Текст кнопки',
+    buttonSummary: 'Кнопка',
+    buttonsSummary: 'Кнопки',
+    change: 'изменить',
     cardShapes: {
       classic: 'Классика',
       arch: 'Арка',

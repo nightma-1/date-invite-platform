@@ -421,6 +421,7 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
           foodTitle={steps[activeIndex + 1].configuration_json?.title}
           foodOptions={steps[activeIndex + 1].configuration_json?.options || []}
           foodAllowMultiple={steps[activeIndex + 1].configuration_json?.allowMultiple}
+          buttonText={activeStep.configuration_json?.buttonText}
           tokens={tokens}
           onContinue={({ placeIds, foodIds }) => {
             const foodStepId = steps[activeIndex + 1].id;
@@ -459,6 +460,7 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
         <FinalScreen
           title={content?.final_screen?.ru?.title}
           description={content?.final_screen?.ru?.description}
+          buttonText={activeStep.configuration_json?.buttonText}
           summary={summaryLines}
           mediaUrl={activeStep.configuration_json?.mediaUrl}
           tokens={tokens}
