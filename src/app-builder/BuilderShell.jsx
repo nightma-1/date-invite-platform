@@ -16,7 +16,7 @@ import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
 import { ensureGuestSession } from '../lib/guestAccount.js';
 import { publishDraft, withRetry, isNetworkError } from './publishDraft.js';
-import { getStoredPromo, storePromo, checkPromo, normalizePromo, discounted, INVITATION_PRICE, REPLY_DISCOUNT } from '../lib/promo.js';
+import { getStoredPromo, storePromo, checkPromo, normalizePromo, discounted, INVITATION_PRICE } from '../lib/promo.js';
 import { buildPreviewInvitation } from './previewInvitation.js';
 import PreviewOverlay from './PreviewOverlay.jsx';
 import { updateInvitationDraft } from './updateInvitation.js';
@@ -162,6 +162,8 @@ export default function BuilderShell() {
   const [promoInput, setPromoInput] = useState(() => getStoredPromo());
   const [promo, setPromo] = useState(null); // { code, discount_percent } — проверенный
   const [promoOpen, setPromoOpen] = useState(() => Boolean(getStoredPromo()));
+  // Ответ получательницы бесплатный (проверку делает сервер, см. api/click/create.js)
+  const replyFree = Boolean(state.replyToId) && !state.editInvitationId;
   const [promoStatus, setPromoStatus] = useState(null); // 'checking' | 'invalid' | null
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState('invoice');
   const [publishing, setPublishing] = useState(false);
@@ -476,24 +478,28 @@ export default function BuilderShell() {
           style={{ textAlign: 'center', maxWidth: 360, width: '100%', position: 'relative', zIndex: 1 }}
         >
           <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 20, color: T.darkPurple, marginBottom: 6 }}>
-            {promo?.discount_percent === 100 ? t('builder.promoFreeTitle') : t('builder.choosePaymentTitle')}
+            {(promo?.discount_percent === 100 || replyFree) ? t('builder.promoFreeTitle') : t('builder.choosePaymentTitle')}
           </h1>
           <p style={{ fontFamily: T.font, fontSize: 15, color: T.dark, margin: '0 0 18px' }}>
-            {(promo || state.replyToId) ? (
+            {replyFree ? (
+              <>
+                <b style={{ color: T.pink }}>{t('builder.promoFree')}</b>
+                <span style={{ display: 'block', fontSize: 12, color: T.muted, marginTop: 4 }}>{t('builder.replyFree')}</span>
+              </>
+            ) : promo ? (
               <>
                 <span style={{ textDecoration: 'line-through', color: T.muted, marginRight: 8 }}>{INVITATION_PRICE.toLocaleString('ru-RU')} {t('builder.sum')}</span>
                 <b style={{ color: T.pink }}>
-                  {discounted(INVITATION_PRICE, promo ? promo.discount_percent : REPLY_DISCOUNT) === 0
+                  {discounted(INVITATION_PRICE, promo.discount_percent) === 0
                     ? t('builder.promoFree')
-                    : `${discounted(INVITATION_PRICE, promo ? promo.discount_percent : REPLY_DISCOUNT).toLocaleString('ru-RU')} ${t('builder.sum')}`}
+                    : `${discounted(INVITATION_PRICE, promo.discount_percent).toLocaleString('ru-RU')} ${t('builder.sum')}`}
                 </b>
-                {!promo && <span style={{ display: 'block', fontSize: 12, color: T.muted, marginTop: 4 }}>{t('builder.replyDiscount')}</span>}
               </>
             ) : (
               <b>{INVITATION_PRICE.toLocaleString('ru-RU')} {t('builder.sum')}</b>
             )}
           </p>
-          {promo?.discount_percent === 100 ? (
+          {(promo?.discount_percent === 100 || replyFree) ? (
             <button
               type="button"
               onClick={() => handleChoosePaymentMethod('invoice')}

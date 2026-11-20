@@ -9,8 +9,7 @@ import { clickProvider, isClickConfigured, PAYMENT_METHOD } from '../../src/lib/
 import { rateLimit, clientIp } from '../_lib/rateLimit.js';
 import { MUSEUM_PUBLIC, museumPublishPrice, museumExtendPrice, museumTerm } from '../../src/lib/museumPlans.js';
 
-const INVITATION_PRICE = 19000;
-const REPLY_DISCOUNT = 50; // ответ получательницы, см. replyDiscountAllowed // сум, см. ТЗ раздел 3 (цена задаётся только здесь, клиент её не передаёт)
+const INVITATION_PRICE = 19000; // сум, см. ТЗ раздел 3 (цена задаётся только здесь, клиент её не передаёт)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PENDING_PER_INVITATION = 5; // защита от спама строк в payments
 const PENDING_WINDOW_MS = 60 * 60_000; // за какой срок считаем незавершённые попытки
@@ -205,13 +204,28 @@ export default async function handler(req, res) {
   }
 
   // Ответ получательницы на приглашение (открытка / «спасибо за вечер») —
-  // скидка 50%, если промокода нет. Проверяем, что это настоящий ответ: на
+  // бесплатно, один раз на приглашение. Проверяем, что это настоящий ответ: на
   // исходное приглашение ответили «да», это не своё же приглашение, и
-  // скидка за ответ на него ещё не использована.
-  if (!promo && !isExtension && invitation.kind !== 'museum' && invitation.reply_to) {
-    if (await replyDiscountAllowed(admin, invitation, userId)) {
-      amount = Math.round((amount * (100 - REPLY_DISCOUNT)) / 100 / 100) * 100;
+  // бесплатный ответ на него ещё не использован.
+  if (!isExtension && invitation.kind !== 'museum' && invitation.reply_to
+      && await replyDiscountAllowed(admin, invitation, userId)) {
+    // Ответ девушки бесплатный: публикуем сразу, строка в payments на 0 сум
+    // (provider 'reply') — чтобы ответ считался использованным
+    const { error: freeError } = await admin.from('payments').insert({
+      user_id: userId, invitation_id: invitationId, amount: 0, status: 'paid', method,
+      provider: 'reply', purpose: 'publish',
+    });
+    if (freeError) {
+      console.error('click/create: reply payment insert failed', freeError);
+      return res.status(500).json({ error: 'не удалось опубликовать' });
     }
+    const { data: published, error: publishError } = await admin
+      .from('invitations').update({ status: 'published' }).eq('id', invitationId).select('slug').single();
+    if (publishError) {
+      console.error('click/create: reply publish failed', publishError);
+      return res.status(500).json({ error: 'не удалось опубликовать' });
+    }
+    return res.status(200).json({ published: true, free: true, reply: true, slug: published.slug });
   }
 
   // Промокод на 100%: публикуем сразу, без Click, но с записью в payments

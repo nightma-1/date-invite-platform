@@ -117,7 +117,7 @@ export default {
   },
 
   builder: {
-    replyDiscount: '50% chegirma — bu taklifga javob',
+    replyFree: 'Taklifga javob — bepul',
     tgShare: "Telegram'da yuborish ✈️",
     tgShareText: 'Senga bir narsa bor 💌',
     loadingInvitation: 'Taklifnoma yuklanmoqda…',
@@ -265,9 +265,9 @@ export default {
     storySaved: 'Rasm saqlandi — uni storisga joylash mumkin.',
     storyFailed: 'Rasmni tayyorlab bo‘lmadi. Yana urinib ko‘r.',
     replyInvite: 'Otkritka bilan javob berish 💌',
-    replyInviteHint: 'Taklifga javobing — 50% chegirma bilan',
+    replyInviteHint: 'Taklifga javobing — bepul',
     thanksTitle: 'Uchrashuv qanday o‘tdi? 🌙',
-    thanksText: 'Kecha uchun rahmat ayt va yana taklif qil — 50% chegirma bilan →',
+    thanksText: 'Kecha uchun rahmat ayt va yana taklif qil — bu bepul →',
     makeYourOwn: 'Sen ham kimnidir taklif qilmoqchimisan? O‘zingnikini yarat →',
   },
 
