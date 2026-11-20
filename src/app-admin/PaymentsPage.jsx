@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
+import { InvitationDrawer } from './InvitationDrawer.jsx';
 import {
   A, Card, PageHeader, StatGrid, Stat, DataTable, Segmented, Badge, Toggle, Button, inputStyle, money, num, formatDateTime,
 } from './adminUi.jsx';
@@ -26,6 +27,7 @@ const INVITATION_STATUS = { draft: 'черновик', published: 'опубли�
 export default function PaymentsPage() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
+  const [openId, setOpenId] = useState(null);
   const [status, setStatus] = useState('all');
   const [query, setQuery] = useState('');
   const [hideMine, setHideMine] = useState(true);
@@ -124,6 +126,7 @@ export default function PaymentsPage() {
             const stuck = isStuck(r);
             return {
               key: r.id,
+              onClick: r.invitation_id ? () => setOpenId(r.invitation_id) : undefined,
               muted: r.owner_is_admin,
               cells: [
                 {
@@ -149,6 +152,7 @@ export default function PaymentsPage() {
           empty="Под фильтр ничего не попало."
         />
       )}
+      <InvitationDrawer id={openId} onClose={() => setOpenId(null)} onChanged={load} />
     </div>
   );
 }

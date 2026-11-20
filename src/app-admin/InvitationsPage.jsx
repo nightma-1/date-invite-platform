@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
+import { InvitationDrawer } from './InvitationDrawer.jsx';
 import {
   A, PageHeader, StatGrid, Stat, DataTable, Segmented, Badge, Toggle, Button, inputStyle, money, num, formatDateTime,
 } from './adminUi.jsx';
@@ -24,6 +25,7 @@ const KIND = { invite: 'Свидание', occasion: 'Повод', museum: 'Му
 export default function InvitationsPage() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
+  const [openId, setOpenId] = useState(null);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [kind, setKind] = useState('all');
@@ -69,7 +71,7 @@ export default function InvitationsPage() {
     <div>
       <PageHeader
         title="Приглашения"
-        subtitle="Все приглашения сайта. Нажмите на заголовок столбца, чтобы отсортировать."
+        subtitle="Все приглашения сайта. Нажми на строку — откроются подробности и действия: бесплатная публикация, продление, сообщение автору."
         actions={<Button size="sm" onClick={load}>↻ Обновить</Button>}
       />
 
@@ -119,6 +121,7 @@ export default function InvitationsPage() {
             const [label, tone] = STATUS[r.status] || [r.status, 'neutral'];
             return {
               key: r.id,
+              onClick: r.id ? () => setOpenId(r.id) : undefined,
               muted: r.owner_is_admin,
               cells: [
                 { d: r.recipient_name || <span style={{ color: A.muted }}>без имени</span>, v: r.recipient_name || null },
@@ -144,6 +147,7 @@ export default function InvitationsPage() {
           empty="Под фильтр ничего не попало."
         />
       )}
+      <InvitationDrawer id={openId} onClose={() => setOpenId(null)} onChanged={load} />
     </div>
   );
 }

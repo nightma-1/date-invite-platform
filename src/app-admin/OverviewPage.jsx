@@ -35,6 +35,8 @@ export default function OverviewPage({ basePath }) {
   const [yesterday, setYesterday] = useState(null);
   const [week, setWeek] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [health, setHealth] = useState(null);
+  const [drafts, setDrafts] = useState([]);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
@@ -48,6 +50,9 @@ export default function OverviewPage({ basePath }) {
       supabase.rpc('admin_analytics', { p_from: startIso(tashkentDay(-6)), p_to: new Date().toISOString() }),
       supabase.rpc('admin_payments'),
     ]);
+    // Не мешают главному экрану, если упадут
+    supabase.rpc('admin_system_health').then(({ data }) => setHealth(data || null));
+    supabase.rpc('admin_reminder_queue').then(({ data }) => setDrafts(data || []));
     if (td.error) { setError(td.error.message || 'Не получилось загрузить данные.'); return; }
     setToday(td.data);
     setYesterday(yd.data || null);
@@ -69,7 +74,17 @@ export default function OverviewPage({ basePath }) {
   const recentIssues = (week?.issues || []).slice(0, 5);
   const pendingToday = payments.filter((p) => p.status === 'pending' && !p.owner_is_admin
     && Date.now() - new Date(p.created_at).getTime() < DAY_MS);
-  const allGood = paidNotPublished.length === 0 && recentIssues.length === 0;
+  // Черновики за последние сутки — живые люди, которые почти купили
+  const freshDrafts = drafts.filter((d) => Date.now() - new Date(d.created_at).getTime() < DAY_MS);
+  const systemProblems = [];
+  if (health) {
+    const failing = (health.cron || []).filter((j) => j.last_status === 'failed');
+    if (failing.length) systemProblems.push(`Задачи по расписанию с ошибкой: ${failing.map((j) => j.name).join(', ')}`);
+    if (Number(health.http_errors_24h) >= 3) systemProblems.push(`Ошибок вызовов бота/отчётов за сутки: ${health.http_errors_24h}`);
+    if (health.meta_last && !health.meta_last.ok && !String(health.meta_last.error || '').includes('не заданы')) systemProblems.push(`Синхронизация Meta Ads: ${health.meta_last.error}`);
+    if (Number(health.new_tickets_7d) > 0) systemProblems.push(`Новых обращений в поддержку: ${health.new_tickets_7d}`);
+  }
+  const allGood = paidNotPublished.length === 0 && recentIssues.length === 0 && freshDrafts.length === 0 && systemProblems.length === 0;
 
   return (
     <div>
@@ -90,7 +105,7 @@ export default function OverviewPage({ basePath }) {
       {allGood ? (
         <Card style={{ background: A.goodSoft, borderColor: '#CBE8D4' }}>
           <p style={{ margin: 0, fontSize: 13.5, color: A.good, fontWeight: 600 }}>
-            ✓ Всё в порядке: оплаченных без публикации нет, сбоев за неделю нет.
+            ✓ Всё в порядке: оплаченных без публикации нет, брошенных черновиков за сутки нет, сбоев нет.
           </p>
         </Card>
       ) : (
@@ -104,6 +119,29 @@ export default function OverviewPage({ basePath }) {
                   <span style={{ color: A.muted }}> · {money(p.amount)} · {formatDateTime(p.created_at)} · {p.owner_email || '—'}</span>
                 </div>
                 <Link to={`${basePath}/payments`} style={{ fontSize: 12.5, color: A.berry, fontWeight: 700 }}>к платежам →</Link>
+              </div>
+            </Card>
+          ))}
+          {freshDrafts.length > 0 && (
+            <Card pad={12}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, alignItems: 'center', fontSize: 13 }}>
+                <span>
+                  <Badge tone="warn">не оплатили</Badge>
+                  <span style={{ marginLeft: 8 }}>
+                    {freshDrafts.length} {freshDrafts.length === 1 ? 'черновик' : freshDrafts.length < 5 ? 'черновика' : 'черновиков'} за сутки:{' '}
+                    {freshDrafts.slice(0, 3).map((d) => d.recipient_name || 'без имени').join(', ')}{freshDrafts.length > 3 ? '…' : ''}
+                    <span style={{ color: A.muted }}> · без бота: {freshDrafts.filter((d) => !d.has_bot).length}</span>
+                  </span>
+                </span>
+                <Link to={`${basePath}/people`} style={{ fontSize: 12.5, color: A.berry, fontWeight: 700 }}>кто это →</Link>
+              </div>
+            </Card>
+          )}
+          {systemProblems.map((text) => (
+            <Card key={text} pad={12}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, alignItems: 'center', fontSize: 13 }}>
+                <span><Badge tone="bad">система</Badge><span style={{ marginLeft: 8 }}>{text}</span></span>
+                <Link to={`${basePath}/system`} style={{ fontSize: 12.5, color: A.berry, fontWeight: 700 }}>подробнее →</Link>
               </div>
             </Card>
           ))}
@@ -133,12 +171,16 @@ export default function OverviewPage({ basePath }) {
       <SectionTitle>Разделы</SectionTitle>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
         {[
+          ['people', 'Люди', 'Путь каждого посетителя по сайту'],
           ['analytics', 'Аналитика', 'Воронка, источники, расходы, кампании'],
           ['invitations', 'Приглашения', 'Все приглашения с поиском и сортировкой'],
           ['payments', 'Платежи', 'Все попытки оплаты и их статусы'],
           ['content', 'Контент', 'Гифки и демо на главной'],
           ['museum', 'Музей', 'Статистика «Нашего музея»'],
           ['partners', 'Партнёры', 'Реферальная программа блогеров'],
+          ['promo', 'Промокоды', 'Скидки и бесплатная публикация по коду'],
+          ['reminders', 'Напоминания', 'Напоминания об оплате и что после них'],
+          ['system', 'Система', 'Расписание, бот, оплата, Meta Ads'],
         ].map(([to, title, text]) => (
           <Link key={to} to={`${basePath}/${to}`} style={{ textDecoration: 'none' }}>
             <Card pad={14} style={{ height: '100%' }}>

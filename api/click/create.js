@@ -136,10 +136,6 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'музей пока недоступен' });
   }
 
-  if (!isClickConfigured()) {
-    return res.status(503).json({ error: 'оплата временно недоступна' });
-  }
-
   let amount = INVITATION_PRICE;
   let termDays = null;
   let features = null;
@@ -164,6 +160,59 @@ export default async function handler(req, res) {
       features = { tier: content.tier, theme: content.theme, voice: Boolean(content.voice_url), song: Boolean(content.song_url) };
       amount = museumPublishPrice({ termDays, ...features });
     }
+  }
+
+  // Промокод: скидку считает только сервер. Один и тот же код человек может
+  // использовать один раз; общий лимит и срок — в promo_codes.
+  let promo = null;
+  const promoInput = typeof req.body?.promoCode === 'string'
+    ? req.body.promoCode.trim().toUpperCase().slice(0, 24) : '';
+  if (promoInput && !isExtension) {
+    const { data: pc } = await admin
+      .from('promo_codes')
+      .select('code, discount_percent, max_uses, expires_at, is_active, partner_id')
+      .eq('code', promoInput)
+      .maybeSingle();
+    let valid = Boolean(pc?.is_active) && (!pc.expires_at || new Date(pc.expires_at) > new Date());
+    if (valid && pc.max_uses) {
+      const { count } = await admin.from('payments').select('id', { count: 'exact', head: true })
+        .eq('promo_code', pc.code).eq('status', 'paid');
+      valid = (count ?? 0) < pc.max_uses;
+    }
+    if (valid) {
+      const { count } = await admin.from('payments').select('id', { count: 'exact', head: true })
+        .eq('promo_code', pc.code).eq('status', 'paid').eq('user_id', userId);
+      valid = (count ?? 0) === 0;
+    }
+    if (!valid) return res.status(400).json({ error: 'промокод недействителен', promoInvalid: true });
+    promo = pc;
+    amount = Math.round((amount * (100 - pc.discount_percent)) / 100 / 100) * 100;
+    if (amount > 0 && amount < 1000) amount = 1000; // меньше Click не примет
+  }
+
+  // Промокод на 100%: публикуем сразу, без Click, но с записью в payments
+  // (сумма 0) — чтобы было видно, сколько раз код использован.
+  if (promo && amount === 0) {
+    const { error: freeError } = await admin.from('payments').insert({
+      user_id: userId, invitation_id: invitationId, amount: 0, status: 'paid', method,
+      provider: 'promo', promo_code: promo.code, partner_id: promo.partner_id || null,
+      term_days: termDays, features, purpose: 'publish',
+    });
+    if (freeError) {
+      console.error('click/create: promo payment insert failed', freeError);
+      return res.status(500).json({ error: 'не удалось применить промокод' });
+    }
+    const { data: published, error: publishError } = await admin
+      .from('invitations').update({ status: 'published' }).eq('id', invitationId).select('slug').single();
+    if (publishError) {
+      console.error('click/create: promo publish failed', publishError);
+      return res.status(500).json({ error: 'не удалось опубликовать' });
+    }
+    return res.status(200).json({ published: true, free: true, promo: promo.code, slug: published.slug });
+  }
+
+  if (!isClickConfigured()) {
+    return res.status(503).json({ error: 'оплата временно недоступна' });
   }
 
   // Считаем только свежие попытки. Без окна брошенные оплаты (пользователь
@@ -198,6 +247,8 @@ export default async function handler(req, res) {
       term_days: termDays,
       features,
       purpose: isExtension ? 'extend' : 'publish',
+      promo_code: promo?.code || null,
+      ...(promo?.partner_id ? { partner_id: promo.partner_id } : {}),
     })
     .select()
     .single();

@@ -24,16 +24,22 @@ import ContentPage from './ContentPage.jsx';
 import MuseumStatsSection from './MuseumStatsSection.jsx';
 import PartnersPage from './PartnersPage.jsx';
 import RemindersPage from './RemindersPage.jsx';
+import PeoplePage from './PeoplePage.jsx';
+import PromoPage from './PromoPage.jsx';
+import SystemPage from './SystemPage.jsx';
 
 const NAV = [
   { to: '', label: 'Обзор', icon: '◎', end: true },
+  { to: 'people', label: 'Люди', icon: '☺' },
   { to: 'analytics', label: 'Аналитика', icon: '↗' },
   { to: 'invitations', label: 'Приглашения', icon: '✉' },
   { to: 'payments', label: 'Платежи', icon: '₸' },
+  { to: 'promo', label: 'Промокоды', icon: '%' },
   { to: 'reminders', label: 'Напоминания', icon: '⏰' },
   { to: 'content', label: 'Контент', icon: '▦' },
   { to: 'museum', label: 'Музей', icon: '⌂' },
   { to: 'partners', label: 'Партнёры', icon: '★' },
+  { to: 'system', label: 'Система', icon: '⚙' },
 ];
 
 export default function AdminApp({ basePath }) {
@@ -56,7 +62,10 @@ export default function AdminApp({ basePath }) {
   }, [session]);
 
   const shell = (children) => (
-    <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.fontUI, color: A.ink }}>{children}</div>
+    <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.fontUI, color: A.ink }}>
+      <style>{'.admin-row-click:hover td{background:#FAF7F5}'}</style>
+      {children}
+    </div>
   );
 
   if (session === undefined) return shell(<p style={{ padding: 24, fontSize: 13, color: A.muted }}>Загрузка…</p>);
@@ -103,7 +112,10 @@ export default function AdminApp({ basePath }) {
   const content = (
     <Routes>
       <Route index element={<OverviewPage basePath={basePath} />} />
+      <Route path="people" element={<PeoplePage />} />
       <Route path="analytics" element={<AnalyticsSection />} />
+      <Route path="promo" element={<PromoPage />} />
+      <Route path="system" element={<SystemPage />} />
       <Route path="invitations" element={<InvitationsPage />} />
       <Route path="payments" element={<PaymentsPage />} />
       <Route path="reminders" element={<RemindersPage />} />
