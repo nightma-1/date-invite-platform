@@ -13,6 +13,7 @@
  */
 
 import { track } from './analytics.js';
+import { supabase } from './supabaseClient.js';
 
 const FLAG = 'senti_miniapp';
 let webApp = null;
@@ -29,8 +30,50 @@ export function isMiniApp() {
   }
 }
 
+// Вход внутри Mini App. У окна Telegram своё хранилище — сессия из Chrome
+// сюда не попадает, поэтому входим по initData (подпись Telegram проверяет
+// сервер, см. api/telegram/connect.js → miniapp_login). initData держим только
+// в памяти: это пропуск на сутки, в хранилище ему делать нечего.
+let loginPromise = Promise.resolve(null);
+
+function readInitData() {
+  try {
+    const fromHash = new URLSearchParams(window.location.hash.slice(1)).get('tgWebAppData');
+    if (fromHash) return fromHash;
+  } catch { /* ниже */ }
+  return window.Telegram?.WebApp?.initData || '';
+}
+
+async function autoLogin(initData) {
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) return data.session;
+    if (!initData) return null;
+    const res = await fetch('/api/telegram/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'miniapp_login', initData }),
+    });
+    if (!res.ok) { track('miniapp_login_skip', { status: res.status }); return null; }
+    const { token_hash: tokenHash } = await res.json();
+    const { data: verified, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' });
+    if (error) throw error;
+    track('miniapp_login', {});
+    return verified.session || null;
+  } catch (err) {
+    console.error('miniapp auto-login failed', err);
+    return null;
+  }
+}
+
+/** Ждать, пока Mini App попробует войти сам (вне Telegram — сразу null). */
+export function miniAppLogin() {
+  return loginPromise;
+}
+
 export function initMiniApp() {
   if (!isMiniApp()) return;
+  loginPromise = autoLogin(readInitData());
   const script = document.createElement('script');
   script.src = 'https://telegram.org/js/telegram-web-app.js';
   script.async = true;

@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
 import { isInAppBrowser, rememberGuestForClaim } from '../lib/guestAccount.js';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
+import { isMiniApp, miniAppLogin } from '../lib/telegramMiniApp.js';
 
 // Вход через Telegram уводит человека со страницы на сайт
 // провайдера и возвращает обратно уже с сессией. Telegram подключён в Supabase
@@ -74,6 +75,19 @@ export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialErr
     }
   });
   const [loading, setLoading] = useState(false);
+  // Внутри бота сначала пробуем войти сами по данным Telegram — форму
+  // показываем, только если это не вышло (аккаунт не привязан к боту и т.п.).
+  const [miniAppPending, setMiniAppPending] = useState(() => isMiniApp());
+  useEffect(() => {
+    if (!miniAppPending) return undefined;
+    let cancelled = false;
+    miniAppLogin().then((session) => {
+      if (cancelled) return;
+      if (session?.user) onAuthenticated?.(session.user);
+      setMiniAppPending(false);
+    });
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inputStyle = {
     display: 'block', width: '100%', padding: '11px 14px',
@@ -144,6 +158,14 @@ export default function AuthGate({ onAuthenticated, onBeforeRedirect, initialErr
       setError(err.message || t('auth.genericError'));
       setLoading(false);
     }
+  }
+
+  if (miniAppPending) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', fontFamily: '"Manrope", sans-serif', color: '#2A1F2B99', fontSize: 14 }}>
+        {t('auth.signingIn')}
+      </div>
+    );
   }
 
   return (
