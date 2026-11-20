@@ -9,7 +9,8 @@ import { clickProvider, isClickConfigured, PAYMENT_METHOD } from '../../src/lib/
 import { rateLimit, clientIp } from '../_lib/rateLimit.js';
 import { MUSEUM_PUBLIC, museumPublishPrice, museumExtendPrice, museumTerm } from '../../src/lib/museumPlans.js';
 
-const INVITATION_PRICE = 19000; // сум, см. ТЗ раздел 3 (цена задаётся только здесь, клиент её не передаёт)
+const INVITATION_PRICE = 19000;
+const REPLY_DISCOUNT = 50; // ответ получательницы, см. replyDiscountAllowed // сум, см. ТЗ раздел 3 (цена задаётся только здесь, клиент её не передаёт)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PENDING_PER_INVITATION = 5; // защита от спама строк в payments
 const PENDING_WINDOW_MS = 60 * 60_000; // за какой срок считаем незавершённые попытки
@@ -74,7 +75,7 @@ export default async function handler(req, res) {
 
   const { data: invitation, error: invitationError } = await supabase
     .from('invitations')
-    .select('id, status, user_id, kind')
+    .select('id, status, user_id, kind, reply_to')
     .eq('id', invitationId)
     .single();
 
@@ -201,6 +202,16 @@ export default async function handler(req, res) {
     promo = pc;
     amount = Math.round((amount * (100 - pc.discount_percent)) / 100 / 100) * 100;
     if (amount > 0 && amount < 1000) amount = 1000; // меньше Click не примет
+  }
+
+  // Ответ получательницы на приглашение (открытка / «спасибо за вечер») —
+  // скидка 50%, если промокода нет. Проверяем, что это настоящий ответ: на
+  // исходное приглашение ответили «да», это не своё же приглашение, и
+  // скидка за ответ на него ещё не использована.
+  if (!promo && !isExtension && invitation.kind !== 'museum' && invitation.reply_to) {
+    if (await replyDiscountAllowed(admin, invitation, userId)) {
+      amount = Math.round((amount * (100 - REPLY_DISCOUNT)) / 100 / 100) * 100;
+    }
   }
 
   // Промокод на 100%: публикуем сразу, без Click, но с записью в payments
@@ -367,4 +378,27 @@ async function redeemGift(res, admin, { code, userId, invitationId, method }) {
     return res.status(500).json({ error: 'не удалось опубликовать' });
   }
   return res.status(200).json({ published: true, free: true, promo: claimed.code, gift: true, slug: published.slug });
+}
+
+
+async function replyDiscountAllowed(admin, invitation, userId) {
+  try {
+    const { data: original } = await admin.from('invitations')
+      .select('id, user_id, kind').eq('id', invitation.reply_to).maybeSingle();
+    if (!original || original.user_id === userId || (original.kind && original.kind !== 'invite')) return false;
+    const { data: resp } = await admin.from('responses')
+      .select('answered_yes').eq('invitation_id', original.id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!resp?.answered_yes) return false;
+    const { data: siblings } = await admin.from('invitations')
+      .select('id').eq('reply_to', original.id).neq('id', invitation.id);
+    const ids = (siblings || []).map((r) => r.id);
+    if (!ids.length) return true;
+    const { count } = await admin.from('payments').select('id', { count: 'exact', head: true })
+      .in('invitation_id', ids).eq('status', 'paid');
+    return (count ?? 0) === 0;
+  } catch (err) {
+    console.error('click/create: reply discount check failed', err?.message || err);
+    return false;
+  }
 }

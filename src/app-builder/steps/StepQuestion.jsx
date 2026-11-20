@@ -105,6 +105,18 @@ export default function StepQuestion() {
         />
         <CharCount value={config.questionText} max={300} />
 
+        {/* Необязательное: если она ответит открыткой, ответ сразу будет подписан этим именем */}
+        <FieldLabel style={{ marginTop: 12 }}>{t('steps.question.senderName')}</FieldLabel>
+        <Inp
+          type="text"
+          autoComplete="given-name"
+          maxLength={40}
+          value={config.senderName || ''}
+          onChange={(e) => update({ senderName: e.target.value })}
+          placeholder={t('steps.question.senderNamePlaceholder')}
+        />
+        <p style={{ color: T.muted, fontSize: 12, fontFamily: T.font, margin: '4px 0 0' }}>{t('steps.question.senderNameHint')}</p>
+
         <ButtonTextEditor
           fields={[
             { label: t('steps.question.yesButton'), value: config.yesText, fallback: t('steps.question.yesPlaceholder'), onChange: (v) => update({ yesText: v }) },

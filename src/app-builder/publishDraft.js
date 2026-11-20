@@ -126,6 +126,10 @@ export async function publishDraft(state, userId, reuse = null) {
     card_shape: state.cardShape || 'classic',
     recipient_name: String(questionConfig.recipientName || '').replace(/\s+/g, ' ').trim() || fallbackRecipientName(state.lang),
     recipient_gender: state.recipientGender || null,
+    sender_name: String(questionConfig.senderName || '').replace(/\s+/g, ' ').trim().slice(0, 40) || null,
+    // Ответ получательницы — только если исходное приглашение проверено (builderStore)
+    reply_to: state.replyToId || null,
+    reply_kind: state.replyToId ? (state.replyKind || 'card') : null,
     status: 'draft',
   };
   const contentRow = {

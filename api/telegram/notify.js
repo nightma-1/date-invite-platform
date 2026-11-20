@@ -339,6 +339,18 @@ export default async function handler(req, res) {
     return res.status(200).json(result);
   }
 
+  // Получательница ответила на приглашение (открытка или «спасибо за вечер»,
+  // триггер trg_reply_published_notify). Пишем автору исходного приглашения.
+  if (event === 'reply_published') {
+    const g = invitation.recipient_gender;
+    const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
+    const slug = String(extra?.reply_slug || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const text = extra?.reply_kind === 'thanks'
+      ? `🌙 ${name} благодарит за вечер и зовёт тебя на второе свидание!`
+      : `💌 ${name} ${verb(g, 'ответил')} тебе открыткой на твоё приглашение!`;
+    return res.status(200).json(await sendMessage(chatId, text, slug ? { text: 'Открыть', url: appUrl(`/i/${slug}`) } : null));
+  }
+
   // «Как прошло свидание?» (pg_cron → send_date_followups). Кнопки-оценки
   // ведут в api/telegram/webhook.js, там же согласие и отзыв.
   if (event === 'date_followup') {

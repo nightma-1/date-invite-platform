@@ -9,7 +9,7 @@ import { isEditLocked } from '../lib/editWindow.js';
 import { listDefaultGifs } from '../lib/mediaLibrary.js';
 import i18n from '../i18n/index.js';
 import { useTranslation } from 'react-i18next';
-import { buildDefaultConfigs, localizeSteps, normalizeLang, invitationLang, applyReplyTexts } from './defaultContent.js';
+import { buildDefaultConfigs, localizeSteps, normalizeLang, invitationLang, applyReplyTexts, REPLY_KINDS } from './defaultContent.js';
 
 const STORAGE_PREFIX = 'date-invite-draft:';
 
@@ -37,16 +37,22 @@ function currentUiLang() {
   return normalizeLang(i18n.resolvedLanguage || i18n.language);
 }
 
-function initialDraft(draftId, initialTemplateId, replyTo = null) {
+function initialDraft(draftId, initialTemplateId, replyTo = null, replyKind = 'card') {
   const templateId = initialTemplateId || 'romantic';
   const steps = buildDefaultSteps(currentUiLang());
+  const kind = REPLY_KINDS.includes(replyKind) ? replyKind : 'card';
   return {
     draftId, templateId, mood: templateId, cardShape: 'polaroid', activeStepIndex: 0,
     // Язык приглашения = язык конструктора; меняется вместе с переключателем
     lang: currentUiLang(),
     // Ответное приглашение (кнопка у получателя после ответа): свой вопрос и финал
-    steps: replyTo ? applyReplyTexts(steps, currentUiLang()) : steps,
+    steps: replyTo ? applyReplyTexts(steps, currentUiLang(), kind) : steps,
+    // Ответ получательницы: slug исходного приглашения и вид ответа.
+    // replyToId подставляется после проверки на сервере (reply_context) —
+    // только тогда действует скидка и уходит уведомление автору.
     replyTo,
+    replyKind: replyTo ? kind : null,
+    replyToId: null,
     // Какие шаги ещё ни разу не получали картинку от самого пользователя —
     // пока шаг не тронут, картинку на нём можно свободно подменять свежим
     // дефолтом из админки (см. APPLY_DEFAULT_MEDIA и эффект в BuilderProvider).
@@ -157,6 +163,18 @@ function draftReducer(state, action) {
             : s
         ),
       };
+    // Исходное приглашение проверено: запоминаем его id и подставляем имя
+    // автора как получателя ответа (если она ещё ничего не вписала)
+    case 'REPLY_CONTEXT':
+      return {
+        ...state,
+        replyToId: action.replyToId,
+        steps: state.steps.map((s) => (
+          s.step_type === 'question' && !String(s.configuration_json?.recipientName || '').trim() && action.senderName
+            ? { ...s, configuration_json: { ...s.configuration_json, recipientName: action.senderName } }
+            : s
+        )),
+      };
     default:
       return state;
   }
@@ -164,15 +182,15 @@ function draftReducer(state, action) {
 
 const BuilderContext = createContext(null);
 
-export function BuilderProvider({ draftId, initialTemplateId, replyTo = null, editInvitationId, children }) {
+export function BuilderProvider({ draftId, initialTemplateId, replyTo = null, replyKind = 'card', editInvitationId, children }) {
   const [state, dispatch] = useReducer(draftReducer, null, () => {
     if (editInvitationId) {
       return { ...initialDraft(draftId, initialTemplateId), editInvitationId, loading: true };
     }
-    if (typeof window === 'undefined') return initialDraft(draftId, initialTemplateId, replyTo);
+    if (typeof window === 'undefined') return initialDraft(draftId, initialTemplateId, replyTo, replyKind);
     try {
       const saved = window.localStorage.getItem(STORAGE_PREFIX + draftId);
-      if (!saved) return initialDraft(draftId, initialTemplateId, replyTo);
+      if (!saved) return initialDraft(draftId, initialTemplateId, replyTo, replyKind);
       const parsed = JSON.parse(saved);
       // Шаблон из URL важнее сохранённого: пользователь только что кликнул по нему в галерее
       return initialTemplateId ? { ...parsed, templateId: initialTemplateId } : parsed;
@@ -220,6 +238,19 @@ export function BuilderProvider({ draftId, initialTemplateId, replyTo = null, ed
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editInvitationId]);
+
+  // Ответ получательницы: проверяем исходное приглашение (она сказала «да»)
+  // и узнаём имя автора. Не прошло проверку — обычный черновик без скидки.
+  useEffect(() => {
+    if (!state.replyTo || state.replyToId || editInvitationId) return undefined;
+    let cancelled = false;
+    supabase.rpc('reply_context', { p_slug: state.replyTo }).then(({ data, error }) => {
+      if (cancelled || error || !data?.invitation_id || !data.answered_yes) return;
+      dispatch({ type: 'REPLY_CONTEXT', replyToId: data.invitation_id, senderName: String(data.sender_name || '').trim() });
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.replyTo]);
 
   useEffect(() => {
     if (state.loading) return; // не затираем черновик, пока идёт загрузка для редактирования

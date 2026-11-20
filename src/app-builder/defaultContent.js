@@ -86,36 +86,74 @@ const TEXTS = {
   },
 };
 
-// «Ответить приглашением»: получательница после своего «да» собирает
-// ответное. Меняем только вопрос и заголовок финала — остальное как у
-// обычного приглашения. Эти тексты тоже считаются «не тронутыми» и при
-// смене языка переводятся в ответный же вариант, а не в обычный.
+// Ответ получательницы (см. FinalScreen и InvitationRuntime):
+//   card   — «ответная открытка» сразу после её «Да»: её слова ему, кнопка
+//            «Нет» тоже убегает, без даты и выбора места;
+//   thanks — «спасибо за вечер», когда дата свидания прошла: благодарит и
+//            зовёт снова, со всеми шагами (дата, место, еда).
+// Эти тексты тоже считаются «не тронутыми» и при смене языка переводятся в
+// тот же вид ответа, а не в обычное приглашение.
+export const REPLY_KINDS = ['card', 'thanks'];
+
 const REPLY_TEXTS = {
-  ru: {
-    question: { questionText: 'Теперь моя очередь. Пойдёшь со мной на свидание?' },
-    final: { title: 'В этот раз позвал(а) я 😄❤️' },
+  card: {
+    ru: {
+      question: { questionText: 'Я согласна 😊 А ты рад, что я сказала «да»?', yesText: 'Очень ❤️' },
+      reaction: { title: 'Я тоже 🙈', text: 'Спасибо, что позвал так красиво. Жду нашу встречу!', confirmText: 'До встречи ❤️' },
+      final: { title: 'До встречи на свидании 💌', description: 'Это был мой ответ на твоё приглашение.' },
+    },
+    uz: {
+      question: { questionText: 'Men roziman 😊 «Ha» deganimdan xursandmisan?', yesText: 'Juda ❤️' },
+      reaction: { title: 'Men ham 🙈', text: 'Shunday chiroyli taklif qilganing uchun rahmat. Uchrashuvimizni kutaman!', confirmText: "Ko'rishguncha ❤️" },
+      final: { title: "Uchrashuvda ko'rishguncha 💌", description: 'Bu mening taklifingga javobim edi.' },
+    },
+    en: {
+      question: { questionText: 'I said yes 😊 Are you happy I did?', yesText: 'So happy ❤️' },
+      reaction: { title: 'Me too 🙈', text: 'Thank you for asking so beautifully. Can’t wait for our date!', confirmText: 'See you ❤️' },
+      final: { title: 'See you on our date 💌', description: 'This was my answer to your invitation.' },
+    },
   },
-  uz: {
-    question: { questionText: 'Endi navbat menda. Men bilan uchrashuvga borasanmi?' },
-    final: { title: 'Bu safar men taklif qildim 😄❤️' },
-  },
-  en: {
-    question: { questionText: 'My turn now. Will you go on a date with me?' },
-    final: { title: 'This time I asked 😄❤️' },
+  thanks: {
+    ru: {
+      question: { questionText: 'Спасибо за вечер 🌙 Повторим?', yesText: 'Конечно ❤️' },
+      reaction: { title: 'Ура!', text: 'Тогда в этот раз время и место выбираешь ты 😄', confirmText: 'Выбираю' },
+      final: { title: 'Значит, до следующей встречи 😄❤️', description: 'Второе свидание официально запланировано!' },
+    },
+    uz: {
+      question: { questionText: 'Kecha uchun rahmat 🌙 Yana takrorlaymizmi?', yesText: 'Albatta ❤️' },
+      reaction: { title: 'Ura!', text: 'Unda bu safar vaqt va joyni sen tanlaysan 😄', confirmText: 'Tanlayman' },
+      final: { title: "Demak, keyingi uchrashuvgacha 😄❤️", description: 'Ikkinchi uchrashuv rasman rejalashtirildi!' },
+    },
+    en: {
+      question: { questionText: 'Thank you for the evening 🌙 Shall we do it again?', yesText: 'Of course ❤️' },
+      reaction: { title: 'Yay!', text: 'This time you pick the time and place 😄', confirmText: 'Picking' },
+      final: { title: 'Then see you next time 😄❤️', description: 'Our second date is officially planned!' },
+    },
   },
 };
 
-function isReplyDefault(stepType, field, current) {
-  if (current == null) return false;
-  return INVITE_LANGS.some((l) => REPLY_TEXTS[l]?.[stepType]?.[field] === current);
+// У открытки нет даты и выбора места — она отвечает, а не зовёт заново
+const CARD_DISABLED_STEPS = new Set(['date', 'choice_place', 'choice_food']);
+
+function replyTarget(stepType, field, current, lang) {
+  if (current == null) return undefined;
+  for (const kind of REPLY_KINDS) {
+    if (INVITE_LANGS.some((l) => REPLY_TEXTS[kind][l]?.[stepType]?.[field] === current)) {
+      return REPLY_TEXTS[kind][lang]?.[stepType]?.[field];
+    }
+  }
+  return undefined;
 }
 
-/** Шаги-заготовка ответного приглашения: обычные + свои вопрос и финал */
-export function applyReplyTexts(steps, lang) {
+/** Шаги-заготовка ответа получательницы (kind: card | thanks) */
+export function applyReplyTexts(steps, lang, kind = 'card') {
   const l = normalizeLang(lang);
+  const texts = REPLY_TEXTS[REPLY_KINDS.includes(kind) ? kind : 'card'][l];
   return steps.map((s) => {
-    const reply = REPLY_TEXTS[l][s.step_type];
-    return reply ? { ...s, configuration_json: { ...s.configuration_json, ...reply } } : s;
+    const reply = texts[s.step_type];
+    const enabled = kind === 'card' && CARD_DISABLED_STEPS.has(s.step_type) ? false : s.enabled;
+    if (!reply && enabled === s.enabled) return s;
+    return { ...s, enabled, configuration_json: reply ? { ...s.configuration_json, ...reply } : s.configuration_json };
   });
 }
 
@@ -192,9 +230,9 @@ export function localizeSteps(steps, lang, recipientGender) {
     let changed = false;
 
     for (const field of fields) {
-      if (isReplyDefault(s.step_type, field, cfg[field])) {
-        const target = REPLY_TEXTS[l][s.step_type][field];
-        if (target !== cfg[field]) { next[field] = target; changed = true; }
+      const replyText = replyTarget(s.step_type, field, cfg[field], l);
+      if (replyText !== undefined) {
+        if (replyText && replyText !== cfg[field]) { next[field] = replyText; changed = true; }
         continue;
       }
       if (!isKnownDefault(s.step_type, field, cfg[field])) continue;

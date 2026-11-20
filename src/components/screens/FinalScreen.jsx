@@ -123,13 +123,13 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
         {hint || t('screens.storyHint')}
       </p>
 
-      {/* Ответное приглашение: тот же стиль, свой вопрос «теперь моя очередь».
+      {/* Ответная открытка: её «да» красиво, в том же стиле, со скидкой 50%.
           Получатель — основная аудитория охвата, так она становится автором. */}
       <div style={{ marginTop: 18 }}>
         <a
           href={`/builder?${new URLSearchParams({
-            reply: slug || '', template: templateKey || 'romantic',
-            utm_source: 'senti', utm_medium: 'recipient', utm_campaign: 'reply',
+            reply: slug || '', kind: 'card', template: templateKey || 'romantic',
+            utm_source: 'senti', utm_medium: 'recipient', utm_campaign: 'reply_card',
           })}`}
           target="_blank"
           rel="noreferrer"
