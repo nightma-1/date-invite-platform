@@ -9,6 +9,7 @@ export default {
   },
 
   nav: {
+    privacy: 'Maxfiylik',
     create: "Yaratish",
     myInvitations: 'Mening taklifnomalarim',
     admin: 'Admin',
@@ -18,6 +19,9 @@ export default {
     heroTag: "💌 Uchrashuvga taklifnoma",
     heroTitleLine1: "Shunchaki so'rama.",
     heroTitleHighlight: "Hayratda qoldir.",
+    statsSent_one: '{{n}} ta taklif yuborildi',
+    statsSent_other: '{{n}} ta taklif yuborildi',
+    statsYes: '{{pct}}% «Ha» deb javob berdi',
     heroSubtitle: "Iliq rasm, o'z savoling va qochib ketuvchi «Yo'q» tugmasi — taklifnoma 3 daqiqa va bitta havolada tayyor.",
     createBtn: 'Taklifnoma yaratish',
     myInvitationsBtn: 'Mening taklifnomalarim',
@@ -113,6 +117,8 @@ export default {
   },
 
   builder: {
+    tgShare: "Telegram'da yuborish ✈️",
+    tgShareText: 'Senga bir narsa bor 💌',
     loadingInvitation: 'Taklifnoma yuklanmoqda…',
     genderTitle: 'uchrashuvga kimni taklif qilmoqchisiz?',
     genderSubtitle: "Bir necha daqiqada iliq taklifnoma yaratamiz — o'z rasmingiz, savolingiz va sanangizni keyingi bosqichlarda tanlaysiz",
@@ -257,6 +263,8 @@ export default {
     storyHint: 'Ismlarsiz — faqat konvert va «Yo‘q» tugmasi',
     storySaved: 'Rasm saqlandi — uni storisga joylash mumkin.',
     storyFailed: 'Rasmni tayyorlab bo‘lmadi. Yana urinib ko‘r.',
+    replyInvite: 'O‘z taklifing bilan javob ber 💌',
+    replyInviteHint: 'Endi taklif qilish navbati senda. 3 daqiqa vaqt oladi',
     makeYourOwn: 'Sen ham kimnidir taklif qilmoqchimisan? O‘zingnikini yarat →',
   },
 
@@ -503,5 +511,27 @@ export default {
       paid: "To'langan",
       cancelled: 'Bekor qilindi',
     },
+  },
+  gift: {
+    title: 'Do‘stingizga taklifnoma sovg‘a qiling',
+    subtitle: 'Kimnidir anchadan beri taklif qilmoqchi bo‘lib, cho‘zib yurgan do‘stingiz uchun. Siz bitta taklifnoma uchun to‘laysiz, u o‘zi yig‘adi.',
+    step1: 'Click orqali 19 000 so‘m to‘laysiz',
+    step2: 'Kod va do‘stingiz uchun tayyor xabarni olasiz',
+    step3: 'Do‘stingiz taklifnomani yig‘ib, bepul e’lon qiladi',
+    payClick: 'CLICK orqali to‘lash',
+    payCard: 'Karta bilan to‘lash',
+    redirecting: 'To‘lovga o‘tyapmiz…',
+    buyFailed: 'To‘lovga o‘tib bo‘lmadi. Qaytadan urinib ko‘ring.',
+    readyTitle: 'Sovg‘a tayyor!',
+    readyText: 'Do‘stingizga kod yoki havolani yuboring. Kod bir marta ishlaydi.',
+    redeemedTitle: 'Sovg‘a allaqachon ishlatilgan',
+    redeemedText: 'Do‘stingiz shu kod bilan taklifnoma yig‘di.',
+    notReadyTitle: 'To‘lov hali ko‘rib chiqilmoqda',
+    notReadyText: 'Bir daqiqadan keyin sahifani yangilang. Kod chiqmasa — yordamga yozing, hal qilamiz.',
+    tapToCopy: 'Nusxa olish uchun bosing',
+    share: 'Do‘stga yuborish',
+    copyLink: 'Havoladan nusxa olish',
+    message: 'Cho‘zma endi 😄 Senga Senti’da uchrashuvga taklifnoma sovg‘a qilaman — 3 daqiqada yig‘ib, unga yubor: {{link}}\nKod havolaning ichida: {{code}}',
+    footer: 'Do‘stga sovg‘a',
   },
 };

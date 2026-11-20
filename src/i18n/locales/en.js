@@ -9,6 +9,7 @@ export default {
   },
 
   nav: {
+    privacy: 'Privacy',
     create: 'Create',
     myInvitations: 'My invitations',
     admin: 'Admin',
@@ -18,6 +19,9 @@ export default {
     heroTag: '💌 Date invitation',
     heroTitleLine1: "Don't just ask her.",
     heroTitleHighlight: 'Surprise her.',
+    statsSent_one: '{{n}} invitation sent',
+    statsSent_other: '{{n}} invitations sent',
+    statsYes: '{{pct}}% said “Yes”',
     heroSubtitle: 'A warm picture, your own question, and a "No" button that runs away — an invitation ready in 3 minutes and one link.',
     createBtn: 'Create an invitation',
     myInvitationsBtn: 'My invitations',
@@ -113,6 +117,8 @@ export default {
   },
 
   builder: {
+    tgShare: 'Send on Telegram ✈️',
+    tgShareText: "I've got something for you 💌",
     loadingInvitation: 'Loading invitation…',
     genderTitle: 'who do you want to invite on a date?',
     genderSubtitle: "Let's make a warm invitation in a couple of minutes — you'll pick your own picture, question, and date on the next steps",
@@ -257,6 +263,8 @@ export default {
     storyHint: 'No names — just the envelope and the “No” button',
     storySaved: 'Picture saved — you can post it to your stories.',
     storyFailed: "Couldn't prepare the picture. Try again.",
+    replyInvite: 'Reply with your own invitation 💌',
+    replyInviteHint: 'Your turn to ask. It takes 3 minutes',
     makeYourOwn: 'Want to invite someone too? Make your own →',
   },
 
@@ -503,5 +511,27 @@ export default {
       paid: 'Paid out',
       cancelled: 'Cancelled',
     },
+  },
+  gift: {
+    title: 'Gift an invitation to a friend',
+    subtitle: 'For the friend who has wanted to ask someone out for ages. You pay for one invitation, they make it themselves.',
+    step1: 'Pay 19,000 sum via Click',
+    step2: 'Get a code and a ready message for your friend',
+    step3: 'Your friend makes the invitation and publishes it for free',
+    payClick: 'Pay with CLICK',
+    payCard: 'Pay by card',
+    redirecting: 'Going to payment…',
+    buyFailed: 'Could not open the payment. Please try again.',
+    readyTitle: 'Your gift is ready!',
+    readyText: 'Send your friend the code or the link. The code works once.',
+    redeemedTitle: 'This gift has been used',
+    redeemedText: 'Your friend made an invitation with this code.',
+    notReadyTitle: 'Payment is still processing',
+    notReadyText: 'Refresh the page in a minute. If the code does not appear, contact support and we will sort it out.',
+    tapToCopy: 'Tap to copy',
+    share: 'Send to a friend',
+    copyLink: 'Copy link',
+    message: 'Stop putting it off 😄 Here is a Senti date invitation on me. Make it in 3 minutes and send it: {{link}}\nThe code is already in the link: {{code}}',
+    footer: 'Gift to a friend',
   },
 };

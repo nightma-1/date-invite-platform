@@ -123,6 +123,32 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
         {hint || t('screens.storyHint')}
       </p>
 
+      {/* Ответное приглашение: тот же стиль, свой вопрос «теперь моя очередь».
+          Получатель — основная аудитория охвата, так она становится автором. */}
+      <div style={{ marginTop: 18 }}>
+        <a
+          href={`/builder?${new URLSearchParams({
+            reply: slug || '', template: templateKey || 'romantic',
+            utm_source: 'senti', utm_medium: 'recipient', utm_campaign: 'reply',
+          })}`}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => track('recipient_reply_click', {}, { slug })}
+          style={{
+            display: 'inline-block',
+            background: `linear-gradient(135deg, ${tokens.berry}, ${tokens.amber || tokens.berry})`, color: '#fff',
+            padding: '12px 24px', borderRadius: 100, textDecoration: 'none',
+            fontFamily: tokens.fontUI, fontWeight: 700, fontSize: 14,
+            boxShadow: `0 10px 24px -8px ${tokens.berry}60`,
+          }}
+        >
+          {t('screens.replyInvite')}
+        </a>
+        <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 12, opacity: 0.65, marginTop: 8 }}>
+          {t('screens.replyInviteHint')}
+        </p>
+      </div>
+
       <a
         href="/?utm_source=senti&utm_medium=recipient&utm_campaign=final_screen"
         target="_blank"

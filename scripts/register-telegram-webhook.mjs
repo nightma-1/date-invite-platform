@@ -39,9 +39,24 @@ async function main() {
   const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, secret_token: secretToken, allowed_updates: ['message'] }),
+    body: JSON.stringify({ url, secret_token: secretToken, allowed_updates: ['message', 'callback_query'] }),
   });
   const data = await res.json().catch(() => ({}));
+
+  // Кнопка-меню слева от поля ввода: открывает senti.uz как Mini App
+  try {
+    const menu = await fetch(`https://api.telegram.org/bot${token}/setChatMenuButton`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        menu_button: { type: 'web_app', text: 'Senti 💌', web_app: { url: `${base}/?utm_source=telegram&utm_medium=miniapp_menu` } },
+      }),
+    }).then((r) => r.json()).catch(() => ({}));
+    console.log(menu.ok ? '[telegram-webhook] menu button set' : `[telegram-webhook] menu button failed: ${menu.description || ''}`);
+  } catch (e) {
+    console.warn('[telegram-webhook] menu button error:', e?.message || e);
+  }
+
   if (data.ok) {
     console.log(`[telegram-webhook] registered: ${url}`);
   } else {

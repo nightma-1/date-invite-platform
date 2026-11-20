@@ -25,7 +25,9 @@ import { getTemplateTokens } from '../templates/registry.js';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
+import ShareToTelegram from '../components/ui/ShareToTelegram.jsx';
 import { track, trackBeforeLeaving } from '../lib/analytics.js';
+import { pixelInitiateCheckout } from '../lib/metaPixel.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
 import ReactionScreen from '../components/screens/ReactionScreen.jsx';
 import DateTimeScreen from '../components/screens/DateTimeScreen.jsx';
@@ -173,7 +175,7 @@ export default function BuilderShell() {
   // Аналитика воронки. Хуки объявлены до ранних return'ов ниже — иначе
   // React ругается на разное число хуков между рендерами.
   useEffect(() => {
-    track('builder_start', { edit: Boolean(state.editInvitationId), template: state.templateId });
+    track('builder_start', { edit: Boolean(state.editInvitationId), template: state.templateId, reply: Boolean(state.replyTo) });
     // Один раз на вход в конструктор, а не на каждую перерисовку
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -411,7 +413,7 @@ export default function BuilderShell() {
       const { invitationId, slug } = await publishDraft(state, userId, reuse);
       rememberSavedDraft({ invitationId, slug });
       if (reuse?.invitationId !== invitationId) {
-        track('draft_created', { template: state.templateId, shape: state.cardShape || 'classic' });
+        track('draft_created', { template: state.templateId, shape: state.cardShape || 'classic', reply_to: state.replyTo || null });
       }
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
@@ -442,6 +444,7 @@ export default function BuilderShell() {
       }
       // Ждём отправку события: сразу после этой строки страница уходит на
       // Click, и незавершённый запрос браузер просто отменил бы.
+      pixelInitiateCheckout();
       await trackBeforeLeaving('payment_redirect', { method });
       window.location.href = data.paymentUrl;
     } catch (err) {
@@ -669,6 +672,8 @@ export default function BuilderShell() {
               {linkCopied ? t('builder.copied') : t('builder.copy')}
             </button>
           </div>
+
+          <ShareToTelegram url={shareUrl} slug={publishResult.slug} />
 
           <a
             href={`/i/${publishResult.slug}`}
