@@ -8,6 +8,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import i18n from '../i18n/index.js';
 import { invitationLang } from '../app-builder/defaultContent.js';
+import ReplyCardScreen from '../app-reply/ReplyCardScreen.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import { track } from '../lib/analytics.js';
 import { getTemplateTokens } from '../templates/registry.js';
@@ -160,7 +161,7 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
         return;
       }
 
-      onLang?.(invitationLang(inv.invitation_steps));
+      onLang?.(inv.reply_card?.lang || invitationLang(inv.invitation_steps));
       setInvitation(inv);
       setContent(inv.invitation_content);
       setSteps(
@@ -186,7 +187,7 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
       if (sessionData?.session?.user?.id && sessionData.session.user.id === inv.user_id) return;
 
       supabase.rpc('reply_context', { p_slug: slug }).then(({ data }) => {
-        if (!cancelled && data?.date_passed) {
+        if (!cancelled && data?.date_passed && !inv.reply_to) {
           setThanksOffer(true);
           track('recipient_thanks_offer_shown', {}, { slug });
         }
@@ -287,6 +288,10 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
   }
   if (state.status === 'expired') {
     return <CenteredMessage text={t('invite.expired')} tokens={tokens} />;
+  }
+  // Ответная открытка девушки (билет на свидание) — своя страница
+  if (invitation?.reply_kind === 'card' && !isPreview) {
+    return <ReplyCardScreen slug={slug} tokens={tokens} />;
   }
   // Поводы (день рождения, извинение и т.д.) рисует своя страница — см. OccasionFrame.jsx
   if (invitation?.kind === 'occasion') {
@@ -503,6 +508,7 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
           templateKey={invitation.template_key}
           noAttempts={noAttempts}
           slug={slug}
+          canReply={!invitation.reply_to}
           isPreview={isPreview}
         />
       )}
