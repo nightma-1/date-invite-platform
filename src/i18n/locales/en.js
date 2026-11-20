@@ -16,6 +16,9 @@ export default {
   },
 
   landing: {
+    newsPill: '🎁 New: gift an invitation to a friend',
+    giftQuestion: 'Not for you? Gift it to a friend who keeps putting it off',
+    giftButton: '🎁 Buy as a gift',
     heroTag: '💌 Date invitation',
     heroTitleLine1: "Don't just ask her.",
     heroTitleHighlight: 'Surprise her.',
@@ -72,6 +75,7 @@ export default {
       '✓ 7 days online',
       '✓ 3 days to edit',
       '✓ Real-time answer',
+      '✓ She can reply with a card — for free',
     ],
     faqTitle: 'Questions',
     faq: [
@@ -80,6 +84,8 @@ export default {
       { q: 'Can I edit it?', a: 'Yes, within 3 days of publishing.' },
       { q: 'Can I upload my own photo or GIF?', a: 'Yes, up to 5 MB (JPG, PNG, WebP, GIF).' },
       { q: 'How will I know the answer?', a: 'It will show up in "My invitations".' },
+      { q: 'Can she reply?', a: 'Yes. After her “Yes” she can send you a free ticket-card: the date, the place, her words and even a voice note.' },
+      { q: 'Can I buy an invitation for a friend?', a: 'Yes, under “Gift to a friend”: you pay, get a code, and your friend makes and publishes the invitation for free.' },
     ],
   },
 

@@ -16,6 +16,9 @@ export default {
   },
 
   landing: {
+    newsPill: '🎁 Yangilik: do‘stingizga taklifnoma sovg‘a qiling',
+    giftQuestion: 'O‘zingizga emasmi? Anchadan beri cho‘zib yurgan do‘stingizga sovg‘a qiling',
+    giftButton: '🎁 Sovg‘a sifatida sotib olish',
     heroTag: "💌 Uchrashuvga taklifnoma",
     heroTitleLine1: "Shunchaki so'rama.",
     heroTitleHighlight: "Hayratda qoldir.",
@@ -72,6 +75,7 @@ export default {
       '✓ 7 kun onlayn',
       '✓ Tahrirlash uchun 3 kun',
       '✓ Real vaqtda javob',
+      '✓ U otkritka bilan bepul javob bera oladi',
     ],
     faqTitle: 'Savollar',
     faq: [
@@ -80,6 +84,8 @@ export default {
       { q: "O'zgartirish mumkinmi?", a: "Ha, chop etilgandan keyin 3 kun ichida." },
       { q: "O'z rasmimni yoki GIF-imni yuklasam bo'ladimi?", a: "Ha, 5 MB gacha (JPG, PNG, WebP, GIF)." },
       { q: 'Javobdan qanday xabar topaman?', a: '«Mening taklifnomalarim» bo‘limida ko‘rinadi.' },
+      { q: 'U javob bera oladimi?', a: 'Ha. «Ha» deganidan keyin u sizga bepul otkritka-chipta yuboradi: sana, joy, uning so‘zlari va hatto ovozli xabar.' },
+      { q: 'Do‘stimga taklifnoma sotib olsam bo‘ladimi?', a: 'Ha, «Do‘stga sovg‘a» bo‘limida: to‘laysiz, kod olasiz, do‘stingiz taklifnomani bepul yig‘ib e’lon qiladi.' },
     ],
   },
 

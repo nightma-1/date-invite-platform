@@ -21,6 +21,9 @@ import { LANDING_DEMO_KEY, getCachedSiteContent, loadSiteContent } from '../lib/
 import { track } from '../lib/analytics.js';
 import { supabase } from '../lib/supabaseClient.js';
 
+// Куда ведёт плашка «Новое» над заголовком (текст — landing.newsPill)
+const NEWS_LINK = '/gift';
+
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
 // всему сценарию (вопрос → реакция → дата → выбор → финал) на примерных
 // данных, чтобы посетитель мог сам дойти до конца и понять, что получит
@@ -324,6 +327,21 @@ export default function Landing() {
         <div className="mx-auto max-w-[1040px] px-5 pb-14 pt-8 sm:pb-16 sm:pt-10 lg:pb-20 lg:pt-12" style={{ position: 'relative', zIndex: 1 }}>
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_340px] lg:gap-12">
             <div className="text-center lg:text-left">
+              {/* «Новое» — одна строка над заголовком. Меняем под каждую
+                  новинку (текст landing.newsPill, ссылка NEWS_LINK), через
+                  пару недель убираем, чтобы плашка не примелькалась. */}
+              <Link
+                to={NEWS_LINK}
+                onClick={() => track('landing_news_click', { to: NEWS_LINK })}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, padding: '7px 14px',
+                  borderRadius: 100, background: '#fff', border: `1.5px solid ${T.pinkBorder}`, color: T.darkPurple,
+                  fontFamily: T.font, fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                  boxShadow: `0 8px 20px -12px ${T.pink}80`,
+                }}
+              >
+                {t('landing.newsPill')} <span style={{ color: T.pink }}>→</span>
+              </Link>
               <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: T.pink, marginBottom: 14 }}>
                 {t('landing.heroTag')}
               </p>
@@ -419,6 +437,24 @@ export default function Landing() {
               {t('landing.createBtn')}
             </motion.button>
           </Link>
+
+          {/* Подарок другу — тут же, где человек смотрит на цену */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', marginTop: 28, paddingTop: 22 }}>
+            <p style={{ color: '#fff', opacity: 0.8, fontSize: 14, fontFamily: T.font, marginBottom: 12, lineHeight: 1.5 }}>
+              {t('landing.giftQuestion')}
+            </p>
+            <Link to="/gift" onClick={() => track('landing_gift_click', { place: 'price' })}>
+              <motion.button
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                style={{
+                  background: 'transparent', color: '#fff', border: '1.5px solid rgba(255,255,255,0.45)', borderRadius: 100,
+                  padding: '12px 22px', fontFamily: T.font, fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                }}
+              >
+                {t('landing.giftButton')}
+              </motion.button>
+            </Link>
+          </div>
         </div>
       </section>
 
