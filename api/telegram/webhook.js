@@ -16,6 +16,16 @@ const supabaseAdmin = createClient(
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
+function miniAppKeyboard() {
+  const origin = (process.env.PUBLIC_APP_URL || 'https://senti.uz').replace(/\/+$/, '');
+  return {
+    inline_keyboard: [
+      [{ text: '💌 Создать приглашение', web_app: { url: `${origin}/?utm_source=telegram&utm_medium=miniapp` } }],
+      [{ text: '📋 Мои приглашения', web_app: { url: `${origin}/dashboard?utm_source=telegram&utm_medium=miniapp` } }],
+    ],
+  };
+}
+
 async function tg(method, body) {
   const res = await fetch(`${TELEGRAM_API}/${method}`, {
     method: 'POST',
@@ -163,9 +173,11 @@ export default async function handler(req, res) {
   const userId = code ? verifyLinkCode(code) : null;
 
   if (!userId) {
+    // Обычный /start: открыть Senti прямо в Telegram (Mini App) + как подключить уведомления
     await sendMessage(
       chatId,
-      'Чтобы я присылал тебе ответы на приглашения, зайди в «Мои приглашения» на https://senti.uz/dashboard и нажми «Получать ответы в Telegram». Это займёт пару секунд.'
+      '💌 Собери приглашение на свидание прямо здесь — за 3 минуты, одной ссылкой.\n\nЧтобы я присылал сюда ответы на твои приглашения, зайди в «Мои приглашения» и нажми «Получать ответы в Telegram».',
+      miniAppKeyboard()
     );
     return res.status(200).json({ ok: true });
   }

@@ -117,6 +117,8 @@ export default {
   },
 
   builder: {
+    tgShare: "Telegram'da yuborish ✈️",
+    tgShareText: 'Senga bir narsa bor 💌',
     loadingInvitation: 'Taklifnoma yuklanmoqda…',
     genderTitle: 'uchrashuvga kimni taklif qilmoqchisiz?',
     genderSubtitle: "Bir necha daqiqada iliq taklifnoma yaratamiz — o'z rasmingiz, savolingiz va sanangizni keyingi bosqichlarda tanlaysiz",

@@ -25,6 +25,7 @@ import { getTemplateTokens } from '../templates/registry.js';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
+import ShareToTelegram from '../components/ui/ShareToTelegram.jsx';
 import { track, trackBeforeLeaving } from '../lib/analytics.js';
 import { pixelInitiateCheckout } from '../lib/metaPixel.js';
 import QuestionScreen from '../components/screens/QuestionScreen.jsx';
@@ -671,6 +672,8 @@ export default function BuilderShell() {
               {linkCopied ? t('builder.copied') : t('builder.copy')}
             </button>
           </div>
+
+          <ShareToTelegram url={shareUrl} slug={publishResult.slug} />
 
           <a
             href={`/i/${publishResult.slug}`}

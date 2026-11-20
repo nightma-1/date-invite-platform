@@ -117,6 +117,8 @@ export default {
   },
 
   builder: {
+    tgShare: 'Send on Telegram ✈️',
+    tgShareText: "I've got something for you 💌",
     loadingInvitation: 'Loading invitation…',
     genderTitle: 'who do you want to invite on a date?',
     genderSubtitle: "Let's make a warm invitation in a couple of minutes — you'll pick your own picture, question, and date on the next steps",

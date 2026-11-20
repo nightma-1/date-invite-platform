@@ -17,6 +17,7 @@ import { track } from '../lib/analytics.js';
 import { pixelPurchase } from '../lib/metaPixel.js';
 import { inviteShareUrl } from '../lib/shareLink.js';
 import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
+import ShareToTelegram from '../components/ui/ShareToTelegram.jsx';
 import SaveAccessCard from '../components/ui/SaveAccessCard.jsx';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 
@@ -218,6 +219,8 @@ export default function PaymentStatus() {
                 </button>
               </div>
             )}
+
+            {shareUrl && previewInfo.kind !== 'museum' && <ShareToTelegram url={shareUrl} slug={slug} />}
 
             {/* Купил без регистрации — предлагаем войти, чтобы приглашение
                 и ответы не потерялись вместе с этим браузером */}
