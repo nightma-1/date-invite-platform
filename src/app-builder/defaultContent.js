@@ -86,6 +86,39 @@ const TEXTS = {
   },
 };
 
+// «Ответить приглашением»: получательница после своего «да» собирает
+// ответное. Меняем только вопрос и заголовок финала — остальное как у
+// обычного приглашения. Эти тексты тоже считаются «не тронутыми» и при
+// смене языка переводятся в ответный же вариант, а не в обычный.
+const REPLY_TEXTS = {
+  ru: {
+    question: { questionText: 'Теперь моя очередь. Пойдёшь со мной на свидание?' },
+    final: { title: 'В этот раз позвал(а) я 😄❤️' },
+  },
+  uz: {
+    question: { questionText: 'Endi navbat menda. Men bilan uchrashuvga borasanmi?' },
+    final: { title: 'Bu safar men taklif qildim 😄❤️' },
+  },
+  en: {
+    question: { questionText: 'My turn now. Will you go on a date with me?' },
+    final: { title: 'This time I asked 😄❤️' },
+  },
+};
+
+function isReplyDefault(stepType, field, current) {
+  if (current == null) return false;
+  return INVITE_LANGS.some((l) => REPLY_TEXTS[l]?.[stepType]?.[field] === current);
+}
+
+/** Шаги-заготовка ответного приглашения: обычные + свои вопрос и финал */
+export function applyReplyTexts(steps, lang) {
+  const l = normalizeLang(lang);
+  return steps.map((s) => {
+    const reply = REPLY_TEXTS[l][s.step_type];
+    return reply ? { ...s, configuration_json: { ...s.configuration_json, ...reply } } : s;
+  });
+}
+
 // Фраза обращена к получателю ('recipient') или написана от лица отправителя
 // ('sender' — предполагаем пару, где род отправителя обратный полу получателя).
 const GENDER_DIRECTION = { 'reaction.text': 'sender' };
@@ -159,6 +192,11 @@ export function localizeSteps(steps, lang, recipientGender) {
     let changed = false;
 
     for (const field of fields) {
+      if (isReplyDefault(s.step_type, field, cfg[field])) {
+        const target = REPLY_TEXTS[l][s.step_type][field];
+        if (target !== cfg[field]) { next[field] = target; changed = true; }
+        continue;
+      }
       if (!isKnownDefault(s.step_type, field, cfg[field])) continue;
       const target = defaultFor(l, s.step_type, field, recipientGender);
       if (target != null && target !== cfg[field]) { next[field] = target; changed = true; }

@@ -5,6 +5,8 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { trackPageView, initAnalytics } from './lib/analytics.js';
+import { pixelPageView } from './lib/metaPixel.js';
+import Privacy from './app-marketing/Privacy.jsx';
 import { initGuestClaim } from './lib/guestAccount.js';
 import { capturePromoFromUrl } from './lib/promo.js';
 import { supabase } from './lib/supabaseClient.js';
@@ -53,6 +55,7 @@ function PageViewTracker() {
   }, []);
   useEffect(() => {
     trackPageView(location.pathname);
+    pixelPageView(location.pathname);
   }, [location.pathname]);
   return null;
 }
@@ -99,7 +102,11 @@ function BuilderRoute() {
   const { draftId } = useParams();
   const [searchParams] = useSearchParams();
   return (
-    <BuilderProvider draftId={draftId} initialTemplateId={searchParams.get('template')}>
+    <BuilderProvider
+      draftId={draftId}
+      initialTemplateId={searchParams.get('template')}
+      replyTo={(searchParams.get('reply') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || null}
+    >
       <BuilderShell />
     </BuilderProvider>
   );
@@ -122,6 +129,7 @@ export default function App() {
       <PageViewTracker />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/privacy" element={<Privacy />} />
         {/* Каждый новый черновик получает свой id — иначе второе приглашение
             перезаписало бы localStorage первого */}
         <Route path="/builder" element={<NewDraftRedirect />} />

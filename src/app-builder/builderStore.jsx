@@ -9,7 +9,7 @@ import { isEditLocked } from '../lib/editWindow.js';
 import { listDefaultGifs } from '../lib/mediaLibrary.js';
 import i18n from '../i18n/index.js';
 import { useTranslation } from 'react-i18next';
-import { buildDefaultConfigs, localizeSteps, normalizeLang, invitationLang } from './defaultContent.js';
+import { buildDefaultConfigs, localizeSteps, normalizeLang, invitationLang, applyReplyTexts } from './defaultContent.js';
 
 const STORAGE_PREFIX = 'date-invite-draft:';
 
@@ -37,13 +37,16 @@ function currentUiLang() {
   return normalizeLang(i18n.resolvedLanguage || i18n.language);
 }
 
-function initialDraft(draftId, initialTemplateId) {
+function initialDraft(draftId, initialTemplateId, replyTo = null) {
   const templateId = initialTemplateId || 'romantic';
+  const steps = buildDefaultSteps(currentUiLang());
   return {
     draftId, templateId, mood: templateId, cardShape: 'polaroid', activeStepIndex: 0,
     // Язык приглашения = язык конструктора; меняется вместе с переключателем
     lang: currentUiLang(),
-    steps: buildDefaultSteps(currentUiLang()),
+    // Ответное приглашение (кнопка у получателя после ответа): свой вопрос и финал
+    steps: replyTo ? applyReplyTexts(steps, currentUiLang()) : steps,
+    replyTo,
     // Какие шаги ещё ни разу не получали картинку от самого пользователя —
     // пока шаг не тронут, картинку на нём можно свободно подменять свежим
     // дефолтом из админки (см. APPLY_DEFAULT_MEDIA и эффект в BuilderProvider).
@@ -161,15 +164,15 @@ function draftReducer(state, action) {
 
 const BuilderContext = createContext(null);
 
-export function BuilderProvider({ draftId, initialTemplateId, editInvitationId, children }) {
+export function BuilderProvider({ draftId, initialTemplateId, replyTo = null, editInvitationId, children }) {
   const [state, dispatch] = useReducer(draftReducer, null, () => {
     if (editInvitationId) {
       return { ...initialDraft(draftId, initialTemplateId), editInvitationId, loading: true };
     }
-    if (typeof window === 'undefined') return initialDraft(draftId, initialTemplateId);
+    if (typeof window === 'undefined') return initialDraft(draftId, initialTemplateId, replyTo);
     try {
       const saved = window.localStorage.getItem(STORAGE_PREFIX + draftId);
-      if (!saved) return initialDraft(draftId, initialTemplateId);
+      if (!saved) return initialDraft(draftId, initialTemplateId, replyTo);
       const parsed = JSON.parse(saved);
       // Шаблон из URL важнее сохранённого: пользователь только что кликнул по нему в галерее
       return initialTemplateId ? { ...parsed, templateId: initialTemplateId } : parsed;

@@ -26,3 +26,14 @@ test('смена языка переводит не тронутые поля и
   assert.equal(ru.find((s) => s.step_type === 'date').configuration_json.title, 'И так... Когда ты свободна?');
   assert.equal(ru.find((s) => s.step_type === 'reaction').configuration_json.text, 'Я был готов что скажешь «нет» ахах');
 });
+
+test('ответное приглашение: свой вопрос и при смене языка остаётся ответным', async () => {
+  const { applyReplyTexts } = await import('../src/app-builder/defaultContent.js');
+  const steps = applyReplyTexts(stepsOf(buildDefaultConfigs('ru')), 'ru');
+  const q = steps.find((s) => s.step_type === 'question').configuration_json;
+  assert.equal(q.questionText, 'Теперь моя очередь. Пойдёшь со мной на свидание?');
+  assert.equal(q.yesText, 'Да, конечно ❤️');
+  const uz = localizeSteps(steps, 'uz', null);
+  assert.equal(uz.find((s) => s.step_type === 'question').configuration_json.questionText, 'Endi navbat menda. Men bilan uchrashuvga borasanmi?');
+  assert.equal(uz.find((s) => s.step_type === 'final').configuration_json.title, 'Bu safar men taklif qildim 😄❤️');
+});
