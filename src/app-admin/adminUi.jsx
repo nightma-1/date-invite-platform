@@ -301,7 +301,8 @@ export function DataTable({ head, rows, empty = 'Нет данных.', defaultS
         {sortBar}
         <div style={{ display: 'grid', gap: 8 }}>
           {sorted.map((row) => (
-            <Card key={row.key} pad={12} style={row.muted ? { opacity: 0.55 } : undefined}>
+            <Card key={row.key} pad={12} style={{ ...(row.muted ? { opacity: 0.55 } : null), ...(row.onClick ? { cursor: 'pointer' } : null) }}>
+              <div onClick={row.onClick} role={row.onClick ? 'button' : undefined}>
               <div style={{ fontFamily: A.fontUI, fontSize: 14, fontWeight: 700, color: A.ink, marginBottom: 6, wordBreak: 'break-word' }}>
                 {display(row.cells[0])}
               </div>
@@ -317,6 +318,7 @@ export function DataTable({ head, rows, empty = 'Нет данных.', defaultS
                     </div>
                   );
                 })}
+              </div>
               </div>
             </Card>
           ))}
@@ -357,7 +359,12 @@ export function DataTable({ head, rows, empty = 'Нет данных.', defaultS
         </thead>
         <tbody>
           {sorted.map((row) => (
-            <tr key={row.key} style={row.muted ? { opacity: 0.5 } : undefined}>
+            <tr
+              key={row.key}
+              onClick={row.onClick}
+              className={row.onClick ? 'admin-row-click' : undefined}
+              style={{ ...(row.muted ? { opacity: 0.5 } : null), ...(row.onClick ? { cursor: 'pointer' } : null) }}
+            >
               {row.cells.map((cell, ci) => (
                 <td
                   key={ci}
@@ -375,6 +382,50 @@ export function DataTable({ head, rows, empty = 'Нет данных.', defaultS
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/**
+ * Боковая панель с подробностями (на телефоне — на весь экран).
+ * Закрывается крестиком, Esc и кликом по затемнению.
+ */
+export function Drawer({ open, onClose, title, subtitle, children, width = 560 }) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(20, 16, 28, 0.35)' }} />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label={typeof title === 'string' ? title : undefined}
+        style={{
+          position: 'relative', width: `min(${width}px, 100vw)`, height: '100%', overflowY: 'auto',
+          background: A.bg, boxShadow: '-12px 0 40px rgba(0,0,0,0.12)', fontFamily: A.fontUI,
+        }}
+      >
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 1, background: A.bg, borderBottom: `1px solid ${A.line}`,
+          padding: '14px 18px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: A.ink, wordBreak: 'break-word' }}>{title}</p>
+            {subtitle && <p style={{ margin: '3px 0 0', fontSize: 12.5, color: A.muted }}>{subtitle}</p>}
+          </div>
+          <button type="button" onClick={onClose} aria-label="Закрыть" style={{
+            border: 'none', background: A.soft, borderRadius: 10, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: A.ink, flexShrink: 0,
+          }}>✕</button>
+        </div>
+        <div style={{ padding: 18 }}>{children}</div>
+      </aside>
     </div>
   );
 }

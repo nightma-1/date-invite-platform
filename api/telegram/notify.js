@@ -11,6 +11,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { safeEqual } from '../_lib/telegramLink.js';
 import { sendDailyReport, sendAdminAlert, broadcast } from '../_lib/adminReport.js';
+import { syncMetaSpend } from '../_lib/metaSync.js';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -260,6 +261,22 @@ export default async function handler(req, res) {
   }
 
   // Кнопка «Прислать себе» в админке: тот же текст, что получают люди
+  // Расходы из Meta Marketing API (pg_cron раз в день или кнопка в админке)
+  if (event === 'meta_sync') {
+    return res.status(200).json(await syncMetaSpend(supabaseAdmin, Number(extra?.days) || 7));
+  }
+
+  // Сообщение автору от админа (админка → admin_message_user)
+  if (event === 'admin_message') {
+    const { data: to } = await supabaseAdmin.from('profiles')
+      .select('telegram_chat_id').eq('id', extra?.user_id || '').maybeSingle();
+    const text = String(extra?.text || '').trim().slice(0, 3500);
+    if (!to?.telegram_chat_id || !text) return res.status(200).json({ ok: false, reason: 'no chat' });
+    return res.status(200).json(await sendMessage(to.telegram_chat_id, escapeHtml(text), {
+      text: 'Открыть кабинет', url: appUrl('/dashboard'),
+    }));
+  }
+
   if (event === 'draft_reminder_test') {
     const { data: me } = await supabaseAdmin.from('profiles')
       .select('telegram_chat_id, is_admin').eq('id', extra?.user_id || '').maybeSingle();
