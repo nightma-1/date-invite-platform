@@ -9,6 +9,7 @@ export default {
   },
 
   nav: {
+    privacy: 'Maxfiylik',
     create: "Yaratish",
     myInvitations: 'Mening taklifnomalarim',
     admin: 'Admin',
@@ -18,6 +19,9 @@ export default {
     heroTag: "💌 Uchrashuvga taklifnoma",
     heroTitleLine1: "Shunchaki so'rama.",
     heroTitleHighlight: "Hayratda qoldir.",
+    statsSent_one: '{{n}} ta taklif yuborildi',
+    statsSent_other: '{{n}} ta taklif yuborildi',
+    statsYes: '{{pct}}% «Ha» deb javob berdi',
     heroSubtitle: "Iliq rasm, o'z savoling va qochib ketuvchi «Yo'q» tugmasi — taklifnoma 3 daqiqa va bitta havolada tayyor.",
     createBtn: 'Taklifnoma yaratish',
     myInvitationsBtn: 'Mening taklifnomalarim',
@@ -257,6 +261,8 @@ export default {
     storyHint: 'Ismlarsiz — faqat konvert va «Yo‘q» tugmasi',
     storySaved: 'Rasm saqlandi — uni storisga joylash mumkin.',
     storyFailed: 'Rasmni tayyorlab bo‘lmadi. Yana urinib ko‘r.',
+    replyInvite: 'O‘z taklifing bilan javob ber 💌',
+    replyInviteHint: 'Endi taklif qilish navbati senda. 3 daqiqa vaqt oladi',
     makeYourOwn: 'Sen ham kimnidir taklif qilmoqchimisan? O‘zingnikini yarat →',
   },
 

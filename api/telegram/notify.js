@@ -12,6 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { safeEqual } from '../_lib/telegramLink.js';
 import { sendDailyReport, sendAdminAlert, broadcast } from '../_lib/adminReport.js';
 import { syncMetaSpend } from '../_lib/metaSync.js';
+import { feedbackTexts, ratingKeyboard } from '../_lib/dateFeedback.js';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -336,6 +337,23 @@ export default async function handler(req, res) {
       console.error('telegram/notify: reminder copy failed', err?.message || err);
     }
     return res.status(200).json(result);
+  }
+
+  // «Как прошло свидание?» (pg_cron → send_date_followups). Кнопки-оценки
+  // ведут в api/telegram/webhook.js, там же согласие и отзыв.
+  if (event === 'date_followup') {
+    const lang = ['ru', 'uz', 'en'].includes(extra?.lang) ? extra.lang : 'ru';
+    const name = escapeHtml(invitation.recipient_name || '');
+    const res2 = await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId, text: feedbackTexts(lang).ask(name), parse_mode: 'HTML',
+        reply_markup: ratingKeyboard(lang, invitation.id),
+      }),
+    });
+    if (!res2.ok) console.error('telegram/notify: date_followup failed', res2.status, (await res2.text()).slice(0, 300));
+    return res.status(200).json({ ok: res2.ok });
   }
 
   // Кнопка ведёт прямо на ответ в кабинете — повод вернуться на сайт.

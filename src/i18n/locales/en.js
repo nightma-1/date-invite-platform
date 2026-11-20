@@ -9,6 +9,7 @@ export default {
   },
 
   nav: {
+    privacy: 'Privacy',
     create: 'Create',
     myInvitations: 'My invitations',
     admin: 'Admin',
@@ -18,6 +19,9 @@ export default {
     heroTag: '💌 Date invitation',
     heroTitleLine1: "Don't just ask her.",
     heroTitleHighlight: 'Surprise her.',
+    statsSent_one: '{{n}} invitation sent',
+    statsSent_other: '{{n}} invitations sent',
+    statsYes: '{{pct}}% said “Yes”',
     heroSubtitle: 'A warm picture, your own question, and a "No" button that runs away — an invitation ready in 3 minutes and one link.',
     createBtn: 'Create an invitation',
     myInvitationsBtn: 'My invitations',
@@ -257,6 +261,8 @@ export default {
     storyHint: 'No names — just the envelope and the “No” button',
     storySaved: 'Picture saved — you can post it to your stories.',
     storyFailed: "Couldn't prepare the picture. Try again.",
+    replyInvite: 'Reply with your own invitation 💌',
+    replyInviteHint: 'Your turn to ask. It takes 3 minutes',
     makeYourOwn: 'Want to invite someone too? Make your own →',
   },
 

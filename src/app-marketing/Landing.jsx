@@ -20,6 +20,7 @@ import { SupportTrigger } from '../components/ui/SupportDialog.jsx';
 import { listDefaultGifs, getCachedDefaultGifs, preloadMedia } from '../lib/mediaLibrary.js';
 import { LANDING_DEMO_KEY, getCachedSiteContent, loadSiteContent } from '../lib/siteContent.js';
 import { track } from '../lib/analytics.js';
+import { supabase } from '../lib/supabaseClient.js';
 
 // Живое превью в шапке — не статичная картинка, а настоящий проход по
 // всему сценарию (вопрос → реакция → дата → выбор → финал) на примерных
@@ -222,6 +223,36 @@ function LandingPreviewDemo() {
   );
 }
 
+/**
+ * «Отправлено N приглашений · X% ответили «Да»». Цифры отдаёт RPC
+ * landing_stats: пока приглашений меньше порога, она возвращает null,
+ * и строки просто нет — маленькие цифры работают против нас.
+ */
+function LandingStats() {
+  const { t, i18n } = useTranslation();
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    supabase.rpc('landing_stats').then(({ data, error }) => {
+      if (!cancelled && !error && data?.sent) setStats(data);
+    });
+    return () => { cancelled = true; };
+  }, []);
+  if (!stats) return null;
+  const fmt = (n) => new Intl.NumberFormat(i18n.resolvedLanguage === 'en' ? 'en-US' : 'ru-RU').format(n);
+  return (
+    <p className="mx-auto lg:mx-0" style={{ color: T.muted, fontSize: 13, marginTop: 18, maxWidth: 420 }}>
+      <b style={{ color: T.darkPurple }}>{t('landing.statsSent', { count: stats.sent, n: fmt(stats.sent) })}</b>
+      {stats.yes_pct != null && (
+        <>
+          {' · '}
+          <b style={{ color: T.pink }}>{t('landing.statsYes', { pct: stats.yes_pct })}</b>
+        </>
+      )}
+    </p>
+  );
+}
+
 export default function Landing() {
   const isAdmin = useIsAdmin(); // до запуска блок музея видит только владелец
   const { t } = useTranslation();
@@ -318,6 +349,7 @@ export default function Landing() {
                   </motion.button>
                 </Link>
               </div>
+              <LandingStats />
             </div>
 
             <div className="mx-auto w-full max-w-[280px] sm:max-w-[300px] lg:mx-0 lg:max-w-none lg:w-[300px]">
@@ -438,6 +470,7 @@ export default function Landing() {
             <Link to="/builder" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.create')}</Link>
             <Link to="/dashboard" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.myInvitations')}</Link>
             <SupportTrigger variant="link" />
+            <Link to="/privacy" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.privacy')}</Link>
             <LanguageSwitcher />
           </div>
         </div>
