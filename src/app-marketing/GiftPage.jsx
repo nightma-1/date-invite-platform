@@ -99,7 +99,7 @@ export function GiftBuy() {
       <p style={{ color: T.muted, fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
         {t('gift.subtitle')}
       </p>
-      <ol style={{ textAlign: 'left', color: T.darkPurple, fontSize: 13.5, lineHeight: 1.6, margin: '0 0 20px', paddingLeft: 20 }}>
+      <ol style={{ textAlign: 'left', color: T.darkPurple, fontSize: 13.5, lineHeight: 1.6, margin: '0 0 20px', paddingLeft: 20, listStyle: 'decimal' }}>
         <li>{t('gift.step1')}</li>
         <li>{t('gift.step2')}</li>
         <li>{t('gift.step3')}</li>
