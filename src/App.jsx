@@ -107,6 +107,7 @@ function BuilderRoute() {
       draftId={draftId}
       initialTemplateId={searchParams.get('template')}
       replyTo={(searchParams.get('reply') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || null}
+      replyKind={searchParams.get('kind') === 'thanks' ? 'thanks' : 'card'}
     >
       <BuilderShell />
     </BuilderProvider>

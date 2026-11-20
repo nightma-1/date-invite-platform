@@ -116,6 +116,8 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [noAttempts, setNoAttempts] = useState(0);
+  // Дата свидания прошла — предложить «спасибо за вечер» (ответ со скидкой)
+  const [thanksOffer, setThanksOffer] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +184,13 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
       const { data: sessionData } = await supabase.auth.getSession();
       if (cancelled) return;
       if (sessionData?.session?.user?.id && sessionData.session.user.id === inv.user_id) return;
+
+      supabase.rpc('reply_context', { p_slug: slug }).then(({ data }) => {
+        if (!cancelled && data?.date_passed) {
+          setThanksOffer(true);
+          track('recipient_thanks_offer_shown', {}, { slug });
+        }
+      });
 
       // Не блокируем рендер результатом — это уведомление, а не критичный путь
       supabase.rpc('mark_invitation_viewed', { p_slug: slug }).then(({ error }) => {
@@ -361,6 +370,29 @@ function InvitationRuntimeInner({ previewData = null, onLang }) {
       )}
 
       <div className="mx-auto max-w-[380px] px-4 py-10" style={{ position: 'relative', zIndex: 1 }}>
+      {thanksOffer && activeIndex === 0 && !submitted && (
+        <a
+          href={`/builder?${new URLSearchParams({
+            reply: slug, kind: 'thanks', template: invitation.template_key || 'romantic',
+            utm_source: 'senti', utm_medium: 'recipient', utm_campaign: 'thanks',
+          })}`}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => track('recipient_thanks_click', {}, { slug })}
+          style={{
+            display: 'block', marginBottom: 18, padding: '12px 16px', borderRadius: 18, textDecoration: 'none',
+            background: tokens.card || '#fff', border: `1.5px solid ${tokens.berry}40`,
+            boxShadow: `0 10px 24px -14px ${tokens.ink}40`, textAlign: 'left',
+          }}
+        >
+          <span style={{ display: 'block', fontFamily: tokens.fontUI, fontWeight: 700, fontSize: 14, color: tokens.ink }}>
+            {t('screens.thanksTitle')}
+          </span>
+          <span style={{ display: 'block', fontFamily: tokens.fontUI, fontSize: 12.5, color: tokens.inkMuted || tokens.ink, opacity: 0.8, marginTop: 2 }}>
+            {t('screens.thanksText')}
+          </span>
+        </a>
+      )}
       {activeStep?.step_type === 'question' && (
         <QuestionScreen
           recipientName={invitation.recipient_name}

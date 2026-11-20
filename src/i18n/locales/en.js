@@ -117,6 +117,7 @@ export default {
   },
 
   builder: {
+    replyDiscount: "50% off — it's a reply to an invitation",
     tgShare: 'Send on Telegram ✈️',
     tgShareText: "I've got something for you 💌",
     loadingInvitation: 'Loading invitation…',
@@ -263,8 +264,10 @@ export default {
     storyHint: 'No names — just the envelope and the “No” button',
     storySaved: 'Picture saved — you can post it to your stories.',
     storyFailed: "Couldn't prepare the picture. Try again.",
-    replyInvite: 'Reply with your own invitation 💌',
-    replyInviteHint: 'Your turn to ask. It takes 3 minutes',
+    replyInvite: 'Reply with a card 💌',
+    replyInviteHint: 'Your answer to the invitation — 50% off',
+    thanksTitle: 'How was the date? 🌙',
+    thanksText: 'Say thanks for the evening and ask again — 50% off →',
     makeYourOwn: 'Want to invite someone too? Make your own →',
   },
 
@@ -295,6 +298,9 @@ export default {
 
     },
     question: {
+      senderName: 'Your name (optional)',
+      senderNamePlaceholder: 'For example, Aziz',
+      senderNameHint: 'If they reply, the reply will come addressed to you',
       imageTitle: 'Picture on screen',
       cardShapeTitle: 'Card shape',
       editButtons: 'Edit the “Yes” and “No” button text',

@@ -71,6 +71,7 @@ export async function updateInvitationDraft(state, userId, invitationId) {
     .from('invitations')
     .update({
       recipient_name: String(questionConfig.recipientName || '').replace(/\s+/g, ' ').trim() || fallbackRecipientName(state.lang),
+      sender_name: String(questionConfig.senderName || '').replace(/\s+/g, ' ').trim().slice(0, 40) || null,
       recipient_gender: state.recipientGender || null,
       mood: state.mood,
       template_key: state.templateId,

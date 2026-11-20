@@ -27,13 +27,16 @@ test('смена языка переводит не тронутые поля и
   assert.equal(ru.find((s) => s.step_type === 'reaction').configuration_json.text, 'Я был готов что скажешь «нет» ахах');
 });
 
-test('ответное приглашение: свой вопрос и при смене языка остаётся ответным', async () => {
+test('ответ получательницы: открытка без даты, «спасибо» со всеми шагами, язык переводится', async () => {
   const { applyReplyTexts } = await import('../src/app-builder/defaultContent.js');
-  const steps = applyReplyTexts(stepsOf(buildDefaultConfigs('ru')), 'ru');
-  const q = steps.find((s) => s.step_type === 'question').configuration_json;
-  assert.equal(q.questionText, 'Теперь моя очередь. Пойдёшь со мной на свидание?');
-  assert.equal(q.yesText, 'Да, конечно ❤️');
-  const uz = localizeSteps(steps, 'uz', null);
-  assert.equal(uz.find((s) => s.step_type === 'question').configuration_json.questionText, 'Endi navbat menda. Men bilan uchrashuvga borasanmi?');
-  assert.equal(uz.find((s) => s.step_type === 'final').configuration_json.title, 'Bu safar men taklif qildim 😄❤️');
+  const card = applyReplyTexts(stepsOf(buildDefaultConfigs('ru')), 'ru', 'card');
+  assert.equal(card.find((s) => s.step_type === 'question').configuration_json.questionText, 'Я согласна 😊 А ты рад, что я сказала «да»?');
+  assert.equal(card.find((s) => s.step_type === 'date').enabled, false);
+  assert.equal(card.find((s) => s.step_type === 'choice_place').enabled, false);
+  const uz = localizeSteps(card, 'uz', null);
+  assert.equal(uz.find((s) => s.step_type === 'reaction').configuration_json.confirmText, "Ko'rishguncha ❤️");
+  assert.equal(uz.find((s) => s.step_type === 'question').configuration_json.noText, "Yo'q");
+  const thanks = applyReplyTexts(stepsOf(buildDefaultConfigs('en')), 'en', 'thanks');
+  assert.equal(thanks.find((s) => s.step_type === 'date').enabled, true);
+  assert.equal(localizeSteps(thanks, 'ru', null).find((s) => s.step_type === 'final').configuration_json.title, 'Значит, до следующей встречи 😄❤️');
 });
