@@ -16,6 +16,7 @@ import StepFinal from './steps/StepFinal.jsx';
 import AuthGate from './AuthGate.jsx';
 import { ensureGuestSession } from '../lib/guestAccount.js';
 import { publishDraft, withRetry, isNetworkError } from './publishDraft.js';
+import { getStoredPromo, storePromo, checkPromo, normalizePromo, discounted, INVITATION_PRICE } from '../lib/promo.js';
 import { buildPreviewInvitation } from './previewInvitation.js';
 import PreviewOverlay from './PreviewOverlay.jsx';
 import { updateInvitationDraft } from './updateInvitation.js';
@@ -153,6 +154,11 @@ export default function BuilderShell() {
 
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [showPaymentChoice, setShowPaymentChoice] = useState(false);
+  // Промокод: из ссылки (?promo=) или введённый на экране оплаты
+  const [promoInput, setPromoInput] = useState(() => getStoredPromo());
+  const [promo, setPromo] = useState(null); // { code, discount_percent } — проверенный
+  const [promoOpen, setPromoOpen] = useState(() => Boolean(getStoredPromo()));
+  const [promoStatus, setPromoStatus] = useState(null); // 'checking' | 'invalid' | null
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState('invoice');
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState(null);
@@ -348,6 +354,27 @@ export default function BuilderShell() {
     setShowPaymentChoice(true);
   }
 
+  async function applyPromo(code = promoInput) {
+    const c = normalizePromo(code);
+    if (!c) { setPromo(null); setPromoStatus(null); storePromo(''); return; }
+    setPromoStatus('checking');
+    try {
+      const res = await checkPromo(c);
+      setPromo(res);
+      setPromoStatus(res ? null : 'invalid');
+      storePromo(res ? res.code : '');
+      track(res ? 'promo_applied' : 'promo_invalid', { code: c });
+    } catch {
+      setPromoStatus('invalid');
+    }
+  }
+
+  // Код из ссылки проверяем сразу, как только открылся экран оплаты
+  useEffect(() => {
+    if (showPaymentChoice && promoInput && !promo && promoStatus === null) applyPromo(promoInput);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPaymentChoice]);
+
   async function handleChoosePaymentMethod(method) {
     setShowPaymentChoice(false);
     setPublishError(null);
@@ -392,16 +419,23 @@ export default function BuilderShell() {
         const r = await fetch('/api/click/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ invitationId, method }),
+          body: JSON.stringify({ invitationId, method, promoCode: getStoredPromo() || undefined }),
         });
         return { res: r, data: await r.json().catch(() => ({})) };
       });
       // Владелец сервиса публикует без оплаты: сервер уже опубликовал
       // приглашение, показываем ссылку сразу, без перехода на Click.
       if (res.ok && data.published) {
-        track('invitation_published_free', { template: state.templateId });
+        track('invitation_published_free', { template: state.templateId, promo: data.promo || null });
+        if (data.promo) storePromo('');
         setPublishResult({ invitationId, slug: data.slug || slug });
         return;
+      }
+      if (data.promoInvalid) {
+        // Код успел закончиться между проверкой и оплатой
+        storePromo('');
+        setPromo(null);
+        throw new Error(t('builder.promoExpired'));
       }
       if (!res.ok || !data.paymentUrl) {
         throw new Error(data.error || t('builder.publishGenericError'));
@@ -436,31 +470,94 @@ export default function BuilderShell() {
           animate={{ scale: 1, opacity: 1 }}
           style={{ textAlign: 'center', maxWidth: 360, width: '100%', position: 'relative', zIndex: 1 }}
         >
-          <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 20, color: T.darkPurple, marginBottom: 20 }}>
-            {t('builder.choosePaymentTitle')}
+          <h1 style={{ fontFamily: T.font, fontWeight: 700, fontSize: 20, color: T.darkPurple, marginBottom: 6 }}>
+            {promo?.discount_percent === 100 ? t('builder.promoFreeTitle') : t('builder.choosePaymentTitle')}
           </h1>
-          <button
-            type="button"
-            onClick={() => handleChoosePaymentMethod('invoice')}
-            style={{
-              display: 'block', width: '100%', background: T.pink, color: '#fff', padding: '14px 24px',
-              borderRadius: 100, fontFamily: T.font, fontWeight: 700, fontSize: 15, border: 'none',
-              cursor: 'pointer', marginBottom: 12,
-            }}
-          >
-            {t('builder.payWithClick')}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleChoosePaymentMethod('card')}
-            style={{
-              display: 'block', width: '100%', background: 'white', color: T.dark, padding: '14px 24px',
-              borderRadius: 100, fontFamily: T.font, fontWeight: 700, fontSize: 15,
-              border: `1.5px solid ${T.pinkBorder}`, cursor: 'pointer', marginBottom: 12,
-            }}
-          >
-            {t('builder.payWithCard')}
-          </button>
+          <p style={{ fontFamily: T.font, fontSize: 15, color: T.dark, margin: '0 0 18px' }}>
+            {promo ? (
+              <>
+                <span style={{ textDecoration: 'line-through', color: T.muted, marginRight: 8 }}>{INVITATION_PRICE.toLocaleString('ru-RU')} {t('builder.sum')}</span>
+                <b style={{ color: T.pink }}>
+                  {discounted(INVITATION_PRICE, promo.discount_percent) === 0
+                    ? t('builder.promoFree')
+                    : `${discounted(INVITATION_PRICE, promo.discount_percent).toLocaleString('ru-RU')} ${t('builder.sum')}`}
+                </b>
+              </>
+            ) : (
+              <b>{INVITATION_PRICE.toLocaleString('ru-RU')} {t('builder.sum')}</b>
+            )}
+          </p>
+          {promo?.discount_percent === 100 ? (
+            <button
+              type="button"
+              onClick={() => handleChoosePaymentMethod('invoice')}
+              style={{
+                display: 'block', width: '100%', background: T.pink, color: '#fff', padding: '14px 24px',
+                borderRadius: 100, fontFamily: T.font, fontWeight: 700, fontSize: 15, border: 'none',
+                cursor: 'pointer', marginBottom: 12,
+              }}
+            >
+              {t('builder.promoPublishFree')}
+            </button>
+          ) : (
+            <>
+            <button
+              type="button"
+              onClick={() => handleChoosePaymentMethod('invoice')}
+              style={{
+                display: 'block', width: '100%', background: T.pink, color: '#fff', padding: '14px 24px',
+                borderRadius: 100, fontFamily: T.font, fontWeight: 700, fontSize: 15, border: 'none',
+                cursor: 'pointer', marginBottom: 12,
+              }}
+            >
+              {t('builder.payWithClick')}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleChoosePaymentMethod('card')}
+              style={{
+                display: 'block', width: '100%', background: 'white', color: T.dark, padding: '14px 24px',
+                borderRadius: 100, fontFamily: T.font, fontWeight: 700, fontSize: 15,
+                border: `1.5px solid ${T.pinkBorder}`, cursor: 'pointer', marginBottom: 12,
+              }}
+            >
+              {t('builder.payWithCard')}
+            </button>
+            </>
+          )}
+          <div style={{ margin: '4px 0 14px', textAlign: 'left' }}>
+            {!promoOpen ? (
+              <button type="button" onClick={() => setPromoOpen(true)} style={{
+                background: 'none', border: 'none', padding: 0, color: T.pink, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%', textAlign: 'center',
+              }}>
+                {t('builder.promoHave')}
+              </button>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    value={promoInput}
+                    onChange={(e) => { setPromoInput(normalizePromo(e.target.value)); setPromoStatus(null); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') applyPromo(); }}
+                    placeholder={t('builder.promoPlaceholder')}
+                    aria-label={t('builder.promoPlaceholder')}
+                    style={{
+                      flex: 1, minWidth: 0, padding: '11px 14px', borderRadius: 12, border: `1.5px solid ${promoStatus === 'invalid' ? '#e5484d' : T.pinkBorder}`,
+                      fontFamily: T.font, fontSize: 14, textTransform: 'uppercase', outline: 'none', background: '#fff',
+                    }}
+                  />
+                  <button type="button" onClick={() => applyPromo()} disabled={promoStatus === 'checking' || !promoInput} style={{
+                    padding: '0 16px', borderRadius: 12, border: 'none', background: T.darkPurple, color: '#fff',
+                    fontFamily: T.font, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: promoInput ? 1 : 0.5,
+                  }}>
+                    {promoStatus === 'checking' ? '…' : t('builder.promoApply')}
+                  </button>
+                </div>
+                {promoStatus === 'invalid' && <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: '#e5484d', fontFamily: T.font }}>{t('builder.promoInvalid')}</p>}
+                {promo && <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: '#2f9e5b', fontFamily: T.font }}>{t('builder.promoOk', { percent: promo.discount_percent })}</p>}
+              </>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => setShowPaymentChoice(false)}

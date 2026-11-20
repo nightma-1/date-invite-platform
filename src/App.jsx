@@ -6,6 +6,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { trackPageView, initAnalytics } from './lib/analytics.js';
 import { initGuestClaim } from './lib/guestAccount.js';
+import { capturePromoFromUrl } from './lib/promo.js';
 import { supabase } from './lib/supabaseClient.js';
 import { attachReferralIfAny, trackReferralVisit } from './lib/referral.js';
 import ReferralRedirect from './app-referral/ReferralRedirect.jsx';
@@ -48,6 +49,7 @@ function PageViewTracker() {
   useEffect(() => {
     initAnalytics();
     initGuestClaim();
+    capturePromoFromUrl();
   }, []);
   useEffect(() => {
     trackPageView(location.pathname);

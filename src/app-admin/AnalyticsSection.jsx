@@ -138,8 +138,9 @@ function daysBetween(fromYmd, toYmd) {
 }
 
 export default function AnalyticsSection() {
-  const [preset, setPreset] = useState('30d');
-  const [range, setRange] = useState(() => PRESETS.find((p) => p.key === '30d').range());
+  // По умолчанию неделя: при нынешнем трафике так быстрее видно, сработали ли изменения
+  const [preset, setPreset] = useState('7d');
+  const [range, setRange] = useState(() => PRESETS.find((p) => p.key === '7d').range());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [data, setData] = useState(null);
   const [prev, setPrev] = useState(null);
@@ -648,13 +649,15 @@ function SpendManager({ rows, campaigns, onChanged }) {
       </form>
       {formError && <p className="mb-2 text-xs" style={{ color: '#C0392B', fontFamily: t.fontUI }}>{formError}</p>}
       <p className="mb-3 text-[11px]" style={{ color: t.ink, opacity: 0.5, fontFamily: t.fontUI, lineHeight: 1.5 }}>
-        Вносите расход за день из рекламного кабинета. Кампания должна совпадать с меткой utm_campaign —
+        Расходы Meta Ads подтягиваются сами раз в день (строки с пометкой «Meta») — если в Vercel заданы ключи,
+        см. «Система». Руками вносите только другие расходы. Кампания должна совпадать с меткой utm_campaign —
         тогда расход встанет в её строку в таблице кампаний выше.
       </p>
       <Table
         head={['День', 'Кампания', 'Ролик', 'Сумма', 'Заметка', '']}
         rows={rows.map((r) => [
-          { d: formatYmd(r.day), v: r.day }, r.campaign || '—', r.content || '—', money(r.amount), r.note || '—',
+          { d: formatYmd(r.day), v: r.day }, r.campaign || '—', r.content || '—', money(r.amount),
+          String(r.note || '').startsWith('meta:') ? `Meta · ${r.note.slice(5)}` : (r.note || '—'),
           <button
             key={r.id}
             type="button"

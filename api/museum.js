@@ -183,8 +183,26 @@ async function cleanup(req, res) {
   return res.status(200).json({ purged, draftsRemoved });
 }
 
+// Для страницы «Состояние системы» в админке: заданы ли ключи в Vercel.
+// Сами значения не отдаём, только «да/нет», и только админу.
+async function envHealth(req, res) {
+  const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+  if (!token) return res.status(401).json({ error: 'unauthorized' });
+  const db = admin();
+  const { data } = await db.auth.getUser(token);
+  const { data: me } = await db.from('profiles').select('is_admin').eq('id', data?.user?.id || '').maybeSingle();
+  if (!me?.is_admin) return res.status(403).json({ error: 'forbidden' });
+  return res.status(200).json({
+    cronSecret: Boolean(process.env.CRON_SECRET),
+    click: Boolean(process.env.CLICK_SERVICE_ID && process.env.CLICK_MERCHANT_ID && process.env.CLICK_SECRET_KEY),
+    meta: Boolean(process.env.META_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID),
+    telegramBot: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+  });
+}
+
 export default async function handler(req, res) {
   const action = req.query?.action;
+  if (action === 'env-health' && req.method === 'GET') return envHealth(req, res);
   if (action === 'write' && req.method === 'POST') return write(req, res);
   if (action === 'guest-photo' && req.method === 'POST') return guestPhoto(req, res);
   if (action === 'cleanup' && req.method === 'GET') return cleanup(req, res);
