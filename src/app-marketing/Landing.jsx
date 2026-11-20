@@ -470,6 +470,7 @@ export default function Landing() {
             <Link to="/builder" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.create')}</Link>
             <Link to="/dashboard" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.myInvitations')}</Link>
             <SupportTrigger variant="link" />
+            <Link to="/gift" onClick={() => track('landing_gift_click')} style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>🎁 {t('gift.footer')}</Link>
             <Link to="/privacy" style={{ color: T.muted, textDecoration: 'none', fontSize: 14, fontFamily: T.font }}>{t('nav.privacy')}</Link>
             <LanguageSwitcher />
           </div>

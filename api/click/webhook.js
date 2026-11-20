@@ -38,13 +38,23 @@ export default async function handler(req, res) {
   return isPrepare ? handlePrepare(body, res) : handleComplete(body, res);
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function handlePrepare(body, res) {
   const invitationId = body.merchant_trans_id;
+  // Идёт в фильтр .or() — пропускаем только uuid
+  if (!UUID_RE.test(String(invitationId || ''))) {
+    return res.status(200).json(buildPrepareResponse({
+      click_trans_id: body.click_trans_id, merchant_trans_id: invitationId, merchant_prepare_id: null,
+      error: CLICK_ERROR.TRANSACTION_NOT_FOUND, error_note: 'Платёж не найден',
+    }));
+  }
 
+  // merchant_trans_id — id приглашения или id подарочного кода (purpose = 'gift')
   const { data: payment, error: findError } = await getAdmin()
     .from('payments')
     .select('*')
-    .eq('invitation_id', invitationId)
+    .or(`invitation_id.eq.${invitationId},gift_id.eq.${invitationId}`)
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -91,11 +101,17 @@ async function handlePrepare(body, res) {
 async function handleComplete(body, res) {
   const invitationId = body.merchant_trans_id;
   const preparedId = body.merchant_prepare_id;
+  if (!UUID_RE.test(String(invitationId || ''))) {
+    return res.status(200).json(buildCompleteResponse({
+      click_trans_id: body.click_trans_id, merchant_trans_id: invitationId, merchant_confirm_id: null,
+      error: CLICK_ERROR.TRANSACTION_NOT_FOUND, error_note: 'Платёж не найден',
+    }));
+  }
 
   const { data: payment, error: findError } = await getAdmin()
     .from('payments')
     .select('*')
-    .eq('invitation_id', invitationId)
+    .or(`invitation_id.eq.${invitationId},gift_id.eq.${invitationId}`)
     .eq('click_prepare_id', preparedId)
     .maybeSingle();
 
@@ -155,6 +171,21 @@ async function handleComplete(body, res) {
     .from('payments')
     .update({ status: 'paid', transaction_id: String(body.click_trans_id) })
     .eq('id', payment.id);
+
+  // Подарок: оплачен — код становится активным, публиковать нечего
+  if (payment.purpose === 'gift') {
+    const { error: giftError } = await getAdmin().from('gift_codes')
+      .update({ status: 'active', paid_at: new Date().toISOString() })
+      .eq('id', payment.gift_id).eq('status', 'pending');
+    if (giftError) console.error('click/webhook: failed to activate gift', giftError);
+    return res.status(200).json(buildCompleteResponse({
+      click_trans_id: body.click_trans_id,
+      merchant_trans_id: invitationId,
+      merchant_confirm_id: payment.click_prepare_id,
+      error: giftError ? CLICK_ERROR.INTERNAL_ERROR : CLICK_ERROR.SUCCESS,
+      error_note: giftError ? 'Оплата принята, но код не активирован — нужен ручной разбор' : 'Success',
+    }));
+  }
 
   // Триггер set_publication_deadlines сам посчитает edit_until/expires_at
   const { error: publishError } = await getAdmin()
