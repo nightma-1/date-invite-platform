@@ -60,7 +60,7 @@ function FallingHearts() {
  *      сколько людей пришло от получателей.
  * В превью конструктора не показываем: там смотрит автор, а не получатель.
  */
-function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
+function AfterAnswer({ tokens, templateKey, noAttempts, slug, canReply = true }) {
   const { t } = useTranslation();
   const [sharing, setSharing] = useState(false);
   const [hint, setHint] = useState(null);
@@ -125,12 +125,9 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
 
       {/* Ответная открытка: её «да» красиво, в том же стиле, со скидкой 50%.
           Получатель — основная аудитория охвата, так она становится автором. */}
-      <div style={{ marginTop: 18 }}>
+      {canReply && <div style={{ marginTop: 18 }}>
         <a
-          href={`/builder?${new URLSearchParams({
-            reply: slug || '', kind: 'card', template: templateKey || 'romantic',
-            utm_source: 'senti', utm_medium: 'recipient', utm_campaign: 'reply_card',
-          })}`}
+          href={`/reply/${slug || ''}?utm_source=senti&utm_medium=recipient&utm_campaign=reply_card`}
           target="_blank"
           rel="noreferrer"
           onClick={() => track('recipient_reply_click', {}, { slug })}
@@ -147,7 +144,7 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
         <p style={{ color: tokens.inkMuted || tokens.ink, fontFamily: tokens.fontUI, fontSize: 12, opacity: 0.65, marginTop: 8 }}>
           {t('screens.replyInviteHint')}
         </p>
-      </div>
+      </div>}
 
       <a
         href="/?utm_source=senti&utm_medium=recipient&utm_campaign=final_screen"
@@ -169,7 +166,7 @@ function AfterAnswer({ tokens, templateKey, noAttempts, slug }) {
 export default function FinalScreen({
   title, description, buttonText, summary, mediaUrl, tokens, onSubmit, submitting, submitted, cardShape = 'classic',
   // Для экрана после ответа (см. AfterAnswer). isPreview — автор смотрит черновик.
-  templateKey, noAttempts = 0, slug, isPreview = false,
+  templateKey, noAttempts = 0, slug, isPreview = false, canReply = true,
 }) {
   const { t } = useTranslation();
   const [localError, setLocalError] = useState(null);
@@ -202,7 +199,7 @@ export default function FinalScreen({
             {t('screens.sentText')}
           </p>
           {!isPreview && (
-            <AfterAnswer tokens={tokens} templateKey={templateKey} noAttempts={noAttempts} slug={slug} />
+            <AfterAnswer tokens={tokens} templateKey={templateKey} noAttempts={noAttempts} slug={slug} canReply={canReply} />
           )}
         </motion.div>
       ) : (

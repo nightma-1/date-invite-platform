@@ -293,7 +293,7 @@ export default async function handler(req, res) {
 
   const { data: invitation, error: invError } = await supabaseAdmin
     .from('invitations')
-    .select('id, slug, kind, status, recipient_name, recipient_gender, user_id, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
+    .select('id, slug, kind, status, recipient_name, recipient_gender, user_id, reply_kind, profiles(telegram_chat_id), invitation_steps(id, step_type, configuration_json)')
     .eq('id', invitationId)
     .maybeSingle();
 
@@ -394,6 +394,13 @@ export default async function handler(req, res) {
       text: 'Мои приглашения',
       url: appUrl('/dashboard'),
     });
+  } else if (event === 'answered' && invitation.reply_kind === 'card') {
+    // Он открыл её ответную открытку и нажал «Принимаю» / «Жду встречи»
+    const name = `<b>${escapeHtml(invitation.recipient_name)}</b>`;
+    const text = extra?.selections?.condition === 'accepted'
+      ? `❤️ ${name} принял твоё условие! Значит, до встречи 😄`
+      : `💌 ${name} открыл твой ответ и ждёт встречи!`;
+    result = await sendMessage(chatId, text, { text: 'Мои приглашения', url: appUrl('/dashboard') });
   } else if (event === 'answered') {
     result = await sendMessage(chatId, formatAnswered(invitation, extra), {
       text: 'Открыть ответ',

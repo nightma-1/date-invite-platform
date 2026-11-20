@@ -8,6 +8,7 @@ import { trackPageView, initAnalytics } from './lib/analytics.js';
 import { pixelPageView } from './lib/metaPixel.js';
 import Privacy from './app-marketing/Privacy.jsx';
 import { GiftBuy, GiftStatus } from './app-marketing/GiftPage.jsx';
+import ReplyCardBuilder from './app-reply/ReplyCardBuilder.jsx';
 import { initGuestClaim } from './lib/guestAccount.js';
 import { capturePromoFromUrl } from './lib/promo.js';
 import { supabase } from './lib/supabaseClient.js';
@@ -134,6 +135,7 @@ export default function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/gift" element={<GiftBuy />} />
         <Route path="/gift/:giftId" element={<GiftStatus />} />
+        <Route path="/reply/:slug" element={<ReplyCardBuilder />} />
         {/* Каждый новый черновик получает свой id — иначе второе приглашение
             перезаписало бы localStorage первого */}
         <Route path="/builder" element={<NewDraftRedirect />} />
