@@ -47,8 +47,6 @@ export async function checkPromo(code) {
 }
 
 export const INVITATION_PRICE = 19000;
-// Скидка на ответ получательницы (открытка / «спасибо за вечер»); считает сервер
-export const REPLY_DISCOUNT = 50;
 
 export function discounted(price, percent) {
   let amount = Math.round((price * (100 - percent)) / 100 / 100) * 100;

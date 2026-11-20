@@ -117,7 +117,7 @@ export default {
   },
 
   builder: {
-    replyDiscount: "50% off — it's a reply to an invitation",
+    replyFree: 'A reply to an invitation is free',
     tgShare: 'Send on Telegram ✈️',
     tgShareText: "I've got something for you 💌",
     loadingInvitation: 'Loading invitation…',
@@ -265,9 +265,9 @@ export default {
     storySaved: 'Picture saved — you can post it to your stories.',
     storyFailed: "Couldn't prepare the picture. Try again.",
     replyInvite: 'Reply with a card 💌',
-    replyInviteHint: 'Your answer to the invitation — 50% off',
+    replyInviteHint: 'Your reply to the invitation — free',
     thanksTitle: 'How was the date? 🌙',
-    thanksText: 'Say thanks for the evening and ask again — 50% off →',
+    thanksText: "Say thanks for the evening and ask again — it's free →",
     makeYourOwn: 'Want to invite someone too? Make your own →',
   },
 
