@@ -98,9 +98,9 @@ export default function ReplyCardBuilder() {
         if (upErr) throw upErr;
         voiceUrl = supabase.storage.from('invitation-media').getPublicUrl(path).data.publicUrl;
       }
-      const id = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : undefined;
+      // id не передаём: права на запись колонки id у клиента нет (её ставит
+      // база), с ним вставка падает «permission denied for table invitations».
       const row = {
-        ...(id ? { id } : {}),
         user_id: userId,
         slug: newSlug(),
         template_key: ticket.template_key || 'romantic',
