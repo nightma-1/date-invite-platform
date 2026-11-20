@@ -21,10 +21,22 @@ const supabaseAdmin = createClient(
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
-async function sendMessage(chatId, text, button) {
+// Ссылки на сам senti.uz открываем как Mini App — прямо в Telegram, без
+// окна «Перейти по ссылке» и без ухода в браузер. web_app-кнопки Telegram
+// разрешает только в личных чатах (chat_id > 0); в группах — обычная ссылка.
+function inlineButton(button, chatId, asWebApp = true) {
+  const origin = (process.env.PUBLIC_APP_URL || '').replace(/\/+$/, '');
+  const ownSite = origin && button.url.startsWith(`${origin}/`);
+  if (asWebApp && ownSite && Number(chatId) > 0) {
+    return { text: button.text, web_app: { url: button.url } };
+  }
+  return { text: button.text, url: button.url };
+}
+
+async function sendMessage(chatId, text, button, asWebApp = true) {
   const body = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true };
   if (button?.url?.startsWith('https://')) {
-    body.reply_markup = { inline_keyboard: [[{ text: button.text, url: button.url }]] };
+    body.reply_markup = { inline_keyboard: [[inlineButton(button, chatId, asWebApp)]] };
   }
   const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
     method: 'POST',
@@ -37,9 +49,10 @@ async function sendMessage(chatId, text, button) {
   console.error('telegram/notify: sendMessage failed', res.status, description);
 
   // Кнопка — приятное дополнение, а не повод потерять уведомление:
-  // если Telegram отверг сообщение с кнопкой, шлём то же самое без неё.
+  // Telegram отверг Mini App-кнопку — пробуем обычную ссылку, потом без кнопки.
   if (body.reply_markup) {
-    const retry = await sendMessage(chatId, text, null);
+    const usedWebApp = Boolean(body.reply_markup.inline_keyboard[0][0].web_app);
+    const retry = await sendMessage(chatId, text, usedWebApp ? button : null, false);
     return { ...retry, firstError: description };
   }
   return { ok: false, status: res.status, description };
