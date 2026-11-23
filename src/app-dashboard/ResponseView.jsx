@@ -14,6 +14,7 @@ import AuthGate from '../app-builder/AuthGate.jsx';
 import TicketCard from '../components/ui/TicketCard.jsx';
 import { getTemplateTokens } from '../templates/registry.js';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
+import GiftPartner from './GiftPartner.jsx';
 
 // Фиксируем градиент к вьюпорту (backgroundAttachment/Size), а не к высоте
 // всей страницы — иначе на длинной прокручиваемой странице розовый конец
@@ -219,6 +220,8 @@ export default function ResponseView() {
             )}
           </div>
         </TicketCard>
+
+        {response?.answered_yes && <GiftPartner tokens={tokens} gender={invitation.recipient_gender} />}
 
         {history.length > 1 && (
           <div style={{ marginTop: 22 }}>

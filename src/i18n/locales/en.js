@@ -434,6 +434,13 @@ export default {
   },
 
   responseView: {
+    giftLabel: 'A gift for the date',
+    giftTitle: 'You got a “yes” 💛 A keepsake gift makes the date special',
+    giftTitle_female: 'She said “yes” 💛 Surprise her with a keepsake',
+    giftTitle_male: 'He said “yes” 💛 Surprise him with a keepsake',
+    giftText: 'Matching keychains, bracelets and jewellery at the for Memory shop — {{discount}}% off with the code:',
+    giftButton: 'Choose a gift →',
+    giftCopied: 'Code copied',
     dateTimeJoin: 'at',
     back: '← My invitations',
     loading: 'Loading…',
