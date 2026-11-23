@@ -434,6 +434,13 @@ export default {
   },
 
   responseView: {
+    giftLabel: 'Uchrashuvga sovg‘a',
+    giftTitle: 'Sizga «ha» deyishdi 💛 Esdalik sovg‘a uchrashuvni alohida qiladi',
+    giftTitle_female: 'U «ha» dedi 💛 Uni esdalik sovg‘a bilan quvontiring',
+    giftTitle_male: 'U «ha» dedi 💛 Uni esdalik sovg‘a bilan quvontiring',
+    giftText: 'for Memory do‘konida juft breloklar, bilaguzuklar va bezaklar — kod bo‘yicha {{discount}}% chegirma:',
+    giftButton: 'Sovg‘a tanlash →',
+    giftCopied: 'Kod nusxalandi',
     dateTimeJoin: 'da',
     back: '← Mening taklifnomalarim',
     loading: 'Yuklanmoqda…',
