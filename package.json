@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build && node scripts/register-telegram-webhook.mjs && node scripts/register-support-webhook.mjs",
     "preview": "vite preview",
-    "test": "node --test tests/museum.test.mjs tests/inviteLanguage.test.mjs"
+    "test": "node --test tests/museum.test.mjs tests/inviteLanguage.test.mjs tests/payme.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

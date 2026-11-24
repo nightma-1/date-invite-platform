@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
+import { PAYME_ENABLED } from '../lib/paymeConfig.js';
 import AuthGate from '../app-builder/AuthGate.jsx';
 import SaveAccessCard from '../components/ui/SaveAccessCard.jsx';
 import { loadPartnerStats } from '../lib/referral.js';
@@ -149,7 +150,7 @@ export default function InvitationList() {
       const res = await fetch('/api/click/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ invitationId: inv.id, method }),
+        body: JSON.stringify({ invitationId: inv.id, method, lang: i18n.language }),
       });
       const data = await res.json();
       if (res.ok && data.paymentUrl) {
@@ -523,6 +524,21 @@ export default function InvitationList() {
                         >
                           {payingId === inv.id ? tr('dashboard.paying') : tr('dashboard.payWithCard')}
                         </button>
+                        {PAYME_ENABLED && (
+                          <button
+                            type="button"
+                            onClick={() => payForInvitation(inv, 'payme')}
+                            disabled={payingId === inv.id}
+                            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
+                            style={{
+                              background: '#33CCCC', color: '#fff', border: 'none', fontFamily: t.fontUI,
+                              cursor: payingId === inv.id ? 'not-allowed' : 'pointer',
+                              opacity: payingId === inv.id ? 0.7 : 1,
+                            }}
+                          >
+                            {payingId === inv.id ? tr('dashboard.paying') : tr('dashboard.payWithPayme')}
+                          </button>
+                        )}
                       </>
                     )}
                     {!isEditLocked(inv, now) && inv.kind !== 'occasion' && (

@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/payme",
+      "destination": "/api/click/webhook?provider=payme"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },

@@ -165,7 +165,7 @@ export function InvitationDrawer({ id, onClose, onChanged }) {
                 return (
                   <Card key={p.id} pad={10}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, alignItems: 'center', fontSize: 13 }}>
-                      <span>{money(p.amount)} · {p.method === 'card' ? 'карта' : 'CLICK'}{p.promo_code ? ` · ${p.promo_code}` : ''} <span style={{ color: A.muted }}>· {formatDateTime(p.created_at)}</span></span>
+                      <span>{money(p.amount)} · {p.method === 'card' ? 'карта' : p.method === 'payme' ? 'Payme' : 'CLICK'}{p.promo_code ? ` · ${p.promo_code}` : ''} <span style={{ color: A.muted }}>· {formatDateTime(p.created_at)}</span></span>
                       <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <Badge tone={tone}>{l}</Badge>
                         {p.status === 'paid' && Number(p.amount) > 0 && <Button size="sm" disabled={busy} variant="danger" onClick={() => refund(p)}>Возврат</Button>}

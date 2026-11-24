@@ -13,6 +13,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
+import { PAYME_ENABLED } from '../lib/paymeConfig.js';
 import { track } from '../lib/analytics.js';
 import { pixelPurchase } from '../lib/metaPixel.js';
 import { inviteShareUrl } from '../lib/shareLink.js';
@@ -25,7 +26,7 @@ const POLL_INTERVAL_MS = 2500;
 const MAX_ATTEMPTS = 16; // ~40 секунд — вебхук обычно приходит за 1-3 секунды
 
 export default function PaymentStatus() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { invitationId } = useParams();
   const [status, setStatus] = useState('checking'); // checking | published | timeout | notfound
   const [slug, setSlug] = useState(null);
@@ -141,7 +142,7 @@ export default function PaymentStatus() {
       const res = await fetch('/api/click/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ invitationId, method }),
+        body: JSON.stringify({ invitationId, method, lang: i18n.language }),
       });
       const data = await res.json();
       if (res.ok && data.paymentUrl) {
@@ -310,6 +311,20 @@ export default function PaymentStatus() {
             >
               {retrying ? t('payment.retrying') : t('payment.retryButtonCard')}
             </button>
+            {PAYME_ENABLED && (
+              <button
+                type="button"
+                onClick={() => retryPayment('payme')}
+                disabled={retrying}
+                style={{
+                  display: 'block', width: '100%', background: '#33CCCC', color: '#fff', padding: '12px 28px', borderRadius: 100,
+                  fontFamily: T.font, fontWeight: 700, fontSize: 15, border: 'none',
+                  cursor: retrying ? 'default' : 'pointer', opacity: retrying ? 0.7 : 1, marginBottom: 12,
+                }}
+              >
+                {retrying ? t('payment.retrying') : t('payment.retryButtonPayme')}
+              </button>
+            )}
             {/* Деньги списались, а приглашение не опубликовалось — ровно тот
                 случай, когда человеку нужен живой человек, а не ещё одна
                 кнопка «попробовать снова». */}

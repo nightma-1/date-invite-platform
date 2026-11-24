@@ -6,6 +6,7 @@
 import { randomInt } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { clickProvider, isClickConfigured, PAYMENT_METHOD } from '../../src/lib/clickProvider.js';
+import { paymeProvider, isPaymeConfigured } from '../../src/lib/paymeProvider.js';
 import { rateLimit, clientIp } from '../_lib/rateLimit.js';
 import { MUSEUM_PUBLIC, museumPublishPrice, museumExtendPrice, museumTerm } from '../../src/lib/museumPlans.js';
 
@@ -13,6 +14,21 @@ const INVITATION_PRICE = 19000; // сум, см. ТЗ раздел 3 (цена �
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PENDING_PER_INVITATION = 5; // защита от спама строк в payments
 const PENDING_WINDOW_MS = 60 * 60_000; // за какой срок считаем незавершённые попытки
+
+// Какая кнопка оплаты: белый список, а не что угодно от клиента
+function pickMethod(value) {
+  if (value === 'payme') return 'payme';
+  return value === PAYMENT_METHOD.CARD ? PAYMENT_METHOD.CARD : PAYMENT_METHOD.INVOICE;
+}
+const providerReady = (method) => (method === 'payme' ? isPaymeConfigured() : isClickConfigured());
+const providerName = (method) => (method === 'payme' ? 'payme' : 'click');
+
+// Ссылка на оплату. Click получает id приглашения/подарка (merchant_trans_id),
+// Payme — id строки payments (account.order_id).
+function buildPaymentUrl({ method, payment, targetId, amount, returnUrl, lang }) {
+  if (method === 'payme') return paymeProvider.createPayment({ orderId: payment.id, amount, returnUrl, lang });
+  return clickProvider.createPayment({ invitationId: targetId, amount, returnUrl, method });
+}
 
 let adminClient = null;
 function getAdmin() {
@@ -59,7 +75,7 @@ export default async function handler(req, res) {
 
   // Покупка подарочного кода «купи другу» — без приглашения (см. миграцию gift_codes)
   if (req.body?.purpose === 'gift') {
-    return createGiftPayment(res, userId, req.body?.method === PAYMENT_METHOD.CARD ? PAYMENT_METHOD.CARD : PAYMENT_METHOD.INVOICE);
+    return createGiftPayment(res, userId, pickMethod(req.body?.method), req.body?.lang);
   }
 
   const invitationId = req.body?.invitationId;
@@ -70,7 +86,7 @@ export default async function handler(req, res) {
   // Какая из двух кнопок оплаты — "через CLICK" или "картой". Белый список,
   // а не что угодно от клиента: это пишется в payments.method (constraint
   // в БД всё равно отбракует мусор, но лучше 400, чем 500 от констрейнта).
-  const method = req.body?.method === PAYMENT_METHOD.CARD ? PAYMENT_METHOD.CARD : PAYMENT_METHOD.INVOICE;
+  const method = pickMethod(req.body?.method);
 
   const { data: invitation, error: invitationError } = await supabase
     .from('invitations')
@@ -249,7 +265,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ published: true, free: true, promo: promo.code, slug: published.slug });
   }
 
-  if (!isClickConfigured()) {
+  if (!providerReady(method)) {
     return res.status(503).json({ error: 'оплата временно недоступна' });
   }
 
@@ -282,6 +298,7 @@ export default async function handler(req, res) {
       amount,
       status: 'pending',
       method,
+      provider: providerName(method),
       term_days: termDays,
       features,
       purpose: isExtension ? 'extend' : 'publish',
@@ -296,11 +313,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'не удалось создать платёж' });
   }
 
-  const { paymentUrl } = await clickProvider.createPayment({
-    invitationId,
+  const { paymentUrl } = await buildPaymentUrl({
+    method,
+    payment,
+    targetId: invitationId,
     amount,
     returnUrl: `${process.env.PUBLIC_APP_URL || 'https://senti.uz'}${isExtension ? '/dashboard' : `/payment/${invitationId}`}`,
-    method,
+    lang: req.body?.lang,
   });
 
   return res.status(200).json({ paymentUrl, paymentId: payment.id });
@@ -315,8 +334,8 @@ function newGiftCode() {
   return `GIFT-${Array.from({ length: 6 }, () => GIFT_ALPHABET[randomInt(GIFT_ALPHABET.length)]).join('')}`;
 }
 
-async function createGiftPayment(res, userId, method) {
-  if (!isClickConfigured()) {
+async function createGiftPayment(res, userId, method, lang) {
+  if (!providerReady(method)) {
     return res.status(503).json({ error: 'оплата временно недоступна' });
   }
   const admin = getAdmin();
@@ -343,7 +362,7 @@ async function createGiftPayment(res, userId, method) {
   if (!gift) return res.status(500).json({ error: 'не удалось создать подарок' });
 
   const { data: payment, error: paymentError } = await admin.from('payments').insert({
-    user_id: userId, gift_id: gift.id, amount: INVITATION_PRICE, status: 'pending', method, purpose: 'gift',
+    user_id: userId, gift_id: gift.id, amount: INVITATION_PRICE, status: 'pending', method, provider: providerName(method), purpose: 'gift',
   }).select().single();
   if (paymentError) {
     console.error('click/create: gift payment insert failed', paymentError);
@@ -351,11 +370,13 @@ async function createGiftPayment(res, userId, method) {
   }
 
   // В Click уходит id подарка — он вернётся в merchant_trans_id
-  const { paymentUrl } = await clickProvider.createPayment({
-    invitationId: gift.id,
+  const { paymentUrl } = await buildPaymentUrl({
+    method,
+    payment,
+    targetId: gift.id,
     amount: INVITATION_PRICE,
     returnUrl: `${process.env.PUBLIC_APP_URL || 'https://senti.uz'}/gift/${gift.id}`,
-    method,
+    lang,
   });
   return res.status(200).json({ paymentUrl, paymentId: payment.id, giftId: gift.id });
 }

@@ -21,6 +21,7 @@ import { buildPreviewInvitation } from './previewInvitation.js';
 import PreviewOverlay from './PreviewOverlay.jsx';
 import { updateInvitationDraft } from './updateInvitation.js';
 import { supabase } from '../lib/supabaseClient.js';
+import { PAYME_ENABLED } from '../lib/paymeConfig.js';
 import { getTemplateTokens } from '../templates/registry.js';
 import { T, DecorativeBlobs } from './BuilderUI.jsx';
 import LanguageSwitcher from '../components/ui/LanguageSwitcher.jsx';
@@ -47,7 +48,7 @@ const STEP_COMPONENTS = {
 };
 
 export default function BuilderShell() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const STEP_TITLES = t('builder.stepTitles', { returnObjects: true });
   const { state, dispatch } = useBuilder();
   const tokens = getTemplateTokens(state.templateId);
@@ -425,7 +426,7 @@ export default function BuilderShell() {
         const r = await fetch('/api/click/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ invitationId, method, promoCode: getStoredPromo() || undefined }),
+          body: JSON.stringify({ invitationId, method, promoCode: getStoredPromo() || undefined, lang: i18n.language }),
         });
         return { res: r, data: await r.json().catch(() => ({})) };
       });
@@ -535,6 +536,19 @@ export default function BuilderShell() {
             >
               {t('builder.payWithCard')}
             </button>
+            {PAYME_ENABLED && (
+              <button
+                type="button"
+                onClick={() => handleChoosePaymentMethod('payme')}
+                style={{
+                  display: 'block', width: '100%', background: '#33CCCC', color: '#fff', padding: '14px 24px',
+                  borderRadius: 100, fontFamily: T.font, fontWeight: 700, fontSize: 15, border: 'none',
+                  cursor: 'pointer', marginBottom: 12,
+                }}
+              >
+                {t('builder.payWithPayme')}
+              </button>
+            )}
             </>
           )}
           <div style={{ margin: '4px 0 14px', textAlign: 'left' }}>

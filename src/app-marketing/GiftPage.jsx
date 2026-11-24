@@ -13,6 +13,7 @@ import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient.js';
+import { PAYME_ENABLED } from '../lib/paymeConfig.js';
 import { track } from '../lib/analytics.js';
 import { INVITATION_PRICE } from '../lib/promo.js';
 import { T, DecorativeBlobs } from '../app-builder/BuilderUI.jsx';
@@ -57,7 +58,7 @@ export function giftLink(code) {
 
 /** /gift — покупка */
 export function GiftBuy() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [session, setSession] = useState(undefined);
   const [askLogin, setAskLogin] = useState(false);
   const [busy, setBusy] = useState(null);
@@ -79,7 +80,7 @@ export function GiftBuy() {
       const res = await fetch('/api/click/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ purpose: 'gift', method }),
+        body: JSON.stringify({ purpose: 'gift', method, lang: i18n.language }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.paymentUrl) throw new Error(data.error || 'gift');
@@ -120,6 +121,11 @@ export function GiftBuy() {
           <button type="button" style={ghostBtn} disabled={Boolean(busy)} onClick={() => buy('card')}>
             {busy === 'card' ? t('gift.redirecting') : t('gift.payCard')}
           </button>
+          {PAYME_ENABLED && (
+            <button type="button" style={{ ...primaryBtn, background: '#33CCCC' }} disabled={Boolean(busy)} onClick={() => buy('payme')}>
+              {busy === 'payme' ? t('gift.redirecting') : t('gift.payPayme')}
+            </button>
+          )}
         </div>
       )}
       {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 10 }}>{error}</p>}

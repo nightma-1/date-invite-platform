@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import paymeHandler from '../_lib/paymeWebhook.js';
 import { verifySign, buildPrepareResponse, buildCompleteResponse, CLICK_ACTION, CLICK_ERROR } from '../../src/lib/clickProvider.js';
 
 // Service-role клиент — только на сервере. Создаём лениво, чтобы падать с
@@ -19,6 +20,9 @@ function getAdmin() {
 }
 
 export default async function handler(req, res) {
+  // /api/payme переписан сюда (vercel.json) — лимит 12 функций на Vercel Hobby
+  if (req.query?.provider === 'payme') return paymeHandler(req, res);
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
   }
@@ -55,6 +59,7 @@ async function handlePrepare(body, res) {
     .from('payments')
     .select('*')
     .or(`invitation_id.eq.${invitationId},gift_id.eq.${invitationId}`)
+    .neq('method', 'payme') // строки Payme Click не трогает
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -112,6 +117,7 @@ async function handleComplete(body, res) {
     .from('payments')
     .select('*')
     .or(`invitation_id.eq.${invitationId},gift_id.eq.${invitationId}`)
+    .neq('method', 'payme') // строки Payme Click не трогает
     .eq('click_prepare_id', preparedId)
     .maybeSingle();
 

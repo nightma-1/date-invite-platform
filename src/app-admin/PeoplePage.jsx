@@ -70,7 +70,7 @@ function describe(e) {
   const p = e.props || {};
   if (e.event === 'page_view') return `${EVENT.page_view} ${e.path || ''}`;
   if (e.event === 'builder_step') return `Шаг ${Number(p.index ?? 0) + 1}: ${STEP_NAME[p.step] || p.step || ''}`;
-  if (e.event === 'payment_method_choose') return `${EVENT.payment_method_choose}: ${p.method === 'card' ? 'картой' : 'CLICK'}`;
+  if (e.event === 'payment_method_choose') return `${EVENT.payment_method_choose}: ${p.method === 'card' ? 'картой' : p.method === 'payme' ? 'Payme' : 'CLICK'}`;
   if (e.event === 'publish_error') return `${EVENT.publish_error}: ${p.message || ''}`;
   if (e.event === 'auth_start' || e.event === 'auth_success' || e.event === 'auth_error') {
     return `${EVENT[e.event]}${p.provider ? ` (${String(p.provider).replace('custom:', '')})` : ''}${p.message ? `: ${p.message}` : ''}`;
