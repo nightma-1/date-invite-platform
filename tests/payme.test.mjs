@@ -23,6 +23,8 @@ function fakeRepo(rows) {
     updatePayment: async (id, patch) => { const r = { ...db.get(id), ...patch }; db.set(id, r); return r; },
     listByPaymeTime: async (from, to) => [...db.values()].filter((r) => r.payme_transaction_id && r.payme_create_time >= from && r.payme_create_time <= to),
     activateGift: async (g) => log.gifts.push(g),
+    revokeGift: async (g) => log.gifts.push('revoked:' + g),
+    archiveInvitation: async (i) => log.published.push('archived:' + i),
     publishInvitation: async (i) => log.published.push(i),
   };
 }
@@ -44,7 +46,7 @@ test('CheckPerform: ок, неверная сумма, нет заказа', asy
   assert.ok(nf.error.code <= -31050 && nf.error.code >= -31099);
 });
 
-test('полный цикл: Create → повторный Create → Perform → повторный Perform → Cancel нельзя', async () => {
+test('полный цикл: Create → повторный Create → Perform → повторный Perform → возврат (-2)', async () => {
   const repo = fakeRepo([order()]);
   const c1 = await call(repo, 'CreateTransaction', { id: 'pay1', time: 999_000, amount: 1900000, account: acc }, 1_000_000);
   assert.equal(c1.result.state, 1);
@@ -64,15 +66,23 @@ test('полный цикл: Create → повторный Create → Perform �
   assert.equal(p2.result.perform_time, 1_002_000);
   assert.deepEqual(repo.log.published, ['inv-1']); // не публикуем дважды
 
-  assert.equal((await call(repo, 'CancelTransaction', { id: 'pay1', reason: 5 })).error.code, -31007);
-  const ct = await call(repo, 'CheckTransaction', { id: 'pay1' });
-  assert.equal(ct.result.state, 2);
-  assert.equal(ct.result.reason, null);
-
   const st = await call(repo, 'GetStatement', { from: 0, to: 2_000_000 });
   assert.equal(st.result.transactions.length, 1);
   assert.equal(st.result.transactions[0].amount, 1900000);
   assert.equal(st.result.transactions[0].account.order_id, ORDER);
+
+  const cancel = await call(repo, 'CancelTransaction', { id: 'pay1', reason: 5 }, 1_004_000);
+  assert.equal(cancel.result.state, -2);
+  assert.equal(cancel.result.cancel_time, 1_004_000);
+  assert.equal(repo.db.get(ORDER).status, 'refunded');
+  assert.deepEqual(repo.log.published, ['inv-1', 'archived:inv-1']);
+  const again = await call(repo, 'CancelTransaction', { id: 'pay1', reason: 5 }, 1_005_000);
+  assert.equal(again.result.cancel_time, 1_004_000);
+  const ct = await call(repo, 'CheckTransaction', { id: 'pay1' });
+  assert.equal(ct.result.state, -2);
+  assert.equal(ct.result.reason, 5);
+  assert.equal((await call(repo, 'PerformTransaction', { id: 'pay1' })).error.code, -31008);
+
 });
 
 test('отмена до проведения, затем Perform нельзя', async () => {

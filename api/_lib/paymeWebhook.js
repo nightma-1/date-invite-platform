@@ -60,6 +60,19 @@ export function supabaseRepo(admin = getAdmin()) {
         .eq('id', giftId).eq('status', 'pending');
       if (error) throw error;
     },
+    // Возврат после проведения (Payme CancelTransaction на state 2) —
+    // как ручной возврат в админке (admin_refund_payment с unpublish)
+    revokeGift: async (giftId) => {
+      const { error } = await admin.from('gift_codes')
+        .update({ status: 'pending', paid_at: null })
+        .eq('id', giftId).eq('status', 'active');
+      if (error) throw error;
+    },
+    archiveInvitation: async (invitationId) => {
+      const { error } = await admin.from('invitations').update({ status: 'archived' })
+        .eq('id', invitationId).in('status', ['published', 'expired']);
+      if (error) throw error;
+    },
     publishInvitation: async (invitationId) => {
       // Триггеры сами посчитают edit_until/expires_at и продление музея
       const { error } = await admin.from('invitations').update({ status: 'published' }).eq('id', invitationId);
@@ -112,6 +125,16 @@ async function fulfill(repo, payment) {
     // Деньги уже списаны и платёж помечен paid — Payme отвечаем успехом,
     // иначе он будет повторять Perform. Разбор — вручную по логам.
     console.error('payme: fulfil after payment failed, needs manual check', payment.id, err?.message || err);
+  }
+}
+
+async function revoke(repo, payment) {
+  try {
+    if (payment.purpose === 'gift') await repo.revokeGift(payment.gift_id);
+    else if (payment.purpose === 'publish') await repo.archiveInvitation(payment.invitation_id);
+    // extend: продление не откатываем, платёж просто помечен refunded
+  } catch (err) {
+    console.error('payme: revoke after refund failed, needs manual check', payment.id, err?.message || err);
   }
 }
 
@@ -186,9 +209,16 @@ const methods = {
       return { transaction: cancelled.id, cancel_time: Number(cancelled.payme_cancel_time), state: cancelled.payme_state };
     }
     if (payment.payme_state === PAYME_STATE.PERFORMED) {
-      // Приглашение уже опубликовано / код выдан — услуга оказана.
-      // Возврат, если нужен, делается вручную через кабинет Payme.
-      throw new RpcError(PAYME_ERROR.CANT_CANCEL);
+      // Возврат денег (по спецификации Payme отмена проведённой транзакции
+      // обязательна): платёж → refunded, покупку откатываем.
+      const refunded = await repo.updatePayment(payment.id, {
+        payme_state: PAYME_STATE.CANCELLED_AFTER_PERFORM,
+        payme_cancel_time: now,
+        payme_reason: Number(params.reason) || null,
+        status: 'refunded',
+      });
+      await revoke(repo, refunded);
+      return { transaction: refunded.id, cancel_time: Number(refunded.payme_cancel_time), state: refunded.payme_state };
     }
     return { transaction: payment.id, cancel_time: Number(payment.payme_cancel_time), state: payment.payme_state };
   },
